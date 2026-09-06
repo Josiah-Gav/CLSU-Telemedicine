@@ -309,6 +309,11 @@ it('filters the notifications index by date range', function () {
 // ---------------------------------------------------------------------------
 
 it('notifies nurses when a patient submits a consultation', function () {
+    // Consultation intake must be open for store() to accept a new request.
+    // Added only to this test, not a shared helper, so the physician it creates
+    // cannot alter sendToRole('physician') fan-out counts elsewhere in this file.
+    makeConsultationIntakeAvailable();
+
     $patient = User::factory()->create(['role' => 'patient']);
     $nurse = User::factory()->create(['role' => 'nurse', 'account_status' => 'active']);
 

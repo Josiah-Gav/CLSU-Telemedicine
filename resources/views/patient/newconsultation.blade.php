@@ -16,8 +16,15 @@
         filePreviews: [],
         otherSymptom: '', 
         customSymptomInput: '', 
-        showCustomSymptomInput: false, 
+        showCustomSymptomInput: false,
         isSubmitting: false,
+        {{-- Server-rendered service-level state (never per-physician detail) —
+             see ConsultationController::create()/DashboardController::newconsultation().
+             This only informs the UI; the backend gate in store() is what
+             actually enforces it, and a 503 response there flips this back to
+             false so a stale page cannot keep offering a submission it knows
+             will fail. --}}
+        intakeAvailable: @json($intakeAvailable ?? true),
         selectedSymptomsDisplay() { return this.selectedSymptoms.map(s => s.name).join(', '); }, 
         selectedSymptomsPhrase() { return this.selectedSymptoms.length === 1 ? this.selectedSymptoms[0].name.toLowerCase() : this.selectedSymptoms.map(s => s.name.toLowerCase()).join(', '); }, 
         isSymptomSelected(symptom) { return this.selectedSymptoms.some(s => s.name === symptom); }, 
@@ -101,6 +108,12 @@
             console.log('submitForm: start');
             this.isSubmitting = true;
             try {
+                if (!this.intakeAvailable) {
+                    this.validationError('Consultations are currently unavailable. Please try again later.');
+                    this.isSubmitting = false;
+                    return;
+                }
+
                 if (this.selectedSymptoms.length === 0) {
                     this.validationError('You must provide at least one symptom before submitting your consultation request.');
                     this.isSubmitting = false;
@@ -152,7 +165,12 @@
                     }
 
                     if (!response.ok) {
-                        throw new Error(data.message || 'Request failed.');
+                        // status carried on the Error so the catch handler
+                        // below can recognize the intake-unavailable case
+                        // without matching on message text.
+                        const error = new Error(data.message || 'Request failed.');
+                        error.status = response.status;
+                        throw error;
                     }
 
                     return data;
@@ -189,6 +207,18 @@
                 })
                 .catch(err => {
                     this.isSubmitting = false;
+
+                    // The service was available when the page loaded but is
+                    // not any more (a physician closed intake, or the queue
+                    // filled, between then and now). The 503 status itself is
+                    // the signal — store() returns 503 only for this reason —
+                    // never the message text. Flips the indicator and disables
+                    // the submit button; the patient must reload the page to
+                    // try again, which re-checks availability fresh.
+                    if (err.status === 503) {
+                        this.intakeAvailable = false;
+                    }
+
                     console.error('submitForm: fetch error', err);
                     alert('Error: ' + err.message);
                 });
@@ -207,7 +237,34 @@
                 
                 <input type="hidden" name="symptoms_payload" :value="JSON.stringify(selectedSymptoms)">
                 <input type="hidden" name="concern_category" :value="selectedType">
-                
+
+                <!-- Service-level availability, not physician/nurse/session status.
+                     Informational only — the backend gate in ConsultationController::store()
+                     is authoritative and re-checks this on every submission. -->
+                <div
+                    class="mb-6 flex items-start gap-3 rounded-2xl border p-4"
+                    :class="intakeAvailable ? 'border-brand-green bg-brand-green-soft' : 'border-amber-300 bg-amber-50'"
+                >
+                    <span
+                        class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                        :class="intakeAvailable ? 'bg-brand-green' : 'bg-amber-500'"
+                    ></span>
+                    <div>
+                        <p
+                            class="text-sm font-semibold"
+                            :class="intakeAvailable ? 'text-brand-green-deep' : 'text-amber-800'"
+                            x-text="intakeAvailable ? 'Consultations Available' : 'Consultations Currently Unavailable'"
+                        ></p>
+                        <p
+                            class="mt-0.5 text-xs"
+                            :class="intakeAvailable ? 'text-brand-green-deep/80' : 'text-amber-700'"
+                            x-text="intakeAvailable
+                                ? 'You can submit a new consultation request.'
+                                : 'New consultation requests are temporarily unavailable. Please try again later.'"
+                        ></p>
+                    </div>
+                </div>
+
 
                 <!-- STEP NAVIGATION BULLETS -->
                 <div class="mb-6 rounded-3xl border border-gray-200 bg-slate-50 p-4 shadow-sm">
@@ -581,11 +638,11 @@
                                 Next
                             </button>
 
-                            <button type="submit" 
+                            <button type="submit"
                                     x-show="currentStep === 4"
-                                    :disabled="isSubmitting"
+                                    :disabled="isSubmitting || !intakeAvailable"
                                     class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition"
-                                    x-text="isSubmitting ? 'Uploading Attachments...' : 'Submit Request'">
+                                    x-text="!intakeAvailable ? 'Consultations Unavailable' : (isSubmitting ? 'Uploading Attachments...' : 'Submit Request')">
                             </button>
 
                             <div x-show="isSubmitting" x-cloak class="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500 animate-pulse">

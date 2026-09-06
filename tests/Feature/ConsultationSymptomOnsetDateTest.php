@@ -13,6 +13,12 @@ use App\Models\User;
  */
 function onsetPatient(array $overrides = []): User
 {
+    // store() now refuses a new request unless consultation intake is open, so
+    // every patient in this suite is created alongside that state. Assertions
+    // below are unchanged; this only supplies the precondition they always
+    // implicitly relied on. See makeConsultationIntakeAvailable() in Pest.php.
+    makeConsultationIntakeAvailable();
+
     return User::factory()->create(array_merge(['role' => 'patient', 'user_type' => 'student'], $overrides));
 }
 

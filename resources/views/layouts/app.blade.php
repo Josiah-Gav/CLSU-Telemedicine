@@ -81,6 +81,36 @@
         </div>
 
         @auth
+        @php
+            // Physician consultation intake rides along on the presence
+            // heartbeat below rather than running a timer of its own, so a
+            // physician who opens intake and then works elsewhere in the app
+            // keeps it alive. Resolved here because the layout has no
+            // controller of its own; it is one indexed lookup on
+            // (physician_id, status), and only for physicians.
+            //
+            // currentSessionFor() returns only an already-open session, which
+            // is the only thing a heartbeat may ever touch — this flag can
+            // start the beat but can never create or reopen a session.
+            $intakeHeartbeatUrl = null;
+            $intakeIsOpen = false;
+
+            if (Auth::user()->role === 'physician') {
+                $intakeHeartbeatUrl = route('physician.consultation_intake.heartbeat', ['physician' => Auth::id()]);
+                $intakeIsOpen = app(\App\Services\PhysicianAvailabilityService::class)
+                    ->currentSessionFor(Auth::user()) !== null;
+            }
+        @endphp
+        <script>
+            // Shared with the Consultation Intake page, which flips `open` when
+            // the physician opens or closes intake so this one timer picks the
+            // change up immediately. Declared for every authenticated user so
+            // that page never has to null-check it.
+            window.telemedIntakeHeartbeat = {
+                url: @json($intakeHeartbeatUrl),
+                open: @json($intakeIsOpen),
+            };
+        </script>
         <script>
             (function () {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -98,6 +128,50 @@
                             'Accept': 'application/json'
                         }
                     }).catch(() => {});
+
+                    sendIntakeHeartbeat();
+                }
+
+                // Keeps an already-open intake session alive. Skipped entirely
+                // unless intake is believed open, so a closed or expired
+                // session is never repeatedly touched. CSRF-protected like
+                // every other authenticated POST — the token above is the same
+                // one the endpoint expects.
+                function sendIntakeHeartbeat() {
+                    const intake = window.telemedIntakeHeartbeat;
+
+                    if (!intake || !intake.url || !intake.open) {
+                        return;
+                    }
+
+                    fetch(intake.url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            // The server is the only authority on whether the
+                            // session survived. Once it says the session is no
+                            // longer open, stop beating and let the physician
+                            // decide whether to open intake again — nothing
+                            // here ever reopens one.
+                            if (!data.open) {
+                                intake.open = false;
+                            }
+
+                            // Lets the Consultation Intake page keep its status
+                            // card current without owning a second timer.
+                            window.dispatchEvent(new CustomEvent('telemed:intake-heartbeat', { detail: data }));
+                        })
+                        // A transient network failure changes nothing locally.
+                        // Heartbeats simply stop arriving and the server's own
+                        // staleness threshold decides when the session stops
+                        // counting.
+                        .catch(() => {});
                 }
 
                 // Send an initial heartbeat on page load

@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\DB;
  * skip already covers for a sibling enum migration — see CLAUDE.md.
  */
 it('leaves priority_level null on a freshly submitted consultation request', function () {
+    // Consultation intake must be open for store() to accept a new request.
+    makeConsultationIntakeAvailable();
+
     $patient = User::factory()->create(['role' => 'patient', 'user_type' => 'student']);
 
     $this->actingAs($patient)

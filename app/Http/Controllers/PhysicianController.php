@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GenerateScheduleSlotsRequest;
+use App\Http\Requests\StorePhysicianScheduleRequest;
 use App\Http\Requests\StoreScheduleSlotsRequest;
+use App\Http\Requests\UpdatePhysicianScheduleRequest;
 use App\Models\Consultation;
 use App\Models\ConsultationSession;
 use App\Models\FollowUpRequest;
+use App\Models\PhysicianAvailabilitySession;
+use App\Models\PhysicianSchedule;
 use App\Models\ScheduleSlot;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -16,6 +20,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 use App\Enums\NotificationType;
 use App\Services\ConsultationOwnershipService;
 use App\Services\DashboardAnalyticsService;
@@ -23,6 +29,7 @@ use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
 use App\Services\Export\DashboardExportRows;
 use App\Services\NotificationService;
+use App\Services\PhysicianAvailabilityService;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use App\Support\StatusBadge;
@@ -33,6 +40,7 @@ class PhysicianController extends Controller
     public function __construct(
         private readonly ConsultationOwnershipService $ownershipService,
         private readonly DashboardAnalyticsService $analyticsService,
+        private readonly PhysicianAvailabilityService $availabilityService,
     ) {
         $this->middleware('auth');
     }
@@ -1244,6 +1252,371 @@ class PhysicianController extends Controller
             ],
             'slots' => $this->getUpcomingSlotsForPhysician($physician->user_id),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------
+    | Consultation Intake — recurring schedule (Phase 3)
+    |--------------------------------------------------------------------
+    | Deliberately separate from the "Schedule Availability" tab above:
+    | that tab manages schedule_slots, concrete bookable appointment
+    | inventory for one calendar date. This section manages
+    | physician_schedules, a weekly recurring pattern used only to label a
+    | future PhysicianAvailabilityService::open() session as 'scheduled' or
+    | 'overtime' — see that service's evaluateMode(). Nothing here creates,
+    | closes, or otherwise touches an availability session, a consultation,
+    | or a schedule slot. Phase 4 adds the Start/Stop Accepting Consultations
+    | controls; this page only manages the recurring hours those controls
+    | will later be labelled against.
+    */
+
+    public function consultationIntake(User $physician): View
+    {
+        $this->authorizePhysician($physician);
+
+        return view('physician.consultation_intake', [
+            'physician' => $physician,
+            'schedules' => $this->serializePhysicianSchedules($physician),
+            // Rendered server-side so the page never flashes the wrong intake
+            // status while JavaScript boots.
+            'intake' => $this->serializeIntakeState(
+                $physician,
+                $this->availabilityService->currentSessionFor($physician)
+            ),
+            'routes' => [
+                'store_url' => route('physician.consultation_intake.schedules.store', ['physician' => $physician->user_id]),
+                'update_url_template' => route('physician.consultation_intake.schedules.update', ['physician' => $physician->user_id, 'schedule' => '__ID__']),
+                'destroy_url_template' => route('physician.consultation_intake.schedules.destroy', ['physician' => $physician->user_id, 'schedule' => '__ID__']),
+                'open_url' => route('physician.consultation_intake.open', ['physician' => $physician->user_id]),
+                'close_url' => route('physician.consultation_intake.close', ['physician' => $physician->user_id]),
+                // No heartbeat_url: the intake heartbeat is issued by the one
+                // authenticated heartbeat in layouts/app.blade.php, which
+                // builds its own URL and keeps beating on every page — not
+                // only while this one is open.
+            ],
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------
+    | Consultation Intake — live open/close/heartbeat (Phase 4)
+    |--------------------------------------------------------------------
+    | These three actions are thin: every state transition belongs to
+    | PhysicianAvailabilityService, which owns the transaction, the
+    | physician users-row lock, idempotency, and the scheduled/overtime
+    | classification. Nothing here writes to physician_availability_sessions
+    | directly, and nothing here touches a consultation, a pending request,
+    | a schedule slot, or the physician's presence fields — opening and
+    | closing intake govern only whether NEW consultation requests may be
+    | created, which Phase 6 will enforce at the patient's submit endpoint.
+    */
+
+    public function consultationIntakeOpen(User $physician): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        // Idempotent by way of the service: a second click, or a click from a
+        // second tab, refreshes and returns the session already open rather
+        // than creating another one, so this is always a success response.
+        $session = $this->availabilityService->open($this->authenticatedPhysician());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You are now accepting new consultation requests.',
+            'intake' => $this->serializeIntakeState($physician, $session),
+        ]);
+    }
+
+    public function consultationIntakeClose(User $physician): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        // Returns null when nothing was open, which is a success rather than
+        // an error — a second Stop click, or one from a stale tab, must not
+        // fail. Existing consultations are untouched either way.
+        $this->availabilityService->close($this->authenticatedPhysician());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You are no longer accepting new consultation requests.',
+            'intake' => $this->serializeIntakeState($physician, null),
+        ]);
+    }
+
+    public function consultationIntakeHeartbeat(User $physician): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        // touch() can only ever bump a session that is already open. It never
+        // creates one and never reopens a closed or expired one, so a
+        // heartbeat arriving after the session ended is a no-op that simply
+        // reports open=false and lets the page stop its loop.
+        $session = $this->availabilityService->touch($this->authenticatedPhysician());
+
+        return response()->json([
+            'success' => true,
+            'open' => $session !== null,
+            'intake' => $this->serializeIntakeState($physician, $session),
+        ]);
+    }
+
+    /**
+     * The physician whose intake is being changed is always taken from the
+     * authenticated session, never from the {physician} route parameter.
+     *
+     * authorizePhysician() has already proven the two are the same user, so
+     * this changes no behaviour — it makes the guarantee structural instead of
+     * incidental, which matters most for the heartbeat endpoint, the one
+     * called repeatedly by JavaScript.
+     */
+    private function authenticatedPhysician(): User
+    {
+        return Auth::user();
+    }
+
+    /**
+     * The physician's own intake state, in physician-facing terms.
+     *
+     * $openSession is whatever the service just returned — currentSessionFor()
+     * on page load, or the result of open()/touch(). It is the only authority
+     * for whether intake is open; this method never re-evaluates the recurring
+     * schedule and never recomputes the mode, because a session's stored mode
+     * is fixed at the moment it opened (a session opened at 16:55 inside a
+     * 14:00-17:00 window stays "Scheduled Intake" afterwards, and editing the
+     * schedule later changes only future sessions).
+     *
+     * Exposes no database ids and nothing about any other physician.
+     */
+    private function serializeIntakeState(User $physician, ?PhysicianAvailabilitySession $openSession): array
+    {
+        if ($openSession && $openSession->status === 'open') {
+            return [
+                'state' => 'open',
+                'status_label' => 'Accepting New Consultations',
+                'mode' => $openSession->mode,
+                'mode_label' => $openSession->mode === 'scheduled' ? 'Scheduled Intake' : 'Overtime Intake',
+                'started_at' => $openSession->started_at?->format('g:i A'),
+                'started_on' => $openSession->started_at?->format('M j, Y'),
+            ];
+        }
+
+        // Distinguishes "expired because the heartbeat stopped" from "never
+        // opened, or deliberately closed" purely so the physician reads the
+        // right explanation. It is never used to decide whether intake is
+        // open — the service's session above is the sole authority for that,
+        // and neither branch reopens anything.
+        $lastSession = PhysicianAvailabilitySession::query()
+            ->where('physician_id', $physician->user_id)
+            ->latest('id')
+            ->first();
+
+        $hasExpired = $lastSession?->status === 'expired';
+
+        return [
+            'state' => $hasExpired ? 'expired' : 'closed',
+            'status_label' => $hasExpired ? 'Session Expired' : 'Not Accepting New Consultations',
+            'mode' => null,
+            'mode_label' => null,
+            'started_at' => null,
+            'started_on' => null,
+        ];
+    }
+
+    public function storePhysicianSchedule(StorePhysicianScheduleRequest $request, User $physician): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        $validated = $request->validated();
+
+        $this->assertScheduleWindowIsValid(
+            $physician,
+            (int) $validated['day_of_week'],
+            $validated['start_time'],
+            $validated['end_time'],
+            isActive: true,
+        );
+
+        PhysicianSchedule::create([
+            'physician_id' => $physician->user_id,
+            'day_of_week' => $validated['day_of_week'],
+            'start_time' => $this->normalizeScheduleTime($validated['start_time']),
+            'end_time' => $this->normalizeScheduleTime($validated['end_time']),
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule window added.',
+            'schedules' => $this->serializePhysicianSchedules($physician),
+        ], 201);
+    }
+
+    public function updatePhysicianSchedule(UpdatePhysicianScheduleRequest $request, User $physician, int $schedule): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        // Scoped to the authenticated physician in the query itself, not
+        // fetched by bare ID and checked afterward — a schedule belonging to
+        // another physician simply does not exist in this query, so it can
+        // never be loaded, let alone mutated.
+        $scheduleModel = PhysicianSchedule::query()
+            ->where('physician_id', $physician->user_id)
+            ->find($schedule);
+
+        if (!$scheduleModel) {
+            abort(404);
+        }
+
+        $validated = $request->validated();
+        $isActive = array_key_exists('is_active', $validated) ? (bool) $validated['is_active'] : $scheduleModel->is_active;
+
+        $this->assertScheduleWindowIsValid(
+            $physician,
+            (int) $validated['day_of_week'],
+            $validated['start_time'],
+            $validated['end_time'],
+            isActive: $isActive,
+            excludeId: $scheduleModel->id,
+        );
+
+        $scheduleModel->update([
+            'day_of_week' => $validated['day_of_week'],
+            'start_time' => $this->normalizeScheduleTime($validated['start_time']),
+            'end_time' => $this->normalizeScheduleTime($validated['end_time']),
+            'is_active' => $isActive,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule window updated.',
+            'schedules' => $this->serializePhysicianSchedules($physician),
+        ]);
+    }
+
+    public function destroyPhysicianSchedule(User $physician, int $schedule): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        $deleted = PhysicianSchedule::query()
+            ->where('physician_id', $physician->user_id)
+            ->where('id', $schedule)
+            ->delete();
+
+        if (!$deleted) {
+            abort(404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule window deleted.',
+            'schedules' => $this->serializePhysicianSchedules($physician),
+        ]);
+    }
+
+    /**
+     * Rejects an exact duplicate start time on the same day (the friendly
+     * form of the physician_schedules unique(physician_id, day_of_week,
+     * start_time) constraint — checked regardless of active state, since
+     * the database index itself is not conditional on is_active) and, only
+     * when the window being saved is itself active, rejects it overlapping
+     * an existing active window on the same day.
+     *
+     * Inactive windows never participate in overlap detection — on either
+     * side of the comparison — mirroring PhysicianAvailabilityService::
+     * evaluateMode(), which never classifies against an inactive row. An
+     * inactive window may therefore sit underneath an active one without
+     * blocking it; reactivating it later re-runs this same check.
+     */
+    private function assertScheduleWindowIsValid(
+        User $physician,
+        int $dayOfWeek,
+        string $startTime,
+        string $endTime,
+        bool $isActive,
+        ?int $excludeId = null,
+    ): void {
+        $newStart = CarbonImmutable::createFromFormat('H:i', $startTime);
+        $newEnd = CarbonImmutable::createFromFormat('H:i', $endTime);
+
+        $existingWindows = PhysicianSchedule::query()
+            ->where('physician_id', $physician->user_id)
+            ->where('day_of_week', $dayOfWeek)
+            ->when($excludeId, fn ($query) => $query->where('id', '!=', $excludeId))
+            ->get();
+
+        foreach ($existingWindows as $existing) {
+            $existingStart = CarbonImmutable::createFromFormat('H:i:s', (string) $existing->start_time)
+                ->setDate($newStart->year, $newStart->month, $newStart->day);
+            $existingEnd = CarbonImmutable::createFromFormat('H:i:s', (string) $existing->end_time)
+                ->setDate($newStart->year, $newStart->month, $newStart->day);
+
+            if ($existingStart->equalTo($newStart)) {
+                throw ValidationException::withMessages([
+                    'start_time' => 'You already have a schedule window starting at this time on this day.',
+                ]);
+            }
+
+            if ($isActive && $existing->is_active && $newStart->lessThan($existingEnd) && $existingStart->lessThan($newEnd)) {
+                throw ValidationException::withMessages([
+                    'start_time' => 'This overlaps with an existing active window ('
+                        .$existingStart->format('g:i A').' - '.$existingEnd->format('g:i A')
+                        .') on '.self::WEEKDAY_NAMES[$dayOfWeek].'.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * H:i as typed into an <input type="time"> normalizes to H:i:s before it
+     * reaches the database, so every row — whichever endpoint created it —
+     * compares consistently regardless of the driver's TIME column
+     * peculiarities (MySQL normalizes either form to H:i:s on its own;
+     * SQLite's TEXT-affinity TIME column stores exactly what it is given).
+     */
+    private function normalizeScheduleTime(string $time): string
+    {
+        return strlen($time) === 5 ? $time.':00' : $time;
+    }
+
+    private const WEEKDAY_NAMES = [
+        0 => 'Sunday',
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+    ];
+
+    /**
+     * Sorted by day_of_week then start_time, per the module's sort
+     * requirement. Grouping by day happens client-side in the Blade/Alpine
+     * component from this flat, already-ordered list.
+     */
+    private function serializePhysicianSchedules(User $physician): array
+    {
+        return PhysicianSchedule::query()
+            ->where('physician_id', $physician->user_id)
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function (PhysicianSchedule $schedule) {
+                $start = CarbonImmutable::createFromFormat('H:i:s', (string) $schedule->start_time);
+                $end = CarbonImmutable::createFromFormat('H:i:s', (string) $schedule->end_time);
+
+                return [
+                    'id' => $schedule->id,
+                    'day_of_week' => $schedule->day_of_week,
+                    'day_name' => self::WEEKDAY_NAMES[$schedule->day_of_week],
+                    // H:i for the edit form's <input type="time">.
+                    'start_time' => $start->format('H:i'),
+                    'end_time' => $end->format('H:i'),
+                    'label' => $start->format('g:i A').' - '.$end->format('g:i A'),
+                    'is_active' => (bool) $schedule->is_active,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function getUpcomingSlotsForPhysician(int $physicianId): array

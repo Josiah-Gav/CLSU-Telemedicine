@@ -8,14 +8,17 @@ use App\Models\Consultation;
 use App\Models\FollowUpRequest;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Export\DashboardExportRows;
+use App\Services\PhysicianAvailabilityService;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly DashboardAnalyticsService $analyticsService)
-    {
+    public function __construct(
+        private readonly DashboardAnalyticsService $analyticsService,
+        private readonly PhysicianAvailabilityService $availabilityService,
+    ) {
     }
 
     /** Mirrors Admin\UserManagementController::authorizeAdmin() — role check only, no per-record ownership. */
@@ -177,7 +180,14 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('status', 'You already have an active consultation request.');
         }
 
-        return view('patient.newconsultation')->with('patient', $patientInfo);
+        // Server-rendered so the page never flashes "Available" before
+        // correcting itself. isServiceAvailable() is the same single source of
+        // truth ConsultationController::store() enforces — this view datum is
+        // purely informational and never itself gates the submission.
+        return view('patient.newconsultation', [
+            'patient' => $patientInfo,
+            'intakeAvailable' => $this->availabilityService->isServiceAvailable(),
+        ]);
     }
 
     private function getPatientActiveConsultation(int $patientId): ?Consultation

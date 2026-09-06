@@ -48,3 +48,46 @@ function something()
 {
     // ..
 }
+
+/**
+ * Put the telemedicine service into a state where a patient may submit a NEW
+ * consultation request, and return the physician holding intake open.
+ *
+ * ConsultationController::store() refuses a new request unless
+ * PhysicianAvailabilityService::isServiceAvailable() is true, which needs an
+ * eligible physician who is present, whose presence is fresh, and who has a
+ * fresh open intake session. Any suite that posts to consultations.store needs
+ * that state; this builds the real rows rather than faking the service, so the
+ * gate is exercised exactly as it is in production.
+ *
+ * Lives here rather than in one test file because four existing suites plus the
+ * gate's own suite all need it — this is the shared-helper location tests/Pest.php
+ * documents above.
+ *
+ * users.last_seen_at is written through the query builder because it is not in
+ * User::$fillable, which is also why TrackUserPresence and PresenceController
+ * write it that way.
+ */
+function makeConsultationIntakeAvailable(): App\Models\User
+{
+    $physician = App\Models\User::factory()->create([
+        'role' => 'physician',
+        'user_type' => 'staff',
+        'account_status' => 'active',
+        'online_status' => 'online',
+    ]);
+
+    Illuminate\Support\Facades\DB::table('users')
+        ->where('user_id', $physician->user_id)
+        ->update(['last_seen_at' => now()]);
+
+    App\Models\PhysicianAvailabilitySession::create([
+        'physician_id' => $physician->user_id,
+        'started_at' => now(),
+        'last_seen_at' => now(),
+        'status' => 'open',
+        'mode' => 'overtime',
+    ]);
+
+    return $physician->refresh();
+}

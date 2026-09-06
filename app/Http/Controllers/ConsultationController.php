@@ -14,6 +14,7 @@ use App\Models\FollowUpRequest;
 use App\Enums\NotificationType;
 use App\Services\NotificationService;
 use App\Services\ConsultationOwnershipService;
+use App\Services\PhysicianAvailabilityService;
 use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
 use App\Support\CsvDownload;
@@ -22,8 +23,10 @@ use App\Models\User;
 
 class ConsultationController extends Controller
 {
-    public function __construct(private readonly ConsultationOwnershipService $ownershipService)
-    {
+    public function __construct(
+        private readonly ConsultationOwnershipService $ownershipService,
+        private readonly PhysicianAvailabilityService $availabilityService,
+    ) {
     }
 
     /**
@@ -186,7 +189,13 @@ class ConsultationController extends Controller
             return redirect()->route('dashboard')->with('status', 'You already have an active consultation request.');
         }
 
-        return view('patient.newconsultation', compact('patient'));
+        // Server-rendered so the page never flashes "Available" before
+        // correcting itself. isServiceAvailable() is the same single source of
+        // truth store() enforces — this view datum is purely informational and
+        // never itself gates the submission.
+        $intakeAvailable = $this->availabilityService->isServiceAvailable();
+
+        return view('patient.newconsultation', compact('patient', 'intakeAvailable'));
     }
 
     /**
@@ -210,6 +219,33 @@ class ConsultationController extends Controller
                 'success' => false,
                 'message' => 'You may only have one active consultation request at a time.',
             ], 422);
+        }
+
+        // 1b. Consultation intake gate. The service is the single authority on
+        // whether the telemedicine service can take a NEW request right now —
+        // it already weighs eligible physicians, their presence and its
+        // freshness, an open and non-stale intake session, and the global
+        // pending-queue limit. None of those rules are repeated here.
+        //
+        // Placed after the duplicate check above, and deliberately not before
+        // it: a patient who already has a request open would be refused
+        // whatever intake was doing, so telling them the service is
+        // unavailable would be the less accurate of the two true answers.
+        //
+        // Placed before validation and the uploads below so a refused request
+        // never reaches Cloudinary, never writes a row, and never notifies a
+        // nurse. Gating only creation — no existing pending, scheduled, or
+        // active consultation is read or touched here.
+        //
+        // 503 rather than 422: this is a temporary service condition the
+        // patient can retry, not a problem with what they submitted. It is
+        // also the only 503 store() can return, so it identifies this case on
+        // its own. Nothing about any individual physician is disclosed.
+        if (! $this->availabilityService->isServiceAvailable()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Consultations are currently unavailable. Please try again later.',
+            ], 503);
         }
 
         // 2. Validate the form inputs

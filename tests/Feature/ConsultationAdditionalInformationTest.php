@@ -13,6 +13,10 @@ use App\Models\User;
  */
 function aiPatient(array $overrides = []): User
 {
+    // Supplies the consultation-intake precondition store() now requires;
+    // assertions in this suite are unchanged. See Pest.php.
+    makeConsultationIntakeAvailable();
+
     return User::factory()->create(array_merge(['role' => 'patient', 'user_type' => 'student'], $overrides));
 }
 

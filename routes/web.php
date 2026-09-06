@@ -148,6 +148,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('physician.scheduled_consultation.generate');
         Route::post('/scheduled_consultation/save', [\App\Http\Controllers\PhysicianController::class, 'saveScheduleSlots'])
             ->name('physician.scheduled_consultation.save');
+
+        // Consultation Intake — the physician's recurring intake-hours
+        // management page. Deliberately not named/routed anywhere near
+        // "scheduled_consultation" above, which manages schedule_slots
+        // (concrete appointment inventory), a different concept.
+        Route::get('/consultation-intake', [\App\Http\Controllers\PhysicianController::class, 'consultationIntake'])
+            ->name('physician.consultation_intake');
+        Route::post('/consultation-intake/schedules', [\App\Http\Controllers\PhysicianController::class, 'storePhysicianSchedule'])
+            ->name('physician.consultation_intake.schedules.store');
+        Route::put('/consultation-intake/schedules/{schedule}', [\App\Http\Controllers\PhysicianController::class, 'updatePhysicianSchedule'])
+            ->name('physician.consultation_intake.schedules.update');
+        Route::delete('/consultation-intake/schedules/{schedule}', [\App\Http\Controllers\PhysicianController::class, 'destroyPhysicianSchedule'])
+            ->name('physician.consultation_intake.schedules.destroy');
+
+        // Live intake controls. The {physician} parameter is only there for
+        // authorization consistency with the rest of this group — the session
+        // acted on is always the authenticated user's, never the one named in
+        // the URL. Deliberately CSRF-protected like every other AJAX endpoint
+        // in this file, including the heartbeat.
+        Route::post('/consultation-intake/open', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeOpen'])
+            ->name('physician.consultation_intake.open');
+        Route::post('/consultation-intake/close', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeClose'])
+            ->name('physician.consultation_intake.close');
+        Route::post('/consultation-intake/heartbeat', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeHeartbeat'])
+            ->name('physician.consultation_intake.heartbeat');
     });
 
     // Attachment download for consultations (nurse/physician access validated in controller)
