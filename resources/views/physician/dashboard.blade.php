@@ -19,6 +19,14 @@
                 </div>
             </div>
 
+            <x-physician.intake-status-card
+                :intake="$intake"
+                :routes="$intakeRoutes"
+                :manage-url="route('physician.consultation_intake', ['physician' => Auth::user()->user_id])"
+                :today-schedule="$todaySchedule"
+                :warn-if-closed="$showIntakeScheduleWarning"
+            />
+
             {{-- ================= BAND 2 — NOW (unfiltered, always current) ================= --}}
             <section aria-labelledby="physician-now-heading" class="rounded-2xl border border-brand-border bg-white p-4 sm:p-6">
                 <h2 id="physician-now-heading" class="text-lg font-bold text-slate-900">Right Now</h2>
@@ -26,7 +34,7 @@
 
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
                     <x-dash.stat
-                        label="Active now"
+                        label="Active Consultation now"
                         :value="$analytics['operational']['active_now']"
                         :tone="$analytics['operational']['active_now'] > 0 ? 'active' : 'neutral'"
                         :href="route('physician.active_consultation', ['physician' => Auth::user()->user_id])"
@@ -34,7 +42,7 @@
                         :supporting="$analytics['operational']['active_now'] === 0 ? 'No consultation in progress.' : null"
                     />
                     <x-dash.stat
-                        label="Scheduled ahead"
+                        label="Scheduled Consultation ahead"
                         :value="$analytics['operational']['scheduled_ahead']"
                         :href="route('physician.scheduled_consultation', ['physician' => Auth::user()->user_id])"
                         aria-label="{{ $analytics['operational']['scheduled_ahead'] }} consultations scheduled ahead"

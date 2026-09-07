@@ -638,3 +638,75 @@ it('opening intake creates no consultation request', function () {
     expect(Consultation::count())->toBe(0)
         ->and(ConsultationSession::count())->toBe(0);
 });
+
+/*
+| Dashboard schedule-warning badge: showIntakeScheduleWarning must be true
+| only when the physician is online AND within one of today's active
+| windows. (Intake being open vs. closed is the third condition, but that
+| is checked client-side by the badge's own x-show against live intake
+| state — asserted here only as the server-side half of the flag, since the
+| HTML always contains the badge markup regardless of Alpine's runtime
+| visibility, so assertSee/assertDontSee cannot distinguish these cases.)
+*/
+
+it('flags the schedule warning true when online and within a recurring schedule window', function () {
+    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 09:00:00'));
+
+    $physician = makeIntakeControlPhysician();
+    PhysicianSchedule::create([
+        'physician_id' => $physician->user_id,
+        'day_of_week' => 1,
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+
+    $this->actingAs($physician)
+        ->get(route('physician.dashboard', ['physician' => $physician->user_id]))
+        ->assertOk()
+        ->assertViewHas('showIntakeScheduleWarning', true);
+});
+
+it('flags the schedule warning false outside the recurring schedule window', function () {
+    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 19:00:00'));
+
+    $physician = makeIntakeControlPhysician();
+    PhysicianSchedule::create([
+        'physician_id' => $physician->user_id,
+        'day_of_week' => 1,
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+
+    $this->actingAs($physician)
+        ->get(route('physician.dashboard', ['physician' => $physician->user_id]))
+        ->assertOk()
+        ->assertViewHas('showIntakeScheduleWarning', false);
+});
+
+it('flags the schedule warning false when the physician is offline', function () {
+    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 09:00:00'));
+
+    $physician = makeIntakeControlPhysician(['online_status' => 'offline']);
+    PhysicianSchedule::create([
+        'physician_id' => $physician->user_id,
+        'day_of_week' => 1,
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+
+    $this->actingAs($physician)
+        ->get(route('physician.dashboard', ['physician' => $physician->user_id]))
+        ->assertOk()
+        ->assertViewHas('showIntakeScheduleWarning', false);
+});
+
+it('flags the schedule warning false with no recurring schedule at all', function () {
+    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 09:00:00'));
+
+    $physician = makeIntakeControlPhysician();
+
+    $this->actingAs($physician)
+        ->get(route('physician.dashboard', ['physician' => $physician->user_id]))
+        ->assertOk()
+        ->assertViewHas('showIntakeScheduleWarning', false);
+});

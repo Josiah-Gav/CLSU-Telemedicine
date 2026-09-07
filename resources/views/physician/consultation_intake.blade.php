@@ -8,7 +8,6 @@
     <script>
         window.consultationIntakeData = {
             schedules: @json($schedules ?? []),
-            intake: @json($intake ?? []),
             routes: @json($routes ?? []),
         };
 
@@ -24,122 +23,6 @@
                     day_of_week: '1',
                     start_time: '08:00',
                     end_time: '12:00',
-                },
-
-                // Live intake. Seeded from the server-rendered state so the
-                // card never flashes the wrong status on load.
-                intake: initialData.intake || { state: 'closed' },
-                intakeBusy: false,
-
-                init() {
-                    // This page owns no heartbeat timer. The application's
-                    // single authenticated heartbeat in the layout does the
-                    // touching, so intake stays alive when the physician works
-                    // on other pages too; here we only keep the shared flag
-                    // truthful and listen for what the server reports back.
-                    this.setHeartbeatEnabled(this.intake.state === 'open');
-
-                    window.addEventListener('telemed:intake-heartbeat', (event) => {
-                        if (event.detail?.intake) {
-                            this.intake = event.detail.intake;
-                        }
-                    });
-                },
-
-                // Tells the layout's heartbeat whether there is an open session
-                // worth touching. Only ever reflects a state the server has
-                // already confirmed — flipping it true cannot create a session,
-                // because the endpoint behind it only bumps an existing one.
-                setHeartbeatEnabled(enabled) {
-                    if (window.telemedIntakeHeartbeat) {
-                        window.telemedIntakeHeartbeat.open = enabled;
-                    }
-                },
-
-                openIntake() {
-                    if (this.intakeBusy) {
-                        return;
-                    }
-
-                    Swal.fire({
-                        title: 'Open consultation intake?',
-                        text: 'This will allow new patient consultation requests to enter the nurse queue.',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Yes, open intake',
-                        cancelButtonText: 'Cancel',
-                    }).then((result) => {
-                        if (!result.isConfirmed) {
-                            return;
-                        }
-
-                        this.intakeBusy = true;
-
-                        $.ajax({
-                            url: this.routes.open_url,
-                            type: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': this.csrfToken(),
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                            dataType: 'json',
-                            success: (data) => {
-                                this.intake = data.intake;
-                                this.setHeartbeatEnabled(true);
-                                Swal.fire('Intake Open', data.message, 'success');
-                            },
-                            error: (xhr) => {
-                                const message = xhr.responseJSON?.message || 'Could not open consultation intake.';
-                                Swal.fire('Error', message, 'error');
-                            },
-                            complete: () => {
-                                this.intakeBusy = false;
-                            },
-                        });
-                    });
-                },
-
-                closeIntake() {
-                    if (this.intakeBusy) {
-                        return;
-                    }
-
-                    Swal.fire({
-                        title: 'Close consultation intake?',
-                        text: 'New consultation requests will no longer be accepted. Consultations already in progress or scheduled are not affected.',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Yes, close intake',
-                        cancelButtonText: 'Cancel',
-                    }).then((result) => {
-                        if (!result.isConfirmed) {
-                            return;
-                        }
-
-                        this.intakeBusy = true;
-
-                        $.ajax({
-                            url: this.routes.close_url,
-                            type: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': this.csrfToken(),
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                            dataType: 'json',
-                            success: (data) => {
-                                this.intake = data.intake;
-                                this.setHeartbeatEnabled(false);
-                                Swal.fire('Intake Closed', data.message, 'success');
-                            },
-                            error: (xhr) => {
-                                const message = xhr.responseJSON?.message || 'Could not close consultation intake.';
-                                Swal.fire('Error', message, 'error');
-                            },
-                            complete: () => {
-                                this.intakeBusy = false;
-                            },
-                        });
-                    });
                 },
 
                 get schedulesByDay() {
@@ -280,71 +163,9 @@
 
             {{-- Current intake: whether new consultation requests are being
                  accepted right now. Separate from the recurring schedule
-                 below, which only describes normal intended hours. --}}
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Current Consultation Intake') }}</h3>
-                    <p class="mt-1 text-sm text-slate-500">
-                        {{ __('While intake is open, new patient consultation requests can enter the nurse review queue. This does not assign those requests to you, and it does not affect consultations already in progress or scheduled.') }}
-                    </p>
-
-                    <div class="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 p-4">
-                        <div class="flex items-start gap-3">
-                            <span
-                                class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                                :class="{
-                                    'bg-brand-green': intake.state === 'open',
-                                    'bg-amber-500': intake.state === 'expired',
-                                    'bg-slate-300': intake.state === 'closed',
-                                }"
-                            ></span>
-                            <div>
-                                <p
-                                    class="text-sm font-semibold"
-                                    :class="intake.state === 'open' ? 'text-brand-green-deep' : 'text-slate-700'"
-                                    x-text="intake.status_label"
-                                ></p>
-
-                                <p class="mt-1 text-xs text-slate-500" x-show="intake.state === 'open'" x-cloak>
-                                    <span class="font-semibold" x-text="intake.mode_label"></span>
-                                    <span> · </span>
-                                    <span>{{ __('Started') }} <span x-text="intake.started_at"></span></span>
-                                </p>
-
-                                <p class="mt-1 text-xs text-amber-700" x-show="intake.state === 'expired'" x-cloak>
-                                    {{ __('Your intake session expired because the connection was lost. Open intake again when you are ready to accept new requests.') }}
-                                </p>
-
-                                <p class="mt-1 text-xs text-slate-500" x-show="intake.state === 'closed'" x-cloak>
-                                    {{ __('New consultation requests are not being accepted right now.') }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button
-                                type="button"
-                                x-show="intake.state !== 'open'"
-                                @click="openIntake()"
-                                :disabled="intakeBusy"
-                                class="inline-flex items-center px-4 py-2 bg-brand-green text-white text-xs font-semibold rounded-md hover:bg-brand-green-deep transition disabled:opacity-60"
-                            >
-                                {{ __('Open Intake') }}
-                            </button>
-                            <button
-                                type="button"
-                                x-show="intake.state === 'open'"
-                                x-cloak
-                                @click="closeIntake()"
-                                :disabled="intakeBusy"
-                                class="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-800 text-xs font-semibold rounded-md hover:bg-amber-200 transition disabled:opacity-60"
-                            >
-                                {{ __('Close Intake') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                 below, which only describes normal intended hours. Same
+                 component used on the physician dashboard for quick access. --}}
+            <x-physician.intake-status-card :intake="$intake" :routes="['open_url' => $routes['open_url'], 'close_url' => $routes['close_url']]" />
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">

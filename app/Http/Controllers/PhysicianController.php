@@ -63,9 +63,39 @@ class PhysicianController extends Controller
             'this_month',
         );
 
+        $now = CarbonImmutable::now();
+        $todaysActiveWindows = collect($this->serializePhysicianSchedules($physician))
+            ->where('day_of_week', $now->dayOfWeek)
+            ->where('is_active', true);
+
         return view('physician.dashboard', [
             'analytics' => $this->analyticsService->forPhysician($physician, $dateRange),
             'dateRange' => $dateRange,
+            // Same intake status card as the Consultation Intake page, for
+            // quick access without leaving the dashboard.
+            'intake' => $this->serializeIntakeState(
+                $physician,
+                $this->availabilityService->currentSessionFor($physician)
+            ),
+            // Today's active recurring intake windows, reusing the same
+            // serialized schedules the Consultation Intake page manages —
+            // just filtered down to today's weekday.
+            'todaySchedule' => $todaysActiveWindows->pluck('label')->values()->all(),
+            // Warns the physician when they are within one of today's
+            // windows and online, but have not actually opened intake — the
+            // one combination where a patient-facing "not accepting" state
+            // could be an oversight rather than a deliberate choice.
+            'showIntakeScheduleWarning' => $this->isUserOnline($physician)
+                && $todaysActiveWindows->contains(function (array $window) use ($now) {
+                    $today = $now->toDateString();
+
+                    return $now->greaterThanOrEqualTo(CarbonImmutable::parse($today.' '.$window['start_time']))
+                        && $now->lessThan(CarbonImmutable::parse($today.' '.$window['end_time']));
+                }),
+            'intakeRoutes' => [
+                'open_url' => route('physician.consultation_intake.open', ['physician' => $physician->user_id]),
+                'close_url' => route('physician.consultation_intake.close', ['physician' => $physician->user_id]),
+            ],
         ]);
     }
 
