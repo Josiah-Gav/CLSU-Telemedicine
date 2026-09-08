@@ -171,6 +171,104 @@ class PhysicianAvailabilityService
     }
 
     /**
+     * The physician's own intake state, in physician-facing terms.
+     *
+     * $openSession is whatever the caller just obtained — currentSessionFor()
+     * on page load, or the result of open()/touch(). It is the only authority
+     * for whether intake is open; this method never re-evaluates the recurring
+     * schedule and never recomputes the mode, because a session's stored mode
+     * is fixed at the moment it opened (a session opened at 16:55 inside a
+     * 14:00-17:00 window stays "Scheduled Intake" afterwards, and editing the
+     * schedule later changes only future sessions).
+     *
+     * Exposes no database ids and nothing about any other physician. Public,
+     * and here rather than on a controller, because both PhysicianController
+     * (physicians.{physician}.dashboard) and DashboardController (the generic
+     * /dashboard a physician can still land on via Breeze's post-login
+     * redirect) render the same intake card and must never disagree on what
+     * it says.
+     */
+    public function serializeIntakeState(User $physician, ?PhysicianAvailabilitySession $openSession): array
+    {
+        if ($openSession && $openSession->status === 'open') {
+            return [
+                'state' => 'open',
+                'status_label' => 'Accepting New Consultations',
+                'mode' => $openSession->mode,
+                'mode_label' => $openSession->mode === 'scheduled' ? 'Scheduled Intake' : 'Overtime Intake',
+                'started_at' => $openSession->started_at?->format('g:i A'),
+                'started_on' => $openSession->started_at?->format('M j, Y'),
+            ];
+        }
+
+        // Distinguishes "expired because the heartbeat stopped" from "never
+        // opened, or deliberately closed" purely so the physician reads the
+        // right explanation. It is never used to decide whether intake is
+        // open — the session above is the sole authority for that, and
+        // neither branch reopens anything.
+        $lastSession = PhysicianAvailabilitySession::query()
+            ->where('physician_id', $physician->user_id)
+            ->latest('id')
+            ->first();
+
+        $hasExpired = $lastSession?->status === 'expired';
+
+        return [
+            'state' => $hasExpired ? 'expired' : 'closed',
+            'status_label' => $hasExpired ? 'Session Expired' : 'Not Accepting New Consultations',
+            'mode' => null,
+            'mode_label' => null,
+            'started_at' => null,
+            'started_on' => null,
+        ];
+    }
+
+    /**
+     * Everything the dashboard's intake card needs about one physician,
+     * bundled into a single call: current intake status, today's active
+     * recurring windows, and whether they are online and within one of those
+     * windows without having actually opened intake.
+     *
+     * Bundled specifically so PhysicianController::dashboard() and
+     * DashboardController::index()'s physician branch — which Breeze's
+     * post-login redirect can still land on — read the exact same thing,
+     * rather than each assembling it from separate pieces that could drift.
+     */
+    public function dashboardIntakeSummary(User $physician): array
+    {
+        $now = CarbonImmutable::now();
+        $today = $now->toDateString();
+
+        $windows = PhysicianSchedule::query()
+            ->where('physician_id', $physician->user_id)
+            ->where('day_of_week', $now->dayOfWeek)
+            ->where('is_active', true)
+            ->orderBy('start_time')
+            ->get(['start_time', 'end_time']);
+
+        $todaySchedule = $windows
+            ->map(fn (PhysicianSchedule $window) => CarbonImmutable::createFromFormat('H:i:s', (string) $window->start_time)->format('g:i A')
+                .' - '.CarbonImmutable::createFromFormat('H:i:s', (string) $window->end_time)->format('g:i A'))
+            ->values()
+            ->all();
+
+        $isWithinSchedule = $windows->contains(function (PhysicianSchedule $window) use ($now, $today) {
+            return $now->greaterThanOrEqualTo(CarbonImmutable::parse($today.' '.$window->start_time))
+                && $now->lessThan(CarbonImmutable::parse($today.' '.$window->end_time));
+        });
+
+        $isOnline = $physician->online_status === 'online'
+            && $physician->last_seen_at
+            && $physician->last_seen_at->gt($now->subMinutes(self::PRESENCE_FRESHNESS_MINUTES));
+
+        return [
+            'intake' => $this->serializeIntakeState($physician, $this->currentSessionFor($physician)),
+            'today_schedule' => $todaySchedule,
+            'show_schedule_warning' => $isOnline && $isWithinSchedule,
+        ];
+    }
+
+    /**
      * Expire every open session whose heartbeat has gone quiet, and report how
      * many were expired. Phase 5's scheduled command is the intended caller.
      *
@@ -206,6 +304,117 @@ class PhysicianAvailabilityService
     public function isServiceAvailable(): bool
     {
         return $this->hasOpenIntake() && $this->pendingQueueHasCapacity();
+    }
+
+    /**
+     * The earliest upcoming recurring intake window across every eligible
+     * physician, strictly after now. Null when no eligible physician has any
+     * active recurring schedule at all.
+     *
+     * This reads the recurring pattern only — the same one
+     * evaluateMode() consults when a session opens — not any physician's
+     * actual intent. A physician can still open intake as 'overtime' outside
+     * every window, or skip a window they normally keep, so this is a "when
+     * to expect it" hint for a waiting patient, never a guarantee. Eligible
+     * physicians are the same ones hasOpenIntake() would count once they
+     * open: role plus an active account.
+     */
+    public function nextScheduledWindow(): ?array
+    {
+        $now = CarbonImmutable::now();
+
+        $windows = PhysicianSchedule::query()
+            ->where('is_active', true)
+            ->whereHas('physician', function ($query) {
+                $query->where('role', 'physician')->where('account_status', 'active');
+            })
+            ->get(['day_of_week', 'start_time', 'end_time']);
+
+        if ($windows->isEmpty()) {
+            return null;
+        }
+
+        // Scans today plus the next 7 days so a window earlier today that
+        // already passed is still found exactly one week out. The first day
+        // with any match is necessarily the closest one, since days are
+        // walked in order — only the windows within that single day need
+        // comparing against each other for the earliest start.
+        for ($daysAhead = 0; $daysAhead <= 7; $daysAhead++) {
+            $date = $now->addDays($daysAhead);
+            $earliest = null;
+
+            foreach ($windows->where('day_of_week', $date->dayOfWeek) as $window) {
+                $start = CarbonImmutable::parse($date->toDateString().' '.$window->start_time);
+
+                if ($start->lessThanOrEqualTo($now)) {
+                    continue;
+                }
+
+                if (! $earliest || $start->lessThan($earliest['starts_at'])) {
+                    $earliest = [
+                        'starts_at' => $start,
+                        'ends_at' => CarbonImmutable::parse($date->toDateString().' '.$window->end_time),
+                    ];
+                }
+            }
+
+            if ($earliest) {
+                return [
+                    'day_name' => $earliest['starts_at']->isToday() ? 'Today' : $earliest['starts_at']->format('l, M j'),
+                    'time_label' => $earliest['starts_at']->format('g:i A').' - '.$earliest['ends_at']->format('g:i A'),
+                    'starts_at_iso' => $earliest['starts_at']->toIso8601String(),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Every eligible physician's active recurring intake windows for each day
+     * of the current week (Sunday through Saturday), aggregated without
+     * naming any individual physician — this app never surfaces staff
+     * identity to a patient.
+     *
+     * Distinct windows on the same day are deduplicated by their formatted
+     * label; two physicians covering the same or overlapping hours are not
+     * merged into one combined range, since interval-merging is not
+     * something a patient needs to reason about here — the raw set of
+     * windows already answers "when might the clinic be open".
+     */
+    public function weeklyScheduleOverview(): array
+    {
+        $weekStart = CarbonImmutable::now()->startOfWeek(CarbonImmutable::SUNDAY);
+
+        $windows = PhysicianSchedule::query()
+            ->where('is_active', true)
+            ->whereHas('physician', function ($query) {
+                $query->where('role', 'physician')->where('account_status', 'active');
+            })
+            ->get(['day_of_week', 'start_time', 'end_time']);
+
+        return collect(range(0, 6))->map(function (int $dayOfWeek) use ($windows, $weekStart) {
+            $date = $weekStart->addDays($dayOfWeek);
+
+            $labels = $windows->where('day_of_week', $dayOfWeek)
+                ->map(fn (PhysicianSchedule $window) => [
+                    'start_time' => $window->start_time,
+                    'label' => CarbonImmutable::createFromFormat('H:i:s', (string) $window->start_time)->format('g:i A')
+                        .' - '.CarbonImmutable::createFromFormat('H:i:s', (string) $window->end_time)->format('g:i A'),
+                ])
+                ->sortBy('start_time')
+                ->pluck('label')
+                ->unique()
+                ->values()
+                ->all();
+
+            return [
+                'day_name' => $date->format('l'),
+                'date_label' => $date->format('M j'),
+                'is_today' => $date->isToday(),
+                'windows' => $labels,
+            ];
+        })->values()->all();
     }
 
     /**

@@ -99,7 +99,14 @@ class DashboardController extends Controller
                 $followUpStatus = $this->getPatientFollowUpStatus($patientInfo->user_id);
                 $physicianFollowUp = $this->getPhysicianInitiatedFollowUp($patientInfo->user_id);
 
-                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp'));
+                // Same single source of truth as newconsultation()'s
+                // informational banner. The next window is only worth a
+                // query when intake is actually unavailable right now.
+                $intakeAvailable = $this->availabilityService->isServiceAvailable();
+                $nextScheduledWindow = $intakeAvailable ? null : $this->availabilityService->nextScheduledWindow();
+                $weeklySchedule = $this->availabilityService->weeklyScheduleOverview();
+
+                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule'));
             case 'physician':
                 // Physicians land here on first login/verification (Breeze's
                 // redirect()->intended(route('dashboard')) — see
@@ -117,9 +124,21 @@ class DashboardController extends Controller
                     'this_month',
                 );
 
+                // Bundled on the service so this branch and
+                // PhysicianController::dashboard() can never disagree about
+                // what the intake card shows.
+                $physicianIntakeSummary = $this->availabilityService->dashboardIntakeSummary($user);
+
                 return view('physician.dashboard', [
                     'analytics' => $this->analyticsService->forPhysician($user, $physicianDateRange),
                     'dateRange' => $physicianDateRange,
+                    'intake' => $physicianIntakeSummary['intake'],
+                    'todaySchedule' => $physicianIntakeSummary['today_schedule'],
+                    'showIntakeScheduleWarning' => $physicianIntakeSummary['show_schedule_warning'],
+                    'intakeRoutes' => [
+                        'open_url' => route('physician.consultation_intake.open', ['physician' => $user->user_id]),
+                        'close_url' => route('physician.consultation_intake.close', ['physician' => $user->user_id]),
+                    ],
                 ]);
             case 'nurse':
                 return redirect()->route('nurse.dashboard', ['nurse' => $user]);

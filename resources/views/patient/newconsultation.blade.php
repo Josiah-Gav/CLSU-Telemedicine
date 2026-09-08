@@ -79,6 +79,10 @@
             return this.selectedSymptoms.find(s => this.symptomIsInFuture(s));
         },
         canAdvanceToStep(step) {
+            if (step >= 2 && !this.intakeAvailable) {
+                this.validationError('Consultation intake is currently unavailable. Please try again later.');
+                return false;
+            }
             if (step === 3 && this.selectedSymptoms.length === 0) {
                 this.validationError('Please add at least one symptom before proceeding to additional details.');
                 return false;
@@ -270,28 +274,28 @@
                 <div class="mb-6 rounded-3xl border border-gray-200 bg-slate-50 p-4 shadow-sm">
                     <div class="grid gap-3 sm:grid-cols-5">
                         <!-- Disable header step jumps if we are already submitted on step 5 -->
-                        <button type="button" @click="if(currentStep < 5) currentStep = 1" :class="currentStep === 1 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
+                        <button type="button" @click="if(currentStep < 5) goToStep(1)" :class="currentStep === 1 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 1 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">1</span>
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Patient Information</p>
                                 <p class="mt-1 text-sm font-semibold" :class="currentStep === 1 ? 'text-slate-900' : 'text-slate-500'">Provide your details</p>
                             </div>
                         </button>
-                        <button type="button" @click="if(currentStep < 5) currentStep = 2" :class="currentStep === 2 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
+                        <button type="button" @click="if(currentStep < 5) goToStep(2)" :class="currentStep === 2 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 2 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">2</span>
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Symptoms</p>
                                 <p class="mt-1 text-sm font-semibold" :class="currentStep === 2 ? 'text-slate-900' : 'text-slate-500'">Describe your condition</p>
                             </div>
                         </button>
-                        <button type="button" @click="if(currentStep < 5) currentStep = 3" :class="currentStep === 3 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
+                        <button type="button" @click="if(currentStep < 5) goToStep(3)" :class="currentStep === 3 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 3 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">3</span>
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Additional Details</p>
                                 <p class="mt-1 text-sm font-semibold" :class="currentStep === 3 ? 'text-slate-900' : 'text-slate-500'">Add other information</p>
                             </div>
                         </button>
-                        <button type="button" @click="if(currentStep < 5) currentStep = 4" :class="currentStep === 4 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
+                        <button type="button" @click="if(currentStep < 5) goToStep(4)" :class="currentStep === 4 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 4 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">4</span>
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Review</p>
@@ -356,7 +360,7 @@
                             </div>
 
                             <div class="grid gap-4 md:grid-cols-2">
-                                <button type="button" @click="selectedType = 'general'; currentStep = 2" :class="['group flex items-center justify-between rounded-3xl p-6 text-left transition', selectedType === 'general' ? 'border-green-200 bg-green-50 hover:border-green-300 hover:bg-green-100' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50']">
+                                <button type="button" @click="selectedType = 'general'; goToStep(2)" :class="['group flex items-center justify-between rounded-3xl p-6 text-left transition', selectedType === 'general' ? 'border-green-200 bg-green-50 hover:border-green-300 hover:bg-green-100' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50']">
                                     <div>
                                         <div :class="['flex items-center gap-3', selectedType === 'general' ? 'text-green-600' : 'text-gray-500']">
                                             <div :class="['rounded-2xl p-3', selectedType === 'general' ? 'bg-white' : 'bg-gray-100']">
@@ -622,9 +626,9 @@
                         <!-- FOOTER ACTION BUTTONS PANEL -->
                         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
     
-                            <button type="button" 
-                                    @click="currentStep = Math.max(currentStep - 1, 1)" 
-                                    x-show="currentStep > 1 && currentStep < 5" 
+                            <button type="button"
+                                    @click="goToStep(Math.max(currentStep - 1, 1))"
+                                    x-show="currentStep > 1 && currentStep < 5"
                                     class="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
                                 Back
                             </button>

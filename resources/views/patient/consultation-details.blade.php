@@ -129,6 +129,21 @@
                             </div>
                         @endif
 
+                        @if(!empty($consultation->assigned_physician_id))
+                            <div class="rounded-3xl border border-gray-200 bg-white p-6">
+                                <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Assigned Physician</p>
+                                @php
+                                    $assignedPhysicianName = trim((optional($consultation->physician)->first_name ?? '') . ' ' . (optional($consultation->physician)->last_name ?? ''));
+                                @endphp
+                                <p class="mt-4 text-sm text-slate-700">
+                                    {{ $assignedPhysicianName !== '' ? 'Dr. ' . $assignedPhysicianName : 'Assigned physician record not found.' }}
+                                    @if(!empty(optional($consultation->physician)->specialization))
+                                        <span class="text-slate-400">&middot; {{ $consultation->physician->specialization }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                        @endif
+
                         
                         <div class="text-right">
                             @if (in_array($consultation->request_status, ['pending', 'reviewed']))

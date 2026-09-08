@@ -205,6 +205,63 @@
                 </div>
             </div>
 
+            {{-- Service-level availability, not this patient's own consultation
+                 status. Same single source of truth as the new-consultation
+                 page's banner (PhysicianAvailabilityService::isServiceAvailable),
+                 just server-rendered once here rather than polled — this card
+                 does not gate a submission, so a snapshot at page load is enough. --}}
+            <div
+                class="mt-6 flex items-start gap-3 rounded-2xl border p-4 {{ $intakeAvailable ? 'border-brand-green bg-brand-green-soft' : 'border-amber-300 bg-amber-50' }}"
+            >
+                <span class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full {{ $intakeAvailable ? 'bg-brand-green' : 'bg-amber-500' }}"></span>
+                <div>
+                    <p class="text-sm font-semibold {{ $intakeAvailable ? 'text-brand-green-deep' : 'text-amber-800' }}">
+                        {{ $intakeAvailable ? __('Consultations Available') : __('Consultations Currently Unavailable') }}
+                    </p>
+                    <p class="mt-0.5 text-xs font-semibold {{ $intakeAvailable ? 'text-brand-green-deep/80' : 'text-amber-700' }}">
+                        @if ($intakeAvailable)
+                            {{ __('You can submit a new consultation request right now.') }}
+                        @elseif ($nextScheduledWindow)
+                            {{ __('New consultation requests are temporarily unavailable. Next scheduled intake: :day, :time.', ['day' => $nextScheduledWindow['day_name'], 'time' => $nextScheduledWindow['time_label']]) }}
+                        @else
+                            {{ __('New consultation requests are temporarily unavailable. Please try again later.') }}
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            {{-- This week's recurring intake hours, aggregated across every
+                 physician without naming any of them individually. Purely a
+                 general expectation of when the clinic tends to be open — a
+                 physician can still open intake outside these windows, or
+                 skip one they normally keep. --}}
+            <div class="mt-6 rounded-3xl border border-gray-200 bg-white shadow-sm">
+                <div class="p-6 sm:p-8">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('This Week\'s Consultation Hours') }}</h3>
+
+                    <div class="mt-5 divide-y divide-gray-100">
+                        @foreach ($weeklySchedule as $day)
+                            <div class="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
+                                <p class="text-sm font-semibold {{ $day['is_today'] ? 'text-brand-green-deep' : 'text-slate-700' }}">
+                                    {{ $day['day_name'] }}
+                                    <span class="font-normal text-slate-400">({{ $day['date_label'] }})</span>
+                                    @if ($day['is_today'])
+                                        <span class="ml-1 rounded-full bg-brand-green-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-green-deep">{{ __('Today') }}</span>
+                                    @endif
+                                </p>
+                                <p class="text-sm text-slate-600">
+                                    @if (count($day['windows']))
+                                        {{ implode(', ', $day['windows']) }}
+                                    @else
+                                        <span class="text-slate-400">{{ __('Closed') }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
             @if($followUpStatus['exists'] && in_array($followUpStatus['status'], ['pending', 'forwarded'], true))
                 @php $followUpCardTag = $followUpStatus['details_url'] ? 'a' : 'div'; @endphp
                 <{{ $followUpCardTag }}

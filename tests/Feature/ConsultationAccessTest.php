@@ -99,3 +99,57 @@ it('shows a follow-up badge and a link back to the original consultation', funct
         ->assertSee('View original consultation')
         ->assertSee(route('consultations.show', $originalRequest), false);
 });
+
+it('shows the assigned physician\'s name and specialization on the consultation details page', function () {
+    $patient = User::factory()->create([
+        'role' => 'patient',
+        'user_type' => 'student',
+    ]);
+
+    $physician = User::factory()->create([
+        'first_name' => 'Noah',
+        'last_name' => 'Flores',
+        'role' => 'physician',
+        'user_type' => 'staff',
+        'specialization' => 'General Medicine',
+    ]);
+
+    $consultation = Consultation::create([
+        'patient_id' => $patient->user_id,
+        'assigned_physician_id' => $physician->user_id,
+        'assigned_nurse_id' => null,
+        'concern_category' => 'fever',
+        'symptoms_desc' => [['name' => 'Fever', 'severity' => 'mild']],
+        'file_attachments' => null,
+        'request_status' => 'assigned',
+    ]);
+
+    $this->actingAs($patient)
+        ->get(route('consultations.show', $consultation))
+        ->assertOk()
+        ->assertSee('Assigned Physician')
+        ->assertSee('Dr. Noah Flores')
+        ->assertSee('General Medicine');
+});
+
+it('omits the assigned physician section when no physician has been assigned yet', function () {
+    $patient = User::factory()->create([
+        'role' => 'patient',
+        'user_type' => 'student',
+    ]);
+
+    $consultation = Consultation::create([
+        'patient_id' => $patient->user_id,
+        'assigned_physician_id' => null,
+        'assigned_nurse_id' => null,
+        'concern_category' => 'fever',
+        'symptoms_desc' => [['name' => 'Fever', 'severity' => 'mild']],
+        'file_attachments' => null,
+        'request_status' => 'pending',
+    ]);
+
+    $this->actingAs($patient)
+        ->get(route('consultations.show', $consultation))
+        ->assertOk()
+        ->assertDontSee('Assigned Physician');
+});

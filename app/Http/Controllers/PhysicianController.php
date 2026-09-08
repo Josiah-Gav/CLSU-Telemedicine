@@ -63,35 +63,18 @@ class PhysicianController extends Controller
             'this_month',
         );
 
-        $now = CarbonImmutable::now();
-        $todaysActiveWindows = collect($this->serializePhysicianSchedules($physician))
-            ->where('day_of_week', $now->dayOfWeek)
-            ->where('is_active', true);
+        // Bundled on the service — the intake card, today's hours, and the
+        // schedule-warning badge — so this and DashboardController::index()'s
+        // physician branch (Breeze's post-login redirect can still land
+        // there) can never disagree about what the card shows.
+        $intakeSummary = $this->availabilityService->dashboardIntakeSummary($physician);
 
         return view('physician.dashboard', [
             'analytics' => $this->analyticsService->forPhysician($physician, $dateRange),
             'dateRange' => $dateRange,
-            // Same intake status card as the Consultation Intake page, for
-            // quick access without leaving the dashboard.
-            'intake' => $this->serializeIntakeState(
-                $physician,
-                $this->availabilityService->currentSessionFor($physician)
-            ),
-            // Today's active recurring intake windows, reusing the same
-            // serialized schedules the Consultation Intake page manages —
-            // just filtered down to today's weekday.
-            'todaySchedule' => $todaysActiveWindows->pluck('label')->values()->all(),
-            // Warns the physician when they are within one of today's
-            // windows and online, but have not actually opened intake — the
-            // one combination where a patient-facing "not accepting" state
-            // could be an oversight rather than a deliberate choice.
-            'showIntakeScheduleWarning' => $this->isUserOnline($physician)
-                && $todaysActiveWindows->contains(function (array $window) use ($now) {
-                    $today = $now->toDateString();
-
-                    return $now->greaterThanOrEqualTo(CarbonImmutable::parse($today.' '.$window['start_time']))
-                        && $now->lessThan(CarbonImmutable::parse($today.' '.$window['end_time']));
-                }),
+            'intake' => $intakeSummary['intake'],
+            'todaySchedule' => $intakeSummary['today_schedule'],
+            'showIntakeScheduleWarning' => $intakeSummary['show_schedule_warning'],
             'intakeRoutes' => [
                 'open_url' => route('physician.consultation_intake.open', ['physician' => $physician->user_id]),
                 'close_url' => route('physician.consultation_intake.close', ['physician' => $physician->user_id]),
@@ -1417,39 +1400,15 @@ class PhysicianController extends Controller
      *
      * Exposes no database ids and nothing about any other physician.
      */
+    /**
+     * Delegates to PhysicianAvailabilityService::serializeIntakeState(), the
+     * single source of truth shared with DashboardController's physician
+     * branch. Kept as a thin wrapper here so this controller's four existing
+     * call sites did not need to change.
+     */
     private function serializeIntakeState(User $physician, ?PhysicianAvailabilitySession $openSession): array
     {
-        if ($openSession && $openSession->status === 'open') {
-            return [
-                'state' => 'open',
-                'status_label' => 'Accepting New Consultations',
-                'mode' => $openSession->mode,
-                'mode_label' => $openSession->mode === 'scheduled' ? 'Scheduled Intake' : 'Overtime Intake',
-                'started_at' => $openSession->started_at?->format('g:i A'),
-                'started_on' => $openSession->started_at?->format('M j, Y'),
-            ];
-        }
-
-        // Distinguishes "expired because the heartbeat stopped" from "never
-        // opened, or deliberately closed" purely so the physician reads the
-        // right explanation. It is never used to decide whether intake is
-        // open — the service's session above is the sole authority for that,
-        // and neither branch reopens anything.
-        $lastSession = PhysicianAvailabilitySession::query()
-            ->where('physician_id', $physician->user_id)
-            ->latest('id')
-            ->first();
-
-        $hasExpired = $lastSession?->status === 'expired';
-
-        return [
-            'state' => $hasExpired ? 'expired' : 'closed',
-            'status_label' => $hasExpired ? 'Session Expired' : 'Not Accepting New Consultations',
-            'mode' => null,
-            'mode_label' => null,
-            'started_at' => null,
-            'started_on' => null,
-        ];
+        return $this->availabilityService->serializeIntakeState($physician, $openSession);
     }
 
     public function storePhysicianSchedule(StorePhysicianScheduleRequest $request, User $physician): JsonResponse

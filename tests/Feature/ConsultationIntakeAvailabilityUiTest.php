@@ -4,7 +4,9 @@ use App\Models\Consultation;
 use App\Models\ConsultationSession;
 use App\Models\FollowUpRequest;
 use App\Models\PhysicianAvailabilitySession;
+use App\Models\PhysicianSchedule;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /*
 | Phase 7: the patient-facing availability indicator on the new-consultation
@@ -67,6 +69,34 @@ it('renders the newconsultation page as available when the service can accept re
     $response->assertSee('Consultations Available');
 });
 
+it('ships the client-side guard that confines the patient to step 1 while intake is closed', function () {
+    // canAdvanceToStep() is Alpine/client-side, so a PHP feature test cannot
+    // drive the form itself — this only guards against the check, or the
+    // wiring into it, being silently deleted: every control that can change
+    // currentStep (the four sidebar step bullets, Back, Next, and the
+    // type-selection card) must route through goToStep()/canAdvanceToStep()
+    // rather than assigning currentStep directly, or a patient could bypass
+    // the step >= 2 block entirely. intakeAvailable itself is already
+    // covered by the tests above/below.
+    $response = $this->actingAs(uiGatePatient())
+        ->get(route('newconsultation'))
+        ->assertOk();
+
+    $response->assertSee('if (step >= 2 && !this.intakeAvailable)', false)
+        ->assertSee("selectedType = 'general'; goToStep(2)", false)
+        ->assertSee('if(currentStep < 5) goToStep(1)', false)
+        ->assertSee('if(currentStep < 5) goToStep(2)', false)
+        ->assertSee('if(currentStep < 5) goToStep(3)', false)
+        ->assertSee('if(currentStep < 5) goToStep(4)', false)
+        ->assertSee('goToStep(Math.max(currentStep - 1, 1))', false)
+        ->assertSee('goToStep(currentStep + 1)', false);
+
+    // Every historical direct assignment except goToStep()'s own body and
+    // the post-submission success transition to step 5 must be gone —
+    // those two are the only currentStep changes allowed to skip the guard.
+    expect(substr_count($response->getContent(), 'currentStep = '))->toBe(2);
+});
+
 it('renders the newconsultation page as unavailable when no physician has intake open', function () {
     $response = $this->actingAs(uiGatePatient())
         ->get(route('newconsultation'))
@@ -91,6 +121,116 @@ it('does not leak any physician identity onto the newconsultation page', functio
         ->assertDontSee($physician->last_name)
         ->assertDontSee('offline')
         ->assertDontSee('queue_limit');
+});
+
+/*
+|--------------------------------------------------------------------------
+| GET /dashboard (DashboardController::index, patient branch)
+|--------------------------------------------------------------------------
+*/
+
+it('renders the patient dashboard as available when the service can accept requests', function () {
+    uiGatePhysician();
+
+    $response = $this->actingAs(uiGatePatient())
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    expect($response->viewData('intakeAvailable'))->toBeTrue()
+        ->and($response->viewData('nextScheduledWindow'))->toBeNull();
+    $response->assertSee('Consultations Available');
+});
+
+it('renders the patient dashboard as unavailable with the next scheduled window when intake is closed', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-07 19:00:00')); // Monday, after hours
+
+    $physician = uiGatePhysician(available: false);
+    PhysicianSchedule::create([
+        'physician_id' => $physician->user_id,
+        'day_of_week' => 2, // Tuesday
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+
+    $response = $this->actingAs(uiGatePatient())
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    expect($response->viewData('intakeAvailable'))->toBeFalse()
+        ->and($response->viewData('nextScheduledWindow'))->toBe([
+            'day_name' => 'Tuesday, Sep 8',
+            'time_label' => '8:00 AM - 12:00 PM',
+            'starts_at_iso' => CarbonImmutable::parse('2026-09-08 08:00:00')->toIso8601String(),
+        ]);
+    $response->assertSee('Consultations Currently Unavailable')
+        ->assertSee('Tuesday, Sep 8')
+        ->assertSee('8:00 AM - 12:00 PM');
+});
+
+it('renders the patient dashboard as unavailable with no schedule hint when no physician has one', function () {
+    $response = $this->actingAs(uiGatePatient())
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    expect($response->viewData('intakeAvailable'))->toBeFalse()
+        ->and($response->viewData('nextScheduledWindow'))->toBeNull();
+    $response->assertSee('Please try again later');
+});
+
+it('lists this week\'s recurring hours on the patient dashboard, deduplicated and without physician identity', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-07 09:00:00')); // Monday
+
+    $physicianA = uiGatePhysician(available: false);
+    $physicianB = uiGatePhysician(available: false);
+
+    // Same window as physician A, on the same day — must collapse to one line.
+    PhysicianSchedule::create([
+        'physician_id' => $physicianA->user_id,
+        'day_of_week' => 1, // Monday
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+    PhysicianSchedule::create([
+        'physician_id' => $physicianB->user_id,
+        'day_of_week' => 1, // Monday
+        'start_time' => '08:00:00',
+        'end_time' => '12:00:00',
+    ]);
+    PhysicianSchedule::create([
+        'physician_id' => $physicianB->user_id,
+        'day_of_week' => 3, // Wednesday
+        'start_time' => '13:00:00',
+        'end_time' => '17:00:00',
+    ]);
+    // Inactive window must never surface.
+    PhysicianSchedule::create([
+        'physician_id' => $physicianB->user_id,
+        'day_of_week' => 5, // Friday
+        'start_time' => '09:00:00',
+        'end_time' => '10:00:00',
+        'is_active' => false,
+    ]);
+
+    $response = $this->actingAs(uiGatePatient())
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    $week = $response->viewData('weeklySchedule');
+    expect($week)->toHaveCount(7)
+        ->and($week[0])->toMatchArray(['day_name' => 'Sunday', 'date_label' => 'Sep 6', 'is_today' => false, 'windows' => []])
+        ->and($week[1])->toMatchArray(['day_name' => 'Monday', 'date_label' => 'Sep 7', 'is_today' => true, 'windows' => ['8:00 AM - 12:00 PM']])
+        ->and($week[3])->toMatchArray(['day_name' => 'Wednesday', 'date_label' => 'Sep 9', 'is_today' => false, 'windows' => ['1:00 PM - 5:00 PM']])
+        ->and($week[5])->toMatchArray(['day_name' => 'Friday', 'date_label' => 'Sep 11', 'is_today' => false, 'windows' => []]);
+
+    $response->assertSee("This Week's Consultation Hours")
+        ->assertSee('8:00 AM - 12:00 PM')
+        ->assertSee('1:00 PM - 5:00 PM')
+        ->assertDontSee($physicianA->first_name)
+        ->assertDontSee($physicianB->first_name);
+
+    // The deduplicated Monday window must appear exactly once in the markup,
+    // not once per physician who holds it.
+    expect(substr_count($response->getContent(), '8:00 AM - 12:00 PM'))->toBe(1);
 });
 
 /*
