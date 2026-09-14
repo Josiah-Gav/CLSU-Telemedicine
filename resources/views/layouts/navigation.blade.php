@@ -240,7 +240,19 @@
                         method: 'GET',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         success: (data) => {
-                            this.unreadCount = data?.data?.unread_count ?? 0;
+                            const count = data?.data?.unread_count ?? 0;
+                            this.unreadCount = count;
+                            // The mobile bottom-nav badge (mobile-nav-icon.blade.php)
+                            // reads this store rather than polling the same
+                            // endpoint a second time — one poller, two displays.
+                            Alpine.store('notifications').unreadCount = count;
+                        },
+                        error: () => {
+                            // A failed request leaves the previous count in place
+                            // (both here and in the store) rather than clearing it
+                            // to 0 — a transient network error shouldn't make a
+                            // real unread notification silently disappear from
+                            // either badge.
                         }
                     });
                 },
@@ -277,6 +289,7 @@
                         success: () => {
                             n.read_at = new Date().toISOString();
                             this.unreadCount = Math.max(0, this.unreadCount - 1);
+                            Alpine.store('notifications').unreadCount = this.unreadCount;
                             this.navigate(n);
                         },
                         error: () => {
@@ -300,6 +313,7 @@
                                 }
                             });
                             this.unreadCount = 0;
+                            Alpine.store('notifications').unreadCount = 0;
                         }
                     });
                 },
@@ -347,21 +361,21 @@
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden z-40">
         <div class="max-w-7xl mx-auto px-2 pt-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center">
             @if(Auth::check() && Auth::user()->role === 'nurse')
-                <x-mobile-nav-icon :href="route('nurse.dashboard', ['nurse' => Auth::user()])" :active="request()->routeIs('nurse.dashboard')" :path="$navIcon['dashboard']" label="Dashboard" />
+                <x-mobile-nav-icon :href="route('nurse.dashboard', ['nurse' => Auth::user()])" :active="request()->routeIs('nurse.dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
                 <x-mobile-nav-icon :href="route('nurse.consultation_inbox', ['nurse' => Auth::user()])" :active="request()->routeIs('nurse.consultation_inbox')" :path="$navIcon['inbox']" label="Consultation Inbox" />
                 <x-mobile-nav-icon :href="route('nurse.follow_up_requests', ['nurse' => Auth::user()])" :active="request()->routeIs('nurse.follow_up_requests')" :path="$navIcon['follow_up']" label="Follow-up Requests" />
                 <x-mobile-nav-icon :href="route('nurse.consultation_history', ['nurse' => Auth::user()])" :active="request()->routeIs('nurse.consultation_history')" :path="$navIcon['history']" label="Consultation History" />
             @elseif(Auth::check() && Auth::user()->role === 'physician')
-                <x-mobile-nav-icon :href="route('physician.dashboard', ['physician' => Auth::user()])" :active="request()->routeIs('physician.dashboard')" :path="$navIcon['dashboard']" label="Dashboard" />
+                <x-mobile-nav-icon :href="route('physician.dashboard', ['physician' => Auth::user()])" :active="request()->routeIs('physician.dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
                 <x-mobile-nav-icon :href="route('physician.consultation_inbox', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_inbox')" :path="$navIcon['inbox']" label="Consultation Inbox" />
                 <x-mobile-nav-icon :href="route('physician.follow_up_requests', ['physician' => Auth::user()])" :active="request()->routeIs('physician.follow_up_requests')" :path="$navIcon['follow_up']" label="Follow-up Requests" />
                 <x-mobile-nav-icon :href="route('physician.scheduled_consultation', ['physician' => Auth::user()])" :active="request()->routeIs('physician.scheduled_consultation')" :path="$navIcon['scheduled']" label="Scheduled Consultations" />
                 <x-mobile-nav-icon :href="route('physician.consultation_history', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_history')" :path="$navIcon['history']" label="Consultation History" />
             @elseif(Auth::check() && Auth::user()->role === 'admin')
-                <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" />
+                <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
                 <x-mobile-nav-icon :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" :path="$navIcon['users']" label="User Management" />
             @else
-                <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" />
+                <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
                 <x-mobile-nav-icon :href="route('newconsultation')" :active="request()->routeIs('newconsultation')" :path="$navIcon['new']" label="New Consultation" />
                 <x-mobile-nav-icon :href="route('consultations.history')" :active="request()->routeIs('consultations.history')" :path="$navIcon['history']" label="Consultation History" />
             @endif

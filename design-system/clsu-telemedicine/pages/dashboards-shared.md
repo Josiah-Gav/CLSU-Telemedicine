@@ -165,7 +165,7 @@ Rationale: the nurse's shared pending queue must never disappear because someone
 
 All are **anonymous Blade components** in `resources/views/components/`, auto-registered as `x-*`, declaring `@props`. Per Laravel stack guideline *Blade Templates / Use Blade components for reusable UI* (severity **High**): "Do: Use `x-*` components with `@props` for all reusable UI. Don't: duplicate HTML blocks / `@include` for anything reusable."
 
-This matches the project's existing convention (`components/primary-button.blade.php`, `components/modal.blade.php`, …). **Nine components — no more.** Every one below appears on at least two dashboards; anything used once stays inline markup.
+This matches the project's existing convention (`components/button-primary.blade.php`, `components/modal.blade.php`, …). **Nine components — no more.** Every one below appears on at least two dashboards; anything used once stays inline markup.
 
 ### 7.1 `<x-dash.stat>` — KPI / stat card
 

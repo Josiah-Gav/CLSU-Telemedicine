@@ -240,7 +240,68 @@
                     @if($pendingRequests->isEmpty())
                         <x-dash.empty message="No pending follow-up requests to review." />
                     @else
-                        <div class="overflow-hidden rounded-xl border border-gray-200">
+                        {{-- Phase 3: this table has 5 columns including a
+                             3-button action group, which cannot fit at
+                             375/390px without either clipping the actions or
+                             forcing page-level horizontal scroll. Mobile gets
+                             a card per request instead, reusing the exact
+                             same $pendingFollowUpPayload data and the same
+                             Alpine methods (openDetails/forwardRequest/
+                             rejectRequest) the desktop table calls — no
+                             duplicated business logic, just a second
+                             presentation of the same loop. Pattern matches
+                             the established one in
+                             nurse/consultation_inbox.blade.php. --}}
+                        <div class="space-y-3 sm:hidden">
+                            @foreach($pendingRequests as $index => $followUp)
+                                @php $patientName = $pendingFollowUpPayload[$index]['patient_name']; @endphp
+                                <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="flex min-w-0 items-center gap-3">
+                                            <div class="relative h-9 w-9 flex-shrink-0">
+                                                <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green text-sm font-semibold text-white">
+                                                    {{ strtoupper(substr($patientName, 0, 1)) }}
+                                                </div>
+                                                <span class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white {{ $isPatientOnline($followUp->patient) ? 'bg-emerald-500' : 'bg-gray-300' }}">
+                                                    <span class="sr-only">{{ $isPatientOnline($followUp->patient) ? __('Online') : __('Offline') }}</span>
+                                                </span>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="truncate text-sm font-medium text-gray-900">{{ $patientName }}</p>
+                                                <p class="mt-0.5 text-xs text-gray-500">{{ __('Requested') }} {{ $followUp->created_at ? $followUp->created_at->format('M. j, Y g:i A') : __('Unknown') }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('Reason') }}</p>
+                                        <p class="mt-1 text-sm text-gray-700">{{ $followUp->reason }}</p>
+                                    </div>
+
+                                    <div class="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1">
+                                            {{ __('Physician') }}: {{ $pendingFollowUpPayload[$index]['details']['assigned_physician_name'] ?? __('Unassigned') }}
+                                        </span>
+                                    </div>
+
+                                    <div class="mt-4 flex flex-col gap-2">
+                                        <x-button-primary class="w-full" @click="forwardRequest(requests.find((r) => r.id === {{ $followUp->id }}))">
+                                            {{ __('Forward') }}
+                                        </x-button-primary>
+                                        <div class="flex gap-2">
+                                            <x-button-secondary class="flex-1" @click="openDetails(requests.find((r) => r.id === {{ $followUp->id }}))">
+                                                {{ __('Details') }}
+                                            </x-button-secondary>
+                                            <x-button-danger class="flex-1" @click="rejectRequest(requests.find((r) => r.id === {{ $followUp->id }}))">
+                                                {{ __('Reject') }}
+                                            </x-button-danger>
+                                        </div>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+
+                        <div class="hidden overflow-hidden rounded-xl border border-gray-200 sm:block">
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
@@ -280,15 +341,15 @@
                                                 </td>
                                                 <td class="px-6 py-4 text-sm">
                                                     <div class="flex flex-wrap gap-2">
-                                                        <button type="button" @click="openDetails(requests.find((r) => r.id === {{ $followUp->id }}))" class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                                                        <x-button-secondary size="sm" @click="openDetails(requests.find((r) => r.id === {{ $followUp->id }}))">
                                                             {{ __('Details') }}
-                                                        </button>
-                                                        <button type="button" @click="forwardRequest(requests.find((r) => r.id === {{ $followUp->id }}))" class="inline-flex items-center rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-green-deep">
+                                                        </x-button-secondary>
+                                                        <x-button-primary size="sm" @click="forwardRequest(requests.find((r) => r.id === {{ $followUp->id }}))">
                                                             {{ __('Forward') }}
-                                                        </button>
-                                                        <button type="button" @click="rejectRequest(requests.find((r) => r.id === {{ $followUp->id }}))" class="inline-flex items-center rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700">
+                                                        </x-button-primary>
+                                                        <x-button-danger size="sm" @click="rejectRequest(requests.find((r) => r.id === {{ $followUp->id }}))">
                                                             {{ __('Reject') }}
-                                                        </button>
+                                                        </x-button-danger>
                                                     </div>
                                                 </td>
                                             </tr>

@@ -320,7 +320,7 @@ it('notifies nurses when a patient submits a consultation', function () {
     $this->actingAs($patient)
         ->postJson(route('consultations.store'), [
             'concern_category' => 'Headache',
-            'symptoms_payload' => json_encode([['name' => 'Headache', 'severity' => 'mild']]),
+            'symptoms_payload' => json_encode([['name' => 'Headache', 'severity' => 2]]),
             'online_reason' => 'Need consultation',
         ])
         ->assertStatus(201)

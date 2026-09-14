@@ -25,7 +25,7 @@
                                     ]"
                                     label="Export History"
                                 />
-                                <a href="{{ route('consultations.create') }}" class="inline-flex items-center justify-center rounded-full bg-brand-green px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-deep">New Consultation</a>
+                                <x-button-primary href="{{ route('consultations.create') }}">New Consultation</x-button-primary>
                             </div>
                         </div>
 
@@ -59,8 +59,8 @@
                                                 </select>
                                             </div>
                                             <div class="flex items-end gap-2">
-                                                <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-brand-green px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-deep">Apply</button>
-                                                <a href="{{ route('consultations.history') }}" class="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Reset</a>
+                                                <x-button-primary type="submit">Apply</x-button-primary>
+                                                <x-button-secondary href="{{ route('consultations.history') }}">Reset</x-button-secondary>
                                             </div>
                                         </div>
                                     </div>

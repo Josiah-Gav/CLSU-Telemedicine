@@ -73,6 +73,78 @@ final class StatusBadge
     private const NEUTRAL_SEVERITY = ['label' => 'N/A', 'classes' => 'bg-gray-100 text-gray-700'];
 
     /**
+     * A first-time patient sees a status badge ("Reviewed", "Scheduled")
+     * with no indication of what it means or what they should expect next —
+     * flagged by the Phase 2 UX brief. Keyed on the same request_status
+     * vocabulary as STATUS_MAP above so both patient-facing templates
+     * (dashboard.blade.php, consultation-details.blade.php) pull the exact
+     * same sentence rather than inventing their own wording independently.
+     * 'assigned' is deliberately absent: docs/paper/glossary.md documents it
+     * as a dead enum value no code path ever writes.
+     */
+    private const PATIENT_MEANING = [
+        'pending' => "We've received your request and a nurse will review it shortly.",
+        'reviewed' => 'A nurse has reviewed your request and is arranging a physician for you.',
+        'scheduled' => 'Your consultation has been scheduled — see the appointment time below.',
+        'active' => 'Your consultation is in progress right now.',
+        'completed' => 'This consultation has been completed.',
+        'rejected' => 'This request was not accepted.',
+        'cancelled' => 'This request was cancelled.',
+    ];
+
+    /**
+     * Null for any status this map doesn't cover, rather than a guessed
+     * fallback sentence — an unrecognized status should show no explanation,
+     * not a misleading one.
+     */
+    public static function patientMeaning(?string $status): ?string
+    {
+        return self::PATIENT_MEANING[$status] ?? null;
+    }
+
+    /**
+     * Phase 4: patient/dashboard.blade.php and patient/consultation-details.blade.php
+     * each hand-computed this exact if/elseif chain independently — and had
+     * quietly drifted apart (dashboard.blade.php gave 'pending'/'assigned' a
+     * dedicated yellow treatment; consultation-details.blade.php did not,
+     * silently falling through to the slate default). Centralizing here
+     * fixes that inconsistency as a side effect of removing the
+     * duplication, not a separate redesign.
+     *
+     * This is a deliberately different, lighter/pastel palette from
+     * STATUS_MAP above — chosen for a patient-facing content card, not a
+     * dense staff table row (see design-system/clsu-telemedicine/pages/
+     * soft-modern-clinical-saas.md § Status semantics). Kept as its own
+     * map rather than merged into STATUS_MAP: unifying the two palettes
+     * would be a visible color change to patient-facing pages beyond what
+     * a duplication cleanup should risk — deferred, not forgotten.
+     */
+    private const PATIENT_STATUS_CLASSES = [
+        'rejected' => 'bg-red-100 text-red-700',
+        'cancelled' => 'bg-red-100 text-red-700',
+        'completed' => 'bg-emerald-100 text-emerald-700',
+        'pending' => 'bg-yellow-100 text-yellow-700',
+        'assigned' => 'bg-yellow-100 text-yellow-700',
+        'scheduled' => 'bg-brand-gold-soft text-brand-green-deep',
+        'active' => 'bg-brand-green-soft text-brand-green-deep',
+    ];
+
+    private const PATIENT_STATUS_DEFAULT = 'bg-slate-100 text-slate-700';
+
+    /**
+     * Full badge class string (shape + color) for a patient-facing status
+     * pill — used by patient/dashboard.blade.php and
+     * patient/consultation-details.blade.php in place of each maintaining
+     * its own copy of this mapping.
+     */
+    public static function patientClasses(?string $status): string
+    {
+        $colorClasses = self::PATIENT_STATUS_CLASSES[$status] ?? self::PATIENT_STATUS_DEFAULT;
+
+        return "inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold {$colorClasses}";
+    }
+
+    /**
      * @return array{label: string, classes: string, icon_path: string|null}|null
      */
     public static function status(?string $status): ?array

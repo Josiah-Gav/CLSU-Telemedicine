@@ -48,14 +48,14 @@
                     value="{{ $dateRange->preset === 'custom' ? $dateRange->end->toDateString() : '' }}"
                     class="min-h-11 rounded-lg border-gray-300 text-sm focus:border-brand-green focus:ring-brand-green"
                 />
-                <button type="submit" class="min-h-11 cursor-pointer rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-white transition hover:bg-brand-green-deep">
+                <x-button-primary type="submit">
                     Apply
-                </button>
+                </x-button-primary>
             </div>
         </template>
 
         <noscript>
-            <button type="submit" class="rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-white">Apply</button>
+            <x-button-primary type="submit">Apply</x-button-primary>
         </noscript>
     </form>
 

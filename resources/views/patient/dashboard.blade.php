@@ -10,21 +10,10 @@
 
         if (!empty($activeConsultation)) {
             $status = $activeConsultation->request_status;
-            $statusClasses = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ';
-
-            if (in_array($status, ['rejected', 'cancelled'], true)) {
-                $statusClasses .= 'bg-red-100 text-red-700';
-            } elseif ($status === 'completed') {
-                $statusClasses .= 'bg-emerald-100 text-emerald-700';
-            } elseif (in_array($status, ['pending', 'assigned'], true)) {
-                $statusClasses .= 'bg-yellow-100 text-yellow-700';
-            } elseif ($status === 'scheduled') {
-                $statusClasses .= 'bg-brand-gold-soft text-brand-green-deep';
-            } elseif ($status === 'active') {
-                $statusClasses .= 'bg-brand-green-soft text-brand-green-deep';
-            } else {
-                $statusClasses .= 'bg-slate-100 text-slate-700';
-            }
+            // Phase 4: was a hand-computed if/elseif chain duplicated (and
+            // drifted) between this file and consultation-details.blade.php
+            // — see StatusBadge::patientClasses()'s docblock.
+            $statusClasses = \App\Support\StatusBadge::patientClasses($status);
 
             $patientConsultationPayload = [
                 'request_id' => $activeConsultation->request_id,
@@ -36,6 +25,10 @@
                 'request_status' => $status,
                 'status_badge_class' => $statusClasses,
                 'status_label' => ucfirst($status),
+                // Phase 2 UX: a bare status word gives a first-time patient no
+                // idea what's happening or what to expect next — same sentence
+                // StatusBadge::patientMeaning() supplies on consultation-details.blade.php.
+                'status_meaning' => \App\Support\StatusBadge::patientMeaning($status),
                 'submitted_at' => optional($activeConsultation->submitted_at)->format('M d, Y'),
                 'show_messaging' => in_array($status, ['active', 'completed'], true) && $activeConsultation->consultationSession,
                 'session' => $activeConsultation->consultationSession ? [
@@ -205,63 +198,6 @@
                 </div>
             </div>
 
-            {{-- Service-level availability, not this patient's own consultation
-                 status. Same single source of truth as the new-consultation
-                 page's banner (PhysicianAvailabilityService::isServiceAvailable),
-                 just server-rendered once here rather than polled — this card
-                 does not gate a submission, so a snapshot at page load is enough. --}}
-            <div
-                class="mt-6 flex items-start gap-3 rounded-2xl border p-4 {{ $intakeAvailable ? 'border-brand-green bg-brand-green-soft' : 'border-amber-300 bg-amber-50' }}"
-            >
-                <span class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full {{ $intakeAvailable ? 'bg-brand-green' : 'bg-amber-500' }}"></span>
-                <div>
-                    <p class="text-sm font-semibold {{ $intakeAvailable ? 'text-brand-green-deep' : 'text-amber-800' }}">
-                        {{ $intakeAvailable ? __('Consultations Available') : __('Consultations Currently Unavailable') }}
-                    </p>
-                    <p class="mt-0.5 text-xs font-semibold {{ $intakeAvailable ? 'text-brand-green-deep/80' : 'text-amber-700' }}">
-                        @if ($intakeAvailable)
-                            {{ __('You can submit a new consultation request right now.') }}
-                        @elseif ($nextScheduledWindow)
-                            {{ __('New consultation requests are temporarily unavailable. Next scheduled intake: :day, :time.', ['day' => $nextScheduledWindow['day_name'], 'time' => $nextScheduledWindow['time_label']]) }}
-                        @else
-                            {{ __('New consultation requests are temporarily unavailable. Please try again later.') }}
-                        @endif
-                    </p>
-                </div>
-            </div>
-
-            {{-- This week's recurring intake hours, aggregated across every
-                 physician without naming any of them individually. Purely a
-                 general expectation of when the clinic tends to be open — a
-                 physician can still open intake outside these windows, or
-                 skip one they normally keep. --}}
-            <div class="mt-6 rounded-3xl border border-gray-200 bg-white shadow-sm">
-                <div class="p-6 sm:p-8">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('This Week\'s Consultation Hours') }}</h3>
-
-                    <div class="mt-5 divide-y divide-gray-100">
-                        @foreach ($weeklySchedule as $day)
-                            <div class="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                                <p class="text-sm font-semibold {{ $day['is_today'] ? 'text-brand-green-deep' : 'text-slate-700' }}">
-                                    {{ $day['day_name'] }}
-                                    <span class="font-normal text-slate-400">({{ $day['date_label'] }})</span>
-                                    @if ($day['is_today'])
-                                        <span class="ml-1 rounded-full bg-brand-green-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-green-deep">{{ __('Today') }}</span>
-                                    @endif
-                                </p>
-                                <p class="text-sm text-slate-600">
-                                    @if (count($day['windows']))
-                                        {{ implode(', ', $day['windows']) }}
-                                    @else
-                                        <span class="text-slate-400">{{ __('Closed') }}</span>
-                                    @endif
-                                </p>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
             @if($followUpStatus['exists'] && in_array($followUpStatus['status'], ['pending', 'forwarded'], true))
                 @php $followUpCardTag = $followUpStatus['details_url'] ? 'a' : 'div'; @endphp
                 <{{ $followUpCardTag }}
@@ -280,9 +216,13 @@
                             <div class="flex items-center gap-2">
                                 <span class="{{ $followUpStatus['status_badge_class'] }}">{{ $followUpStatus['status_label'] }}</span>
                                 @if(in_array($followUpStatus['status'], ['pending', 'forwarded'], true))
-                                    <button type="button" data-cancel-url="{{ route('patient.follow_up_requests.cancel', ['followUpRequest' => $followUpStatus['request_id']]) }}" onclick="event.stopPropagation(); event.preventDefault(); cancelFollowUpRequest(this)" class="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500">
+                                    <x-button-danger
+                                        size="sm"
+                                        data-cancel-url="{{ route('patient.follow_up_requests.cancel', ['followUpRequest' => $followUpStatus['request_id']]) }}"
+                                        onclick="event.stopPropagation(); event.preventDefault(); cancelFollowUpRequest(this)"
+                                    >
                                         Cancel Request
-                                    </button>
+                                    </x-button-danger>
                                 @endif
                                 @if($followUpStatus['details_url'])
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -349,8 +289,17 @@
                         <div class="p-6 sm:p-8">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Active Consultation</p>
+                                    {{-- Derived from status_label rather than
+                                         hard-coded "Active Consultation" — see
+                                         the same fix on the consultation
+                                         details page (consultation-details.blade.php). --}}
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" x-text="(consultation?.status_label || 'Active') + ' Consultation'"></p>
                                     <h3 class="mt-2 text-xl font-bold text-slate-900" x-text="consultationTitle()"></h3>
+                                    {{-- Phase 2 UX: explains what the status badge actually means,
+                                         rather than leaving a first-time patient to guess. Hidden
+                                         entirely when the status has no plain-language sentence
+                                         (StatusBadge::patientMeaning() returns null). --}}
+                                    <p class="mt-1 text-sm text-slate-600" x-show="consultation?.status_meaning" x-text="consultation?.status_meaning" x-cloak></p>
                                     <p class="mt-1 text-sm text-slate-600" x-text="'Summary of symptoms: ' + (consultation?.summary || 'No symptoms recorded')"></p>
                                 </div>
                                 <div class="inline-flex items-center gap-3">
@@ -393,6 +342,86 @@
                             </div>
                         </div>
                     </template>
+                </a>
+            </div>
+
+            {{-- Phase 2 UX: when there's no consultation in progress, the page
+                 used to show nothing at all here — a dead end for a first-time
+                 patient wondering what to do next. Names what's empty, that
+                 it's the normal state, and gives the one relevant action. --}}
+            <div class="mt-6 rounded-3xl border border-dashed border-gray-300 bg-slate-50 p-6 text-center sm:p-8" x-show="!consultation" x-cloak>
+                <p class="text-sm font-semibold text-slate-700">{{ __("You don't have a consultation in progress.") }}</p>
+                <p class="mt-1 text-sm text-slate-500">{{ __("That's expected if you haven't submitted a request recently. You can request one whenever you're ready.") }}</p>
+                <x-button-primary href="{{ route('newconsultation') }}" class="mt-4">
+                    {{ __('Request a Consultation') }}
+                </x-button-primary>
+            </div>
+
+            {{-- Service-level availability, not this patient's own consultation
+                 status. Same single source of truth as the new-consultation
+                 page's banner (PhysicianAvailabilityService::isServiceAvailable),
+                 just server-rendered once here rather than polled — this card
+                 does not gate a submission, so a snapshot at page load is enough.
+                 Moved below the current-consultation/empty-state block (Phase 2
+                 IA): a patient's own situation is the first thing they need to
+                 see, not general service availability. --}}
+            <div
+                class="mt-6 flex items-start gap-3 rounded-2xl border p-4 {{ $intakeAvailable ? 'border-brand-green bg-brand-green-soft' : 'border-amber-300 bg-amber-50' }}"
+            >
+                <span class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full {{ $intakeAvailable ? 'bg-brand-green' : 'bg-amber-500' }}"></span>
+                <div>
+                    <p class="text-sm font-semibold {{ $intakeAvailable ? 'text-brand-green-deep' : 'text-amber-800' }}">
+                        {{ $intakeAvailable ? __('Consultations Available') : __('Consultations Currently Unavailable') }}
+                    </p>
+                    <p class="mt-0.5 text-xs font-semibold {{ $intakeAvailable ? 'text-brand-green-deep/80' : 'text-amber-700' }}">
+                        @if ($intakeAvailable)
+                            {{ __('You can submit a new consultation request right now.') }}
+                        @elseif ($nextScheduledWindow)
+                            {{ __('New consultation requests are temporarily unavailable. Next scheduled intake: :day, :time.', ['day' => $nextScheduledWindow['day_name'], 'time' => $nextScheduledWindow['time_label']]) }}
+                        @else
+                            {{ __('New consultation requests are temporarily unavailable. Please try again later.') }}
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            {{-- This week's recurring intake hours, aggregated across every
+                 physician without naming any of them individually. Purely a
+                 general expectation of when the clinic tends to be open — a
+                 physician can still open intake outside these windows, or
+                 skip one they normally keep. Moved to the bottom of the page
+                 (Phase 2 IA): secondary/reference information, not the
+                 patient's own current situation. --}}
+            <div class="mt-6 rounded-3xl border border-gray-200 bg-white shadow-sm">
+                <div class="p-6 sm:p-8">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('This Week\'s Consultation Hours') }}</h3>
+
+                    <div class="mt-5 divide-y divide-gray-100">
+                        @foreach ($weeklySchedule as $day)
+                            <div class="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
+                                <p class="text-sm font-semibold {{ $day['is_today'] ? 'text-brand-green-deep' : 'text-slate-700' }}">
+                                    {{ $day['day_name'] }}
+                                    <span class="font-normal text-slate-400">({{ $day['date_label'] }})</span>
+                                    @if ($day['is_today'])
+                                        <span class="ml-1 rounded-full bg-brand-green-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-green-deep">{{ __('Today') }}</span>
+                                    @endif
+                                </p>
+                                <p class="text-sm text-slate-600">
+                                    @if (count($day['windows']))
+                                        {{ implode(', ', $day['windows']) }}
+                                    @else
+                                        <span class="text-slate-400">{{ __('Closed') }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 text-center">
+                <a href="{{ route('consultations.history') }}" class="text-sm font-semibold text-brand-green hover:text-brand-green-deep">
+                    {{ __('View your consultation history') }} &rarr;
                 </a>
             </div>
         </div>

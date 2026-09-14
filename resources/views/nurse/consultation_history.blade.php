@@ -99,8 +99,8 @@
                             </div>
                         </div>
                         <div class="mt-4 flex items-center gap-2">
-                            <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-brand-green px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-deep">Apply</button>
-                            <a href="{{ route('nurse.consultation_history', ['nurse' => $nurse->user_id]) }}" class="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Reset</a>
+                            <x-button-primary type="submit">Apply</x-button-primary>
+                            <x-button-secondary href="{{ route('nurse.consultation_history', ['nurse' => $nurse->user_id]) }}">Reset</x-button-secondary>
                         </div>
                     </form>
 

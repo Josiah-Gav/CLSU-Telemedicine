@@ -71,8 +71,8 @@
                         </div>
 
                         <div class="flex gap-3">
-                            <button type="submit" class="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-white hover:bg-brand-green-deep">Create Staff Account</button>
-                            <a href="{{ route('admin.users.index') }}" class="rounded-md border px-4 py-2 text-sm font-medium text-gray-700">Cancel</a>
+                            <x-button-primary type="submit">Create Staff Account</x-button-primary>
+                            <x-button-secondary href="{{ route('admin.users.index') }}">Cancel</x-button-secondary>
                         </div>
                     </form>
                 </div>

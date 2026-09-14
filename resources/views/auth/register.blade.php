@@ -66,9 +66,9 @@
         <div class="flex items-center justify-between mt-4">
             <a class="text-sm text-emerald-700 hover:text-emerald-900" href="{{ route('login') }}">{{ __('Already registered?') }}</a>
 
-            <x-primary-button class="ms-4 w-32 bg-gradient-to-r from-emerald-600 to-emerald-700 border-0">
+            <x-button-primary type="submit" class="ms-4 w-32 bg-gradient-to-r from-emerald-600 to-emerald-700 border-0">
                 {{ __('Register') }}
-            </x-primary-button>
+            </x-button-primary>
         </div>
     </form>
 </x-guest-layout>

@@ -13,6 +13,10 @@
 /.zed
 /auth.json
 /node_modules
+# Playwright MCP writes its accessibility-snapshot .yml files and
+# screenshots here as a side effect of browser-tool verification — not
+# hand-authored config or test files, so they don't belong in the repo.
+/.playwright-mcp
 /public/build
 /public/hot
 /public/storage

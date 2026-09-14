@@ -43,7 +43,7 @@ class UserManagementController extends Controller
 
         return view('admin.users.index', [
             'users' => $users,
-            'invitations' => $this->invitationStates($users),
+            'invitations' => self::invitationStates($users),
         ]);
     }
 
@@ -54,10 +54,14 @@ class UserManagementController extends Controller
      * from a stored status column: a column would be a second source of truth
      * able to drift from the tokens the activation flow actually honours.
      *
+     * Public and static (no $this usage) so DashboardController's admin
+     * "Needs Attention" band can derive the same pending/expired counts
+     * without a second, potentially divergent definition of "pending".
+     *
      * @param  Collection<int, User>  $users
      * @return Collection<int, array{state: string, label: string}|null>
      */
-    private function invitationStates($users)
+    public static function invitationStates($users)
     {
         // One query for every outstanding invitation rather than one per row.
         $issuedAt = DB::table('staff_invitation_tokens')->pluck('created_at', 'email');

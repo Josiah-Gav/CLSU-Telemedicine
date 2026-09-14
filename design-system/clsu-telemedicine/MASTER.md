@@ -4,6 +4,18 @@
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
 
+> **AUTHORITY NOTE (Phase 2/4, added without regenerating this file):**
+> The current locked direction for this project is **Soft Modern Clinical
+> SaaS**, documented in full at
+> `design-system/clsu-telemedicine/pages/soft-modern-clinical-saas.md`. That
+> file's Buttons/Cards/Typography/Spacing/Color sections are authoritative
+> for all new work — read it before this file. This Master file is kept
+> as-is (not regenerated) because it contains real, known conflicts with
+> the current direction — see the flag directly above **Component Specs**
+> below — and regenerating it needs an explicit `--force` the user has not
+> given. Don't copy CSS from the Component Specs section below without
+> checking it against the authoritative file first.
+
 ---
 
 **Project:** CLSU Telemedicine
@@ -77,7 +89,7 @@ on them, not just the literal classes hand-written in `app.css`.
 | `text-muted` | `gray-600` / `gray-500` (Tailwind default) | — | Supporting copy, timestamps |
 | `success` | `green-600`/`emerald-600` (Tailwind default) | — | Positive status states (already used this way elsewhere in the app) |
 | `warning` | `amber-500`/`yellow-*` (Tailwind default) | — | Attention states (matches existing dashboard usage) |
-| `danger` | `red-600` (Tailwind default, `danger-button` component) | — | Destructive/error states |
+| `danger` | `red-600` (Tailwind default, `x-button-danger` component) | — | Destructive/error states |
 
 Also present: `--clsu-green` (`#008000`) / `--clsu-gold` (`#FFD700`) — a
 brighter, flatter pair used specifically for the mobile bottom-nav active
@@ -124,6 +136,20 @@ the **section** level, not by recoloring every card — see
 ---
 
 ## Component Specs
+
+> ⚠️ **Conflicts with the current authoritative direction — do not use this
+> section for new work.** The CSS below still carries the superseded navy
+> palette (`#1E3A5F`, `#A16207`, `#F8FAFC` — see "Superseded auto-generated
+> match" above) and gives every card `cursor: pointer` +
+> `translateY(-2px)` on hover unconditionally, contradicting this same
+> file's own Anti-Patterns list two sections down ("no layout-shifting
+> hovers"). Real, current button/card specs — extracted from what the app
+> actually ships — live in
+> `design-system/clsu-telemedicine/pages/soft-modern-clinical-saas.md`
+> § Buttons/Cards, and as of Phase 4 are also implemented as real
+> components at `resources/views/components/button-{primary,secondary,
+> danger,ghost}.blade.php`. Kept here only for the historical record of
+> what this file's original auto-generation produced.
 
 ### Buttons
 

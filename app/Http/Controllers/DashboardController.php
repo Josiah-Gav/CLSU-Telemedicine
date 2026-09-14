@@ -85,6 +85,30 @@ class DashboardController extends Controller
         );
     }
 
+    /**
+     * Phase 2 (IA/UX): the admin dashboard's "Needs Attention" band — the
+     * one thing on that dashboard an admin actually has to act on, ahead of
+     * the analytics below it. Reuses
+     * Admin\UserManagementController::invitationStates() rather than
+     * re-deriving "pending"/"expired" a second way that could drift from
+     * what admin/users/index.blade.php shows for the same accounts.
+     *
+     * @return array{pending: int, expired: int}
+     */
+    private function staffInvitationSummary(): array
+    {
+        $invitedUsers = \App\Models\User::where('account_status', 'inactive')
+            ->whereIn('role', ['nurse', 'physician'])
+            ->get();
+
+        $states = \App\Http\Controllers\Admin\UserManagementController::invitationStates($invitedUsers)->filter();
+
+        return [
+            'pending' => $states->where('state', 'pending')->count(),
+            'expired' => $states->where('state', 'expired')->count(),
+        ];
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -153,6 +177,7 @@ class DashboardController extends Controller
                 return view('admin.dashboard', [
                     'analytics' => $this->analyticsService->forAdmin($dateRange),
                     'dateRange' => $dateRange,
+                    'staffInvitationSummary' => $this->staffInvitationSummary(),
                 ]);
             default:
                 abort(403, 'Unauthorized action. Role not recognized.');

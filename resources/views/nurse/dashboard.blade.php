@@ -54,7 +54,15 @@
                     />
                 </div>
 
-                @if ($analytics['operational']['unclaimed_pending'] === 0)
+                {{-- unclaimed_high_priority is a subset of unclaimed_pending
+                     (both scoped from Consultation::pending()->unclaimed(),
+                     see DashboardAnalyticsService), so checking it separately
+                     here would be redundant — but follow_ups_awaiting_triage
+                     comes from the independent FollowUpRequest model and used
+                     to be left out of this gate entirely, so the queue could
+                     read "clear" while a follow-up request still awaited
+                     triage. --}}
+                @if ($analytics['operational']['unclaimed_pending'] === 0 && $analytics['operational']['follow_ups_awaiting_triage'] === 0)
                     <div class="mt-4">
                         <x-dash.empty tone="positive" message="The queue is clear — no unclaimed requests." />
                     </div>

@@ -51,9 +51,9 @@
             </div>
 
             <div class="w-1/2">
-                <x-primary-button class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 border-0">
+                <x-button-primary type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 border-0">
                     {{ __('Log in') }}
-                </x-primary-button>
+                </x-button-primary>
             </div>
         </div>
     </form>

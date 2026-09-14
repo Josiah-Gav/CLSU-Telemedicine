@@ -204,6 +204,15 @@ it('never includes the dead assigned status as a category in the status distribu
 });
 
 it('zero-fills a day with no submissions in the volume-over-time chart rather than omitting it', function () {
+    // Anchored to the middle of the week: DateRange's 'this_week' starts
+    // at Carbon's startOfWeek() (Monday), so running this test for real on
+    // a Monday made the range exactly 1 day wide and failed
+    // toBeGreaterThan(1) below — a date-boundary flake in the test, not a
+    // defect in DateRange or the service. Travelling to this week's own
+    // Wednesday keeps the range multi-day regardless of which real
+    // calendar day the suite happens to run on.
+    test()->travelTo(now()->startOfWeek()->addDays(2)->setTime(12, 0));
+
     $patient = dashPatient();
     $range = DateRange::fromInput('this_week', null, null);
     dashRequest($patient, ['submitted_at' => $range->start]); // only the first day has data

@@ -14,12 +14,17 @@
             @csrf
 
             <div>
-                <x-primary-button>
+                <x-button-primary type="submit">
                     {{ __('Resend Verification Email') }}
-                </x-primary-button>
+                </x-button-primary>
             </div>
         </form>
 
+        {{-- Kept as a plain text control, not migrated to x-button-ghost:
+             every other "Log Out" in the app (layouts/app.blade.php,
+             layouts/navigation.blade.php) is styled as quiet inline text,
+             never brand-green — matching that existing convention matters
+             more here than uniformity with the button component set. --}}
         <form method="POST" action="{{ route('logout') }}">
             @csrf
 

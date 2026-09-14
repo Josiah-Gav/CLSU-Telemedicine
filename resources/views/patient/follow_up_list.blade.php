@@ -98,18 +98,22 @@
                             </dl>
 
                             <div class="mt-4 flex flex-wrap items-center gap-2">
-                                <a href="{{ $messagingUrl }}" class="inline-flex flex-1 items-center justify-center rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep">
+                                <x-button-primary href="{{ $messagingUrl }}" class="flex-1">
                                     View Details
-                                </a>
+                                </x-button-primary>
 
                                 @if($existingFollowUp)
                                     <span class="inline-flex flex-1 items-center justify-center rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
                                         Follow-up pending review
                                     </span>
                                 @else
-                                    <button type="button" data-form-id="follow-up-form-{{ $session->id }}" onclick="requestFollowUp(this)" class="inline-flex flex-1 items-center justify-center rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep">
+                                    <x-button-primary
+                                        class="flex-1"
+                                        data-form-id="follow-up-form-{{ $session->id }}"
+                                        onclick="requestFollowUp(this)"
+                                    >
                                         Request Follow-up
-                                    </button>
+                                    </x-button-primary>
                                 @endif
                             </div>
                         </article>
@@ -151,19 +155,22 @@
                                     </td>
                                     <td class="px-6 py-4 text-sm">
                                         <div class="flex flex-wrap gap-2">
-                                            <a href="{{ $messagingUrl }}" class="inline-flex items-center rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep">
+                                            <x-button-primary size="sm" href="{{ $messagingUrl }}">
                                                 View Details
-                                            </a>
+                                            </x-button-primary>
 
                                             @if($existingFollowUp)
                                                 <span class="inline-flex items-center rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
                                                     Follow-up pending review
                                                 </span>
                                             @else
-                                                
-                                                    <button type="button" data-form-id="follow-up-form-{{ $session->id }}" onclick="requestFollowUp(this)" class="inline-flex items-center justify-center rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep">
-                                                        Request Follow-up
-                                                    </button>
+                                                <x-button-primary
+                                                    size="sm"
+                                                    data-form-id="follow-up-form-{{ $session->id }}"
+                                                    onclick="requestFollowUp(this)"
+                                                >
+                                                    Request Follow-up
+                                                </x-button-primary>
    
                                             @endif
                                         </div>

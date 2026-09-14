@@ -12,9 +12,9 @@
 
         
         <!-- Unread Count Badge -->
-        <span 
-            x-show="unreadCount > 0" 
-            x-text="unreadCount" 
+        <span
+            x-show="unreadCount > 0"
+            x-text="unreadCount > 99 ? '99+' : unreadCount"
             class="absolute -right-0.5 -top-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white"
         ></span>
     </button>
@@ -30,7 +30,18 @@
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
         @click.away="open = false"
-        class="absolute right-0 mt-2 w-[calc(100vw-3rem)] max-w-sm rounded-2xl border border-brand-border bg-white shadow-xl z-50"
+        {{-- Anchored to the viewport on mobile (fixed inset-x-4 top-24), not
+             to the bell button: this trigger is never flush with the
+             viewport's right edge — the header's own px-4 padding and, on
+             mobile, the account-menu button that follows it both eat into
+             that space — so a width of calc(100vw-3rem) computed from
+             `right-0` on the bell's wrapper overflowed off the left edge.
+             Every page's header slot is a single-line <h2> (confirmed
+             across resources/views), so a fixed top clearing the header's
+             ~5.5rem height is safe everywhere, not just on this page. The
+             sm: breakpoint keeps the original trigger-relative behavior,
+             which was never affected by this. --}}
+        class="fixed inset-x-4 top-24 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 sm:mt-2 sm:w-[calc(100vw-3rem)] max-w-sm rounded-2xl border border-brand-border bg-white shadow-xl z-50"
     >
         <!-- Panel Header -->
         <div class="flex items-center justify-between border-b border-brand-border px-5 py-4">

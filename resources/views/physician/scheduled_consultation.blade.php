@@ -462,7 +462,42 @@
                             <p class="mt-4 text-sm text-slate-500">{{ __('No scheduled follow-up consultations.') }}</p>
                         </template>
 
-                        <div class="mt-4 overflow-x-auto" x-show="followUpConsultations.length > 0" x-cloak>
+                        {{-- Phase 3: 6 columns including a 2-action cell,
+                             no room at 375/390px. Same Alpine array and
+                             the same @click handlers as the desktop table
+                             below — reuses the mobile card pattern already
+                             established in physician/consultation_inbox.blade.php. --}}
+                        <div x-show="followUpConsultations.length > 0" x-cloak class="mt-4 space-y-3 sm:hidden">
+                            <template x-for="consultation in followUpConsultations" :key="`follow-up-mobile-${consultation.request_id}`">
+                                <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <span class="inline-flex min-w-0 items-center gap-2">
+                                            <span class="inline-block h-[0.625em] w-[0.625em] shrink-0 rounded-full" :class="consultation.patient_is_online ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+                                            <span class="truncate text-sm font-medium text-gray-900" x-text="consultation.patient_name"></span>
+                                        </span>
+                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">{{ __('Scheduled') }}</span>
+                                    </div>
+
+                                    <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" :class="priorityBadgeClass(consultation.priority_level)" x-text="consultation.priority_level ?? 'Normal'"></span>
+                                        <span class="text-xs text-gray-500" x-text="formatScheduledDate(consultation.scheduled_date) + ' · ' + (consultation.scheduled_time_label ?? '—')"></span>
+                                    </div>
+
+                                    <div class="mt-4 flex gap-2">
+                                        <template x-if="consultation.slot_status === 'missed'">
+                                            <x-button-secondary class="flex-1" @click="promptReschedule(consultation)">
+                                                {{ __('Reschedule') }}
+                                            </x-button-secondary>
+                                        </template>
+                                        <x-button-primary class="flex-1" @click="startConsultation(consultation)">
+                                            {{ __('Start') }}
+                                        </x-button-primary>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
+
+                        <div class="mt-4 hidden overflow-x-auto sm:block" x-show="followUpConsultations.length > 0" x-cloak>
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -494,27 +529,19 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div class="inline-flex items-center gap-2">
                                                     <template x-if="consultation.slot_status === 'missed'">
-                                                        <button
-                                                            type="button"
-                                                            @click="promptReschedule(consultation)"
-                                                            class="inline-flex items-center gap-1 rounded-md bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep"
-                                                        >
+                                                        <x-button-secondary size="sm" @click="promptReschedule(consultation)">
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                                             </svg>
                                                             <span>{{ __('Reschedule') }}</span>
-                                                        </button>
+                                                        </x-button-secondary>
                                                     </template>
-                                                    <button
-                                                        type="button"
-                                                        @click="startConsultation(consultation)"
-                                                        class="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                                                    >
+                                                    <x-button-primary size="sm" @click="startConsultation(consultation)">
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                                                         </svg>
                                                         <span>{{ __('Start') }}</span>
-                                                    </button>
+                                                    </x-button-primary>
                                                 </div>
                                             </td>
                                         </tr>
@@ -535,7 +562,40 @@
                             <p class="mt-4 text-sm text-slate-500">{{ __('No scheduled initial consultations.') }}</p>
                         </template>
 
-                        <div class="mt-4 overflow-x-auto" x-show="initialConsultations.length > 0" x-cloak>
+                        {{-- Phase 3: same mobile-card treatment as the
+                             Follow-up Consultations table above — identical
+                             columns/actions, different Alpine array. --}}
+                        <div x-show="initialConsultations.length > 0" x-cloak class="mt-4 space-y-3 sm:hidden">
+                            <template x-for="consultation in initialConsultations" :key="`initial-mobile-${consultation.request_id}`">
+                                <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <span class="inline-flex min-w-0 items-center gap-2">
+                                            <span class="inline-block h-[0.625em] w-[0.625em] shrink-0 rounded-full" :class="consultation.patient_is_online ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+                                            <span class="truncate text-sm font-medium text-gray-900" x-text="consultation.patient_name"></span>
+                                        </span>
+                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">{{ __('Scheduled') }}</span>
+                                    </div>
+
+                                    <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold" :class="priorityBadgeClass(consultation.priority_level)" x-text="consultation.priority_level ?? 'Normal'"></span>
+                                        <span class="text-xs text-gray-500" x-text="formatScheduledDate(consultation.scheduled_date) + ' · ' + (consultation.scheduled_time_label ?? '—')"></span>
+                                    </div>
+
+                                    <div class="mt-4 flex gap-2">
+                                        <template x-if="consultation.slot_status === 'missed'">
+                                            <x-button-secondary class="flex-1" @click="promptReschedule(consultation)">
+                                                {{ __('Reschedule') }}
+                                            </x-button-secondary>
+                                        </template>
+                                        <x-button-primary class="flex-1" @click="startConsultation(consultation)">
+                                            {{ __('Start') }}
+                                        </x-button-primary>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
+
+                        <div class="mt-4 hidden overflow-x-auto sm:block" x-show="initialConsultations.length > 0" x-cloak>
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -567,27 +627,19 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div class="inline-flex items-center gap-2">
                                                     <template x-if="consultation.slot_status === 'missed'">
-                                                        <button
-                                                            type="button"
-                                                            @click="promptReschedule(consultation)"
-                                                            class="inline-flex items-center gap-1 rounded-md bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-deep"
-                                                        >
+                                                        <x-button-secondary size="sm" @click="promptReschedule(consultation)">
                                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                                             </svg>
                                                             <span>{{ __('Reschedule') }}</span>
-                                                        </button>
+                                                        </x-button-secondary>
                                                     </template>
-                                                    <button
-                                                        type="button"
-                                                        @click="startConsultation(consultation)"
-                                                        class="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                                                    >
+                                                    <x-button-primary size="sm" @click="startConsultation(consultation)">
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-4 w-4" aria-hidden="true">
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                                                         </svg>
                                                         <span>{{ __('Start') }}</span>
-                                                    </button>
+                                                    </x-button-primary>
                                                 </div>
                                             </td>
                                         </tr>
@@ -639,15 +691,15 @@
                         </div>
 
                         <div class="mt-6">
-                            <button
-                                type="button"
-                                @click="generateSchedule()"
-                                :disabled="generating"
-                                class="inline-flex items-center px-4 py-2 bg-brand-green text-white text-xs font-semibold rounded-md hover:bg-brand-green-deep transition disabled:opacity-60"
-                            >
+                            {{-- x-bind:disabled, not the bare :disabled shorthand — Blade
+                                 intercepts a bare leading colon on a <x-component> tag as
+                                 its own PHP-expression prop binding, which would try (and
+                                 fail) to evaluate a PHP variable named $generating. See
+                                 button-primary.blade.php's docblock. --}}
+                            <x-button-primary @click="generateSchedule()" x-bind:disabled="generating">
                                 <span x-show="!generating">{{ __('Generate Schedule') }}</span>
                                 <span x-show="generating" x-cloak>{{ __('Generating...') }}</span>
-                            </button>
+                            </x-button-primary>
                         </div>
                     </div>
                 </div>
@@ -669,8 +721,8 @@
                         </div>
 
                         <div class="mt-4 flex flex-wrap gap-2">
-                            <button type="button" @click="toggleAllGenerated(true)" class="inline-flex items-center px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-md hover:bg-slate-200 transition">{{ __('Select All') }}</button>
-                            <button type="button" @click="toggleAllGenerated(false)" class="inline-flex items-center px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-md hover:bg-slate-200 transition">{{ __('Unselect All') }}</button>
+                            <x-button-secondary size="sm" @click="toggleAllGenerated(true)">{{ __('Select All') }}</x-button-secondary>
+                            <x-button-secondary size="sm" @click="toggleAllGenerated(false)">{{ __('Unselect All') }}</x-button-secondary>
                         </div>
 
                         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -683,15 +735,10 @@
                         </div>
 
                         <div class="mt-6">
-                            <button
-                                type="button"
-                                @click="saveSchedule()"
-                                :disabled="saving"
-                                class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-md hover:bg-emerald-700 transition disabled:opacity-60"
-                            >
+                            <x-button-primary @click="saveSchedule()" x-bind:disabled="saving">
                                 <span x-show="!saving">{{ __('Save Selected Slots') }}</span>
                                 <span x-show="saving" x-cloak>{{ __('Saving...') }}</span>
-                            </button>
+                            </x-button-primary>
                         </div>
                     </div>
                 </div>

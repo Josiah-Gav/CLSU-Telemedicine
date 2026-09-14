@@ -263,6 +263,25 @@ class ConsultationController extends Controller
             return response()->json(['success' => false, 'message' => 'Please provide at least one symptom.'], 422);
         }
 
+        // 3a. Require an explicit severity on every symptom. The severity
+        // picker used to initialize each symptom at 3 ("Moderate") the
+        // instant it was selected, so a patient who never touched the
+        // picker still submitted a severity indistinguishable from a
+        // deliberate choice — the same class of gap as the onset date/time
+        // check below, and enforced the same way: the client now starts
+        // severity unset, and this is what actually stops an unset (or
+        // out-of-scale) value from being recorded as data.
+        //
+        // The 1-4 scale is duplicated from SymptomAnalytics::VALID_SEVERITIES
+        // (private to that class) rather than shared, since it appears in
+        // exactly these two places; keep both in sync if it ever changes.
+        foreach ($symptomsData as $symptom) {
+            $severity = is_array($symptom) ? ($symptom['severity'] ?? null) : null;
+            if (!is_numeric($severity) || !in_array((int) $severity, [1, 2, 3, 4], true)) {
+                return response()->json(['success' => false, 'message' => 'Please select a severity for every symptom.'], 422);
+            }
+        }
+
         // 3b. Reject a future onset date/time. The date/time picker only
         // offers past-or-present values, but symptoms_payload is otherwise
         // unvalidated per-entry (see SymptomAnalytics' class docblock, H-4)

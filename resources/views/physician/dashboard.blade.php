@@ -144,7 +144,17 @@
                     height="h-56"
                 />
 
-                <div class="grid gap-4 lg:grid-cols-2">
+                {{-- Phase 3: grid-cols-1 must be explicit here, not left to
+                     implicit auto-sizing. Without it, a bare `grid` container
+                     has no defined column track below `lg:`, so the browser
+                     sizes its single implicit column to fit the widest
+                     child's max-content — and a <canvas> contributes its
+                     fixed width/height HTML attributes (Chart.js sets these)
+                     as that max-content, not its CSS display size. That
+                     pulled the whole row wider than the viewport at
+                     375/390px (confirmed live via Playwright). grid-cols-1
+                     forces an explicit minmax(0,1fr) track instead. --}}
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     @php
                         $typeChart = $analytics['charts']['initial_vs_follow_up'];
                     @endphp

@@ -221,12 +221,19 @@
                         text: 'Select a priority level before approving this consultation.',
                         icon: 'warning',
                         input: 'select',
+                        // A blank first option, not an `inputValue` default —
+                        // the dialog used to open with 'Normal' pre-selected,
+                        // so a nurse who just clicked through without ever
+                        // touching the dropdown silently triaged the request
+                        // as Normal priority. inputValidator below already
+                        // requires a truthy value; it only ever fires now
+                        // that a real "nothing chosen" option exists.
                         inputOptions: {
+                            '': 'Choose priority level...',
                             High: 'High',
                             Normal: 'Normal'
                         },
-                        inputValue: 'Normal',
-                        inputPlaceholder: 'Choose priority level',
+                        inputValue: '',
                         showCancelButton: true,
                         confirmButtonColor: '#10b981',
                         cancelButtonColor: '#6b7280',
@@ -306,9 +313,9 @@
                                         </div>
 
                                         <div class="mt-4">
-                                            <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex w-full items-center justify-center rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-green-deep">
+                                            <x-button-primary class="w-full" @click="openModal({{ $request->request_id }})">
                                                 {{ __('Review') }}
-                                            </button>
+                                            </x-button-primary>
                                         </div>
                                     </article>
                                 @endforeach
@@ -353,9 +360,9 @@
                                                         <x-dash.badge :status="$request->request_status" size="sm" />
                                                     </td>
                                                     <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                                        <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex items-center rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-green-deep">
+                                                        <x-button-primary size="sm" @click="openModal({{ $request->request_id }})">
                                                             {{ __('Review') }}
-                                                        </button>
+                                                        </x-button-primary>
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -411,9 +418,9 @@
                                             </div>
 
                                             <div class="mt-4">
-                                                <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                                                <x-button-primary class="w-full" @click="openModal({{ $request->request_id }})">
                                                     {{ __('Review') }}
-                                                </button>
+                                                </x-button-primary>
                                             </div>
                                         </article>
                                     @endforeach
@@ -462,9 +469,9 @@
                                                             <x-dash.badge :priority="$request->priority_level" size="sm" />
                                                         </td>
                                                         <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                                                            <x-button-primary size="sm" @click="openModal({{ $request->request_id }})">
                                                                 {{ __('Review') }}
-                                                            </button>
+                                                            </x-button-primary>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -515,9 +522,9 @@
                                             </p>
 
                                             <div class="mt-4">
-                                                <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                                                <x-button-primary class="w-full" @click="openModal({{ $request->request_id }})">
                                                     {{ __('Review') }}
-                                                </button>
+                                                </x-button-primary>
                                             </div>
                                         </article>
                                     @endforeach
@@ -557,9 +564,9 @@
                                                             <x-dash.badge :status="$request->request_status" size="sm" />
                                                         </td>
                                                         <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <button type="button" @click="openModal({{ $request->request_id }})" class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                                                            <x-button-primary size="sm" @click="openModal({{ $request->request_id }})">
                                                                 {{ __('Review') }}
-                                                            </button>
+                                                            </x-button-primary>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -704,24 +711,24 @@
                 </div>
 
                 <div class="flex flex-col gap-2 border-t border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
-                    <button type="button" @click="closeModal()" class="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2">
+                    <x-button-secondary @click="closeModal()">
                         {{ __('Close') }}
-                    </button>
+                    </x-button-secondary>
                     <template x-if="selectedRequest?.request_status === 'pending'">
-                        <button type="button" @click="rejectSelectedRequest()" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        <x-button-danger @click="rejectSelectedRequest()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             {{ __('Reject') }}
-                        </button>
+                        </x-button-danger>
                     </template>
                     <template x-if="selectedRequest?.request_status === 'pending'">
-                        <button type="button" @click="approveSelectedRequest()" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                        <x-button-primary @click="approveSelectedRequest()">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l1.5 1.5 3-3.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             {{ __('Approve') }}
-                        </button>
+                        </x-button-primary>
                     </template>
                 </div>
             </div>

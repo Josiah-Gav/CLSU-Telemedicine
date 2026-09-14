@@ -36,9 +36,22 @@
         selectedSymptomsPhrase() { return this.selectedSymptoms.length === 1 ? this.selectedSymptoms[0].name.toLowerCase() : this.selectedSymptoms.map(s => s.name.toLowerCase()).join(', '); }, 
         isSymptomSelected(symptom) { return this.selectedSymptoms.some(s => s.name === symptom); }, 
         hasCustomSymptoms() { return this.selectedSymptoms.some(s => s.custom); }, 
-        addCustomSymptom() { const value = this.customSymptomInput.trim(); if (!value) { return; } if (!this.selectedSymptoms.some(s => s.name.toLowerCase() === value.toLowerCase())) { this.selectedSymptoms.push({ name: value, date: '', time: '', severity: 3, custom: true }); } this.customSymptomInput = ''; this.showCustomSymptomInput = true; }, 
+        addCustomSymptom() { const value = this.customSymptomInput.trim(); if (!value) { return; } if (!this.selectedSymptoms.some(s => s.name.toLowerCase() === value.toLowerCase())) { this.selectedSymptoms.push({ name: value, date: '', time: '', severity: null, custom: true }); } this.customSymptomInput = ''; this.showCustomSymptomInput = true; },
         removeSymptom(name) { const index = this.selectedSymptoms.findIndex(s => s.name === name); if (index > -1) { this.selectedSymptoms.splice(index, 1); } }, 
-        toggleSymptom(symptom) { const index = this.selectedSymptoms.findIndex(s => s.name === symptom); if (index > -1) { this.selectedSymptoms.splice(index, 1); } else { this.selectedSymptoms.push({ name: symptom, date: '', time: '', severity: 3 }); } },
+        toggleSymptom(symptom) { const index = this.selectedSymptoms.findIndex(s => s.name === symptom); if (index > -1) { this.selectedSymptoms.splice(index, 1); } else { this.selectedSymptoms.push({ name: symptom, date: '', time: '', severity: null }); } },
+        // Severity now starts unset (see above) rather than defaulting to 3
+        // (Moderate), so this is what actually requires the patient to make
+        // a deliberate choice — mirrors firstFutureSymptom()'s role for the
+        // onset date/time check just below it.
+        //
+        // NOTE for future edits: this whole object literal lives inside a
+        // double-quote-delimited x-data HTML attribute. The HTML parser has
+        // no concept of JS comments — a literal double-quote character
+        // anywhere in this block (even inside a // comment) closes the
+        // attribute right there and silently drops everything after it.
+        // Do not type that character in a comment in this block; use
+        // &quot; the way the code below does for real string literals.
+        firstSymptomMissingSeverity() { return this.selectedSymptoms.find(s => !s.severity); },
         // Checking a common reason writes its phrase into the reason textarea;
         // unchecking takes that same phrase back out. The text is edited in
         // place rather than rebuilt from selectedReasons on purpose: whatever
@@ -160,6 +173,13 @@
                 return false;
             }
             if (step === 4) {
+                const unratedSymptom = this.firstSymptomMissingSeverity();
+                if (unratedSymptom) {
+                    this.validationError(`Please select a severity for '${unratedSymptom.name}' before proceeding to review.`);
+                    return false;
+                }
+            }
+            if (step === 4) {
                 const futureSymptom = this.firstFutureSymptom();
                 if (futureSymptom) {
                     this.validationError(`The onset date/time for '${futureSymptom.name}' cannot be in the future.`);
@@ -185,6 +205,13 @@
 
                 if (this.selectedSymptoms.length === 0) {
                     this.validationError('You must provide at least one symptom before submitting your consultation request.');
+                    this.isSubmitting = false;
+                    return;
+                }
+
+                const unratedSymptom = this.firstSymptomMissingSeverity();
+                if (unratedSymptom) {
+                    this.validationError(`Please select a severity for '${unratedSymptom.name}' before submitting.`);
                     this.isSubmitting = false;
                     return;
                 }

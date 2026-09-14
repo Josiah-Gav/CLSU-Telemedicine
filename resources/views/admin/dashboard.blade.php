@@ -19,6 +19,43 @@
                 </div>
             </div>
 
+            {{-- ================= NEEDS ATTENTION (unfiltered, always current) =================
+                 Phase 2 IA: the admin dashboard was previously 100% analytics —
+                 nothing surfaced the one thing an admin actually has to act on.
+                 Counts come from the same Admin\UserManagementController::
+                 invitationStates() derivation that drives admin/users/index.blade.php,
+                 so "pending" here can never disagree with what that page shows. --}}
+            @php
+                $hasStaffAttentionItems = $staffInvitationSummary['pending'] > 0 || $staffInvitationSummary['expired'] > 0;
+            @endphp
+            <a
+                href="{{ route('admin.users.index') }}"
+                class="block rounded-2xl border p-4 transition sm:p-6 {{ $hasStaffAttentionItems ? 'border-amber-300 bg-amber-50 hover:border-amber-400' : 'border-brand-border bg-white hover:border-brand-green/40' }}"
+            >
+                <div class="flex items-center gap-2">
+                    <svg class="h-5 w-5 {{ $hasStaffAttentionItems ? 'text-amber-600' : 'text-slate-400' }}" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-8.625 6.75h.008v.008h-.008v-.008z" />
+                    </svg>
+                    <h2 class="text-lg font-bold {{ $hasStaffAttentionItems ? 'text-amber-900' : 'text-slate-900' }}">Needs Attention</h2>
+                </div>
+                @if ($hasStaffAttentionItems)
+                    <p class="mt-1 text-sm text-amber-800">
+                        @if ($staffInvitationSummary['pending'] > 0)
+                            {{ $staffInvitationSummary['pending'] }} pending staff invitation{{ $staffInvitationSummary['pending'] === 1 ? '' : 's' }}
+                        @endif
+                        @if ($staffInvitationSummary['pending'] > 0 && $staffInvitationSummary['expired'] > 0)
+                            &middot;
+                        @endif
+                        @if ($staffInvitationSummary['expired'] > 0)
+                            {{ $staffInvitationSummary['expired'] }} expired staff invitation{{ $staffInvitationSummary['expired'] === 1 ? '' : 's' }}
+                        @endif
+                        — review in User Management.
+                    </p>
+                @else
+                    <p class="mt-1 text-sm text-slate-500">No staff invitations need attention right now.</p>
+                @endif
+            </a>
+
             {{-- ================= FILTER (admin: filter sits at the top — only "in flight" below is unfiltered) ================= --}}
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="flex-1">
@@ -134,7 +171,19 @@
                     height="h-56"
                 />
 
-                <div class="grid gap-4 lg:grid-cols-2">
+                {{-- Phase 3: grid-cols-1 must be explicit here, not left to
+                     implicit auto-sizing. Without it, a bare `grid` container
+                     has no defined column track below `lg:`, so the browser
+                     sizes its single implicit column to fit the widest
+                     child's max-content — and a <canvas> contributes its
+                     fixed width/height HTML attributes (Chart.js sets these)
+                     as that max-content, not its CSS display size. That
+                     pulled the whole row ~90-185px wider than the viewport
+                     at 375/390px (confirmed live via Playwright: the card's
+                     own computed width tracked the canvas's attribute width,
+                     not the grid's available space). grid-cols-1 forces an
+                     explicit minmax(0,1fr) track, which caps it correctly. --}}
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     @php
                         $priorityChart = $analytics['charts']['priority_distribution'];
                     @endphp
@@ -225,7 +274,10 @@
                     footnote="Custom symptom terms reported 3 or more times (fewer are hidden to protect patient privacy). Kept separate from the standardized chart above — a differently-worded custom entry for a similar complaint is not automatically merged with it."
                 />
 
-                <div class="grid gap-4 lg:grid-cols-2">
+                {{-- Phase 3: same grid-cols-1 fix as the Case Mix band above
+                     — a <canvas>'s intrinsic HTML width/height attributes
+                     otherwise dictate this implicit grid track's size. --}}
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <x-dash.chart
                         chart-id="admin-severity-chart"
                         type="severity"

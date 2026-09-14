@@ -245,14 +245,40 @@ test('an activated staff account can still be deactivated and reactivated', func
         'password_confirmation' => 'chosen-by-alice-1',
     ])->assertSessionHasNoErrors();
 
-    editUser($alice->fresh(), ['account_status' => 'inactive'])->assertSessionHasNoErrors();
-    expect($alice->fresh()->account_status)->toBe('inactive');
+    // Once verified, an admin's only "deactivate" option is 'suspended' —
+    // 'inactive' means "awaiting activation" and UserManagementController::update()
+    // only ever accepts it as a target for a still-inactive user (see its
+    // account_status rule), never as something to switch a verified account
+    // back to. This test originally asserted 'inactive' here, from before
+    // that rule was tightened; 'suspended' is the real current equivalent
+    // of "deactivated".
+    editUser($alice->fresh(), ['account_status' => 'suspended'])->assertSessionHasNoErrors();
+    expect($alice->fresh()->account_status)->toBe('suspended');
 
     // Now verified, so the guard does not apply and the admin stays in control.
     editUser($alice->fresh(), ['account_status' => 'active'])->assertSessionHasNoErrors();
     expect($alice->fresh()->account_status)->toBe('active');
 });
 
+// KNOWN FAILING — flagged, not silently broken. Investigated during the
+// baseline-failure pass: UserManagementController::update()'s account_status
+// rule is `$user->account_status === 'inactive' ? ['nullable','in:inactive'] : ...`,
+// which rejects 'active' for ANY inactive user regardless of role, before the
+// method's own role-scoped activation guard below it (`in_array($user->role,
+// self::INVITED_ROLES, true)`, with a nurse/physician-specific error message)
+// ever runs — that guard is currently unreachable dead code for this path.
+// Two readings are equally plausible from the code alone and only a product
+// decision can settle which is correct: (a) the guard's role-scoping and
+// staff-specific wording suggest patients were originally meant to be
+// activatable directly by an admin, and the blanket rule accidentally roped
+// them in too — in which case the smallest fix is scoping that rule to
+// self::INVITED_ROLES to match the guard beneath it; or (b) the surrounding
+// UI/comment ("becomes editable... automatically" for every role, patients
+// included) reflects a deliberate later widening to "no admin ever
+// hand-activates an inactive account, of any role" — in which case this test
+// itself is stale and should assert the opposite. Left failing rather than
+// guessed at; not covered by this project's regression-protection list, so
+// changing UserManagementController to resolve it needs sign-off first.
 test('patients and admins are unaffected by the activation guard', function () {
     $patient = User::factory()->unverified()->create([
         'role' => 'patient',

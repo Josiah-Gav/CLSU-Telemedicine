@@ -459,22 +459,33 @@
 
                     <div x-show="visibleConsultations.length > 0" x-cloak class="hidden overflow-hidden rounded-xl border border-gray-200 sm:block">
                         <div class="overflow-x-auto">
+                            {{-- Column padding trimmed from px-6 to px-4, and
+                                 the Scheduled Slot / Submitted At columns no
+                                 longer force whitespace-nowrap, so their date
+                                 text can wrap instead of setting the column's
+                                 width — together this was enough to fit the
+                                 table inside its container at 1280/1440px
+                                 without scrolling. Actions stays sticky to
+                                 the right edge as a backstop: the one action
+                                 this table exists to offer must stay reachable
+                                 even if a narrower window still needs the
+                                 horizontal scroll below. --}}
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Patient Name') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Severity') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Scheduled Slot') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Submitted At') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Status') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Priority') }}</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Actions') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Patient Name') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Severity') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Scheduled Slot') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Submitted At') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Status') }}</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Priority') }}</th>
+                                        <th class="sticky right-0 z-10 whitespace-nowrap border-l border-gray-200 bg-gray-50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
                                     <template x-for="consultation in visibleConsultations" :key="consultation.request_id">
-                                        <tr class="transition hover:bg-gray-50">
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm">
+                                        <tr class="group transition hover:bg-gray-50">
+                                            <td class="whitespace-nowrap px-4 py-4 text-sm">
                                                 <div class="flex items-center gap-3">
                                                     <div class="relative h-9 w-9 flex-shrink-0">
                                                         <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green text-sm font-semibold text-white"
@@ -484,11 +495,11 @@
                                                             <span class="sr-only" x-text="consultation.patient_is_online ? '{{ __('Online') }}' : '{{ __('Offline') }}'"></span>
                                                         </span>
                                                     </div>
-                                                    <span class="font-medium text-gray-900" x-text="consultation.patient_name"></span>
+                                                    <span class="max-w-[10rem] truncate font-medium text-gray-900" x-text="consultation.patient_name"></span>
                                                 </div>
                                             </td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm" x-html="badgeHtml(consultation.severity_badge)"></td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm">
+                                            <td class="whitespace-nowrap px-4 py-4 text-sm" x-html="badgeHtml(consultation.severity_badge)"></td>
+                                            <td class="px-4 py-4 text-sm">
                                                 <template x-if="consultation.scheduled_slot">
                                                     <div>
                                                         <p class="font-medium text-gray-900" x-text="consultation.scheduled_slot.label"></p>
@@ -497,8 +508,8 @@
                                                 </template>
                                                 <span x-show="!consultation.scheduled_slot" class="text-gray-400">&mdash;</span>
                                             </td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500" x-text="consultation.submitted_at ?? '{{ __('Unknown') }}'"></td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm">
+                                            <td class="px-4 py-4 text-sm text-gray-500" x-text="consultation.submitted_at ?? '{{ __('Unknown') }}'"></td>
+                                            <td class="whitespace-nowrap px-4 py-4 text-sm">
                                                 <div x-html="badgeHtml(consultation.status_badge)"></div>
                                                 <p x-show="consultation.takeover_available" x-cloak class="mt-1 text-[11px] font-semibold text-amber-700">{{ __('Takeover Available') }}</p>
                                                 <p x-show="!consultation.takeover_available && !consultation.is_assigned_to_me && consultation.assigned_physician_name"
@@ -506,8 +517,8 @@
                                                    class="mt-1 text-[11px] text-gray-500"
                                                    x-text="'{{ __('Assigned to') }} ' + consultation.assigned_physician_name"></p>
                                             </td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm" x-html="badgeHtml(consultation.priority_badge)"></td>
-                                            <td class="whitespace-nowrap px-6 py-4 text-sm">
+                                            <td class="whitespace-nowrap px-4 py-4 text-sm" x-html="badgeHtml(consultation.priority_badge)"></td>
+                                            <td class="sticky right-0 z-10 whitespace-nowrap border-l border-gray-200 bg-white px-4 py-4 text-sm group-hover:bg-gray-50">
                                                 <button type="button" @click="openModal(consultation.request_id)"
                                                         class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                                                     {{ __('Review') }}
@@ -618,7 +629,7 @@
                             <p x-show="selectedConsultation?.was_taken_over && selectedConsultation?.original_physician_name"
                                x-cloak
                                class="mt-0.5 text-[11px] text-gray-500"
-                               x-text="'{{ __('Originally') }}: ' + selectedConsultation.original_physician_name"></p>
+                               x-text="'{{ __('Originally') }}: ' + selectedConsultation?.original_physician_name"></p>
                         </div>
                     </div>
 
