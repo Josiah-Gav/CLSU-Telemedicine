@@ -47,7 +47,8 @@
                         }
 
                         const options = slots.reduce((carry, slot) => {
-                            carry[String(slot.slot_id)] = `${slot.label} (${slot.slot_date})`;
+                            const slotDate = new Date(`${slot.slot_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            carry[String(slot.slot_id)] = `${slot.label}, ${slotDate}`;
                             return carry;
                         }, {});
 

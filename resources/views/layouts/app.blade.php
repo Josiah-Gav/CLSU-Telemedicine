@@ -14,6 +14,14 @@
         <!-- Sweet Alert -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <style>
+            /* SweetAlert2's default select width shrinks to fit content, clipping
+               longer options like schedule-slot labels ("9:00 PM - 9:30 PM, Sep 14, 2026"). */
+            .swal2-select {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        </style>
 
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
