@@ -1,0 +1,75 @@
+- generic [ref=f18e3]:
+  - navigation [ref=f18e4]:
+    - complementary [ref=f18e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f18e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f18e8]
+        - generic [ref=f18e9]: CLSU Telemedicine
+      - generic [ref=f18e11]:
+        - button [ref=f18e12] [cursor=pointer]
+        - link "Dashboard" [ref=f18e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "New Consultation" [ref=f18e19] [cursor=pointer]:
+          - /url: http://telemed.test/newconsultation
+        - link "Consultation History" [ref=f18e23] [cursor=pointer]:
+          - /url: http://telemed.test/consultations/history
+      - generic [ref=f18e31]:
+        - link "Profile" [ref=f18e32] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f18e34] [cursor=pointer]
+  - generic [ref=f18e35]:
+    - banner [ref=f18e36]:
+      - generic [ref=f18e37]:
+        - heading "Consultation Messaging" [level=2] [ref=f18e39]
+        - button "Notifications" [ref=f18e42] [cursor=pointer]:
+          - generic [ref=f18e45]: "4"
+    - main [ref=f18e46]:
+      - generic [ref=f18e48]:
+        - link "Back to Dashboard" [ref=f18e50] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - generic [ref=f18e53]:
+          - generic [ref=f18e55]:
+            - generic [ref=f18e56]:
+              - generic [aria-hidden] [ref=f18e58]: B
+              - generic [ref=f18e60]:
+                - heading "Bugs Bunny" [level=3] [ref=f18e61]
+                - generic [ref=f18e62]:
+                  - generic [ref=f18e63]: Attending physician
+                  - generic [aria-hidden] [ref=f18e64]: ·
+                  - generic [ref=f18e65]: "Session #5"
+                  - generic [aria-hidden] [ref=f18e66]: ·
+                  - status [ref=f18e67]:
+                    - generic [ref=f18e68]: Offline
+            - generic [ref=f18e71]:
+              - generic [ref=f18e72]: Completed
+              - generic [ref=f18e75]: Completed Sep 14, 2026 @ 07:55 AM
+          - generic [ref=f18e79]:
+            - button "Messages" [ref=f18e80] [cursor=pointer]
+            - button "Details" [ref=f18e83] [cursor=pointer]
+            - button "Patient Details" [ref=f18e86] [cursor=pointer]
+            - button "Assessment" [active] [pressed] [ref=f18e89] [cursor=pointer]
+          - generic [ref=f18e139]:
+            - generic [ref=f18e140]:
+              - generic [ref=f18e141]:
+                - heading "Clinical Documentation" [level=4] [ref=f18e142]
+                - paragraph [ref=f18e143]: Assessment, plan, recommendations, diagnosis, and prescription
+              - generic [ref=f18e144]:
+                - status
+                - generic [ref=f18e145]: Completed
+            - generic [ref=f18e148]:
+              - generic [ref=f18e149]:
+                - paragraph [ref=f18e150]: Diagnosis
+                - paragraph [ref=f18e151]: No diagnosis added yet.
+              - generic [ref=f18e152]:
+                - paragraph [ref=f18e153]: Prescription
+                - paragraph [ref=f18e154]: No prescription uploaded yet.
+              - generic [ref=f18e155]:
+                - paragraph [ref=f18e156]: Assessment
+                - paragraph [ref=f18e157]: Initial assessment pending.
+              - generic [ref=f18e158]:
+                - paragraph [ref=f18e159]: Plan
+                - paragraph [ref=f18e160]: Plan to be documented during consultation.
+              - generic [ref=f18e161]:
+                - paragraph [ref=f18e162]: Recommendations
+                - paragraph [ref=f18e163]: Recommendations to follow after evaluation.
+            - generic [ref=f18e164]: This clinical documentation is locked because the consultation has been completed.

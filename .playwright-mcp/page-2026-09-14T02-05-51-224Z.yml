@@ -1,0 +1,101 @@
+- generic [ref=f23e3]:
+  - navigation
+  - navigation [ref=f23e4]:
+    - generic [ref=f23e5]:
+      - link "Dashboard" [ref=f23e6] [cursor=pointer]:
+        - /url: http://telemed.test/nurses/4/dashboard
+      - link "Consultation Inbox" [ref=f23e9] [cursor=pointer]:
+        - /url: http://telemed.test/nurses/4/consultation-inbox
+      - link "Follow-up Requests" [ref=f23e12] [cursor=pointer]:
+        - /url: http://telemed.test/nurses/4/follow-up-requests
+      - link "Consultation History" [ref=f23e15] [cursor=pointer]:
+        - /url: http://telemed.test/nurses/4/consultation-history
+  - generic [ref=f23e18]:
+    - banner [ref=f23e19]:
+      - generic [ref=f23e20]:
+        - heading "Dashboard" [level=2] [ref=f23e22]
+        - generic [ref=f23e23]:
+          - button "Notifications" [ref=f23e25] [cursor=pointer]
+          - button "Account menu" [ref=f23e31] [cursor=pointer]
+    - main [ref=f23e34]:
+      - generic [ref=f23e36]:
+        - generic [ref=f23e38]:
+          - paragraph [ref=f23e39]: Nurse Portal
+          - heading "Hello Nurse Maria" [level=2] [ref=f23e40]
+        - region [ref=f23e41]:
+          - heading "Shared Queue" [level=2] [ref=f23e45]
+          - paragraph [ref=f23e46]: Shared across all nurses · always current, not affected by the date filter below.
+          - generic [ref=f23e47]:
+            - link "0 unclaimed pending requests" [ref=f23e48] [cursor=pointer]:
+              - /url: http://telemed.test/nurses/4/consultation-inbox
+              - paragraph [ref=f23e49]: Unclaimed pending requests
+              - paragraph [ref=f23e50]: "0"
+            - link "0 high priority unclaimed requests" [ref=f23e51] [cursor=pointer]:
+              - /url: http://telemed.test/nurses/4/consultation-inbox
+              - paragraph [ref=f23e52]: High-priority, unclaimed
+              - paragraph [ref=f23e53]: "0"
+            - link "1 follow-up requests awaiting triage" [ref=f23e54] [cursor=pointer]:
+              - /url: http://telemed.test/nurses/4/follow-up-requests
+              - paragraph [ref=f23e55]: Follow-ups awaiting triage
+              - paragraph [ref=f23e56]: "1"
+          - paragraph [ref=f23e61]: The queue is clear — no unclaimed requests.
+        - region [ref=f23e62]:
+          - heading "My Workload" [level=2] [ref=f23e66]
+          - paragraph [ref=f23e67]: Assigned to you · always current.
+          - generic [ref=f23e68]:
+            - link "1 of my cases are open" [ref=f23e69] [cursor=pointer]:
+              - /url: http://telemed.test/nurses/4/consultation-inbox
+              - paragraph [ref=f23e70]: My open cases
+              - paragraph [ref=f23e71]: "1"
+              - generic [ref=f23e72]:
+                - generic [ref=f23e73]: Reviewed 0
+                - generic [ref=f23e74]: Scheduled 1
+                - generic [ref=f23e75]: Active 0
+            - generic "0 of my consultations are active" [ref=f23e76]:
+              - paragraph [ref=f23e77]: My active consultations
+              - paragraph [ref=f23e78]: "0"
+        - generic [ref=f23e79]:
+          - generic [ref=f23e81]:
+            - generic [ref=f23e82]:
+              - generic [ref=f23e83]: Showing
+              - combobox "Showing" [ref=f23e84]:
+                - option "Today"
+                - option "This Week"
+                - option "This Month"
+                - option "Last 30 Days" [selected]
+                - option "This Year"
+                - option "Custom Range"
+            - paragraph [ref=f23e85]: Historical analytics only — the queue and workload above always show current state, regardless of this filter.
+          - button "Export" [ref=f23e88] [cursor=pointer]
+        - region [ref=f23e93]:
+          - generic [ref=f23e95]:
+            - heading "My Analytics — Selected Period" [level=2] [ref=f23e96]
+            - paragraph [ref=f23e97]: Requests in your caseload, scoped to the date range above.
+          - generic [ref=f23e98]:
+            - generic [ref=f23e99]:
+              - paragraph [ref=f23e100]: My reviewed requests
+              - paragraph [ref=f23e101]: "6"
+              - paragraph [ref=f23e102]: Requests you triaged, by submission date
+            - generic [ref=f23e103]:
+              - paragraph [ref=f23e104]: My Completed — Selected Period
+              - paragraph [ref=f23e105]: "7"
+              - paragraph [ref=f23e106]: Not a real-time workload figure — scoped to the filter above
+          - generic [ref=f23e107]:
+            - heading "Requests in my caseload, by submission date" [level=3] [ref=f23e110]
+            - generic [ref=f23e111]:
+              - img "Line chart of requests in my caseload by submission date for the selected period" [ref=f23e113]
+              - group [ref=f23e114]:
+                - generic "View data as table" [ref=f23e115] [cursor=pointer]
+              - paragraph [ref=f23e116]: Plotted by when requests were submitted, not when you claimed them — there is no separate 'claimed at' timestamp.
+          - generic [ref=f23e117]:
+            - heading "Status distribution" [level=3] [ref=f23e120]
+            - generic [ref=f23e121]:
+              - img "Horizontal bar chart of my caseload's requests by status for the selected period" [ref=f23e123]
+              - group [ref=f23e124]:
+                - generic "View data as table" [ref=f23e125] [cursor=pointer]
+          - generic [ref=f23e126]:
+            - heading "Priority mix" [level=3] [ref=f23e129]
+            - generic [ref=f23e130]:
+              - img "Proportion of my caseload's requests that are High versus Normal priority" [ref=f23e132]
+              - group [ref=f23e133]:
+                - generic "View data as table" [ref=f23e134] [cursor=pointer]

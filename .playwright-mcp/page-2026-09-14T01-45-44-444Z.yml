@@ -1,0 +1,123 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - navigation "Primary" [ref=e4]:
+      - link "Central Luzon State University seal CLSU Infirmary Telemedicine" [ref=e5] [cursor=pointer]:
+        - /url: http://localhost/Telemed/public
+        - img "Central Luzon State University seal" [ref=e6]
+        - generic [ref=e7]:
+          - text: CLSU Infirmary
+          - generic [ref=e8]: Telemedicine
+      - generic [ref=e9]:
+        - link "Sign In" [ref=e10] [cursor=pointer]:
+          - /url: http://localhost/Telemed/public/login
+        - link "Get Started" [ref=e11] [cursor=pointer]:
+          - /url: http://localhost/Telemed/public/register
+  - main [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - paragraph [ref=e16]: CLSU Infirmary
+        - heading "Healthcare support, wherever you are on campus." [level=1] [ref=e18]
+        - paragraph [ref=e19]: Students, faculty, and staff can request a consultation, message CLSU Infirmary medical staff, and follow up on care — without a trip to the infirmary desk.
+        - generic [ref=e20]:
+          - link "Get Started" [ref=e21] [cursor=pointer]:
+            - /url: http://localhost/Telemed/public/register
+          - link "Sign In" [ref=e22] [cursor=pointer]:
+            - /url: http://localhost/Telemed/public/login
+      - 'img "Illustration of the consultation status flow: pending, reviewed, then connected with medical staff" [ref=e23]':
+        - generic [ref=e24]:
+          - generic [ref=e29]:
+            - paragraph [ref=e30]: Consultation request
+            - paragraph [ref=e31]: Submitted just now
+          - list [ref=e32]:
+            - listitem [ref=e33]:
+              - generic [ref=e37]: Request received
+            - listitem [ref=e38]:
+              - generic [ref=e42]: Reviewed by nurse triage
+            - listitem [ref=e43]:
+              - generic [ref=e46]: Connecting with medical staff…
+          - paragraph [ref=e48]: Central Luzon State University · Infirmary
+    - region "Why use this system" [ref=e49]:
+      - generic [ref=e51]:
+        - generic [ref=e56]:
+          - heading "University Infirmary" [level=2] [ref=e57]
+          - paragraph [ref=e58]: Care connected to your CLSU community, from the same infirmary staff you'd see in person.
+        - generic [ref=e63]:
+          - heading "Secure Access" [level=2] [ref=e64]
+          - paragraph [ref=e65]: Your account and consultation information are only visible to you and the staff assigned to your case.
+        - generic [ref=e70]:
+          - heading "Remote Consultation" [level=2] [ref=e71]
+          - paragraph [ref=e72]: Connect with infirmary medical staff when visiting in person isn't practical.
+    - region [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - paragraph [ref=e76]: Services
+          - heading "What you can do here" [level=2] [ref=e77]
+          - paragraph [ref=e78]: A straightforward path from raising a concern to getting care.
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - heading "Request a Consultation" [level=3] [ref=e84]
+            - paragraph [ref=e85]: Submit your symptoms and health concern to the infirmary, and it's triaged by a nurse.
+          - generic [ref=e86]:
+            - heading "Chat with Medical Staff" [level=3] [ref=e90]
+            - paragraph [ref=e91]: Once a physician accepts your request, communicate directly through the consultation workflow.
+          - generic [ref=e92]:
+            - heading "Follow-up Care" [level=3] [ref=e96]
+            - paragraph [ref=e97]: Continue communication after a completed consultation when a follow-up is needed.
+          - generic [ref=e98]:
+            - heading "Consultation Updates" [level=3] [ref=e102]
+            - paragraph [ref=e103]: Stay informed about the status of your request and get notified as it progresses.
+    - region [ref=e104]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - paragraph [ref=e107]: Process
+          - heading "How it works" [level=2] [ref=e108]
+          - paragraph [ref=e109]: Predictable, from the first message to any follow-up.
+        - list [ref=e110]:
+          - listitem [ref=e111]:
+            - generic [aria-hidden] [ref=e112]: "1"
+            - heading "Tell us what you need" [level=3] [ref=e113]
+            - paragraph [ref=e114]: Submit your concern and symptom information.
+          - listitem [ref=e115]:
+            - generic [aria-hidden] [ref=e116]: "2"
+            - heading "Get reviewed" [level=3] [ref=e117]
+            - paragraph [ref=e118]: Infirmary staff review your request and determine the appropriate priority.
+          - listitem [ref=e119]:
+            - generic [aria-hidden] [ref=e120]: "3"
+            - heading "Connect with medical staff" [level=3] [ref=e121]
+            - paragraph [ref=e122]: Continue through the consultation workflow with the assigned physician.
+          - listitem [ref=e123]:
+            - generic [aria-hidden] [ref=e124]: "4"
+            - heading "Receive follow-up care" [level=3] [ref=e125]
+            - paragraph [ref=e126]: Continue communication whenever follow-up is required.
+    - generic [ref=e128]:
+      - img "Central Luzon State University seal" [ref=e129]
+      - paragraph [ref=e130]: This platform is operated for the Central Luzon State University community by the CLSU Infirmary — the same staff who provide on-campus medical care.
+    - generic [ref=e133]:
+      - generic [ref=e134]:
+        - heading "Already have an account?" [level=2] [ref=e135]
+        - paragraph [ref=e136]: Sign in to view your consultations and messages.
+        - link "Sign in to your account" [ref=e137] [cursor=pointer]:
+          - /url: http://localhost/Telemed/public/login
+      - generic [ref=e138]:
+        - heading "New to the system?" [level=2] [ref=e139]
+        - paragraph [ref=e140]: Create an account to request your first consultation.
+        - link "Create your account" [ref=e141] [cursor=pointer]:
+          - /url: http://localhost/Telemed/public/register
+  - contentinfo [ref=e142]:
+    - generic [ref=e143]:
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - img "Central Luzon State University seal" [ref=e146]
+          - generic [ref=e147]:
+            - paragraph [ref=e148]: CLSU Infirmary Telemedicine
+            - paragraph [ref=e149]: Central Luzon State University, Science City of Muñoz, Nueva Ecija.
+        - navigation "Account" [ref=e150]:
+          - link "Sign In" [ref=e151] [cursor=pointer]:
+            - /url: http://localhost/Telemed/public/login
+          - link "Create Account" [ref=e152] [cursor=pointer]:
+            - /url: http://localhost/Telemed/public/register
+      - generic [ref=e153]:
+        - paragraph [ref=e154]: This platform is for non-emergency consultations. For a medical emergency, seek in-person care immediately.
+        - paragraph [ref=e155]: © 2026 CLSU Infirmary. All rights reserved.

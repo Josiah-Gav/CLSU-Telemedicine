@@ -1,0 +1,48 @@
+- generic [ref=f4e2]:
+  - generic [ref=f4e3]:
+    - generic [ref=f4e4]:
+      - link [ref=f4e5] [cursor=pointer]:
+        - /url: /
+        - img "CLSU logo" [ref=f4e7]
+        - generic [ref=f4e8]: CLSU CampusTelemedicine
+      - heading "Quality care, right on campus." [level=1] [ref=f4e9]
+      - paragraph [ref=f4e10]: Connect with licensed healthcare professionals anytime, anywhere.
+      - generic [ref=f4e11]:
+        - generic [ref=f4e12]:
+          - generic [ref=f4e13]: 💬
+          - generic [ref=f4e14]:
+            - generic [ref=f4e15]: Virtual Consultations
+            - generic [ref=f4e16]: Talk to doctors via secure video calls.
+        - generic [ref=f4e17]:
+          - generic [ref=f4e18]: 🔒
+          - generic [ref=f4e19]:
+            - generic [ref=f4e20]: Secure & Private
+            - generic [ref=f4e21]: Your health information is always protected.
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]: 📅
+          - generic [ref=f4e24]:
+            - generic [ref=f4e25]: Easy Appointments
+            - generic [ref=f4e26]: Book, reschedule, and manage appointments with ease.
+    - generic [ref=f4e27]: Secure Connection • CLSU Telemedicine
+  - generic [ref=f4e29]:
+    - generic [ref=f4e30]:
+      - heading "Welcome back" [level=2] [ref=f4e31]
+      - paragraph [ref=f4e32]: Sign in to your CLSU Campus Telemedicine account
+    - link "← Back to welcome" [ref=f4e34] [cursor=pointer]:
+      - /url: http://telemed.test
+    - generic [ref=f4e35]:
+      - generic [ref=f4e36]:
+        - generic [ref=f4e37]: Email
+        - textbox "Email" [active] [ref=f4e38]
+      - generic [ref=f4e39]:
+        - generic [ref=f4e40]: Password
+        - generic [ref=f4e41]:
+          - textbox "Password" [ref=f4e43]
+          - button "Show password" [ref=f4e44] [cursor=pointer]
+      - generic [ref=f4e49]:
+        - checkbox "Remember me" [ref=f4e50]
+        - generic [ref=f4e51]: Remember me
+      - generic [ref=f4e52]:
+        - link "Forgot your password?" [ref=f4e54] [cursor=pointer]:
+          - /url: http://telemed.test/forgot-password
+        - button "Log in" [ref=f4e56] [cursor=pointer]

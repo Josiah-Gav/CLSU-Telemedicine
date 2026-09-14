@@ -1,0 +1,117 @@
+- generic [ref=f48e3]:
+  - navigation
+  - navigation [ref=f48e4]:
+    - generic [ref=f48e5]:
+      - link "Dashboard" [ref=f48e6] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/dashboard
+      - link "Consultation Inbox" [ref=f48e9] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/consultation-inbox
+      - link "Follow-up Requests" [ref=f48e12] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/follow-up-requests
+      - link "Scheduled Consultations" [ref=f48e15] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/scheduled_consultation
+      - link "Consultation History" [ref=f48e18] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/consultation-history
+  - link "Active Consultations" [ref=f48e21] [cursor=pointer]:
+    - /url: http://telemed.test/physicians/7/active_consultation
+  - generic [ref=f48e24]:
+    - banner [ref=f48e25]:
+      - generic [ref=f48e26]:
+        - heading "Dashboard" [level=2] [ref=f48e28]
+        - generic [ref=f48e29]:
+          - button "Notifications" [ref=f48e31] [cursor=pointer]
+          - button "Account menu" [ref=f48e37] [cursor=pointer]
+    - main [ref=f48e40]:
+      - generic [ref=f48e42]:
+        - generic [ref=f48e44]:
+          - paragraph [ref=f48e45]: Physician Dashboard
+          - heading "Hello Doc Bugs!" [level=2] [ref=f48e46]
+        - generic [ref=f48e48]:
+          - generic [ref=f48e49]:
+            - heading "Current Consultation Intake" [level=3] [ref=f48e50]
+            - link "Create Schedule" [ref=f48e51] [cursor=pointer]:
+              - /url: http://telemed.test/physicians/7/consultation-intake
+          - paragraph [ref=f48e52]: "Today's hours: 8:00 AM - 12:00 PM, 1:00 PM - 4:00 PM"
+          - generic [ref=f48e53]:
+            - generic [ref=f48e56]:
+              - paragraph [ref=f48e57]: Accepting New Consultations
+              - paragraph [ref=f48e58]:
+                - text: Overtime Intake ·
+                - generic [ref=f48e59]: Started 7:54 AM
+            - button "Close Intake" [ref=f48e61] [cursor=pointer]
+        - region [ref=f48e62]:
+          - heading "Right Now" [level=2] [ref=f48e63]
+          - paragraph [ref=f48e64]: Always current, not affected by the date filter below.
+          - generic [ref=f48e65]:
+            - link "0 consultations active right now" [ref=f48e66] [cursor=pointer]:
+              - /url: http://telemed.test/physicians/7/active_consultation
+              - paragraph [ref=f48e67]: Active Consultation now
+              - paragraph [ref=f48e68]: "0"
+              - paragraph [ref=f48e69]: No consultation in progress.
+            - link "0 consultations scheduled ahead" [ref=f48e70] [cursor=pointer]:
+              - /url: http://telemed.test/physicians/7/scheduled_consultation
+              - paragraph [ref=f48e71]: Scheduled Consultation ahead
+              - paragraph [ref=f48e72]: "0"
+        - generic [ref=f48e73]:
+          - generic [ref=f48e75]:
+            - generic [ref=f48e76]:
+              - generic [ref=f48e77]: Showing
+              - combobox "Showing" [ref=f48e78]:
+                - option "Today"
+                - option "This Week"
+                - option "This Month" [selected]
+                - option "Last 30 Days"
+                - option "This Year"
+                - option "Custom Range"
+            - paragraph [ref=f48e79]: Historical analytics only — 'Active now' and 'Scheduled ahead' above always show current state, regardless of this filter.
+          - button "Export" [ref=f48e82] [cursor=pointer]
+        - region [ref=f48e87]:
+          - generic [ref=f48e89]:
+            - heading "My Analytics — Selected Period" [level=2] [ref=f48e90]
+            - paragraph [ref=f48e91]: Scoped to your own assigned consultations only.
+          - generic [ref=f48e92]:
+            - generic [ref=f48e93]:
+              - paragraph [ref=f48e94]: Completed
+              - paragraph [ref=f48e95]: "4"
+              - paragraph [ref=f48e96]: Completed during this period
+            - generic [ref=f48e97]:
+              - paragraph [ref=f48e98]: Completion Rate
+              - paragraph [ref=f48e99]: 100%
+              - paragraph [ref=f48e100]: 4 of 4 concluded requests · of requests submitted this period
+              - paragraph [ref=f48e101]: Completed consultations as a percentage of concluded requests (completed + rejected + cancelled). In-progress requests are excluded.
+          - generic [ref=f48e102]:
+            - heading "My consultation volume, by submission date" [level=3] [ref=f48e105]
+            - generic [ref=f48e106]:
+              - img "Line chart of my consultation volume by submission date for the selected period" [ref=f48e108]
+              - group [ref=f48e109]:
+                - generic "View data as table" [ref=f48e110] [cursor=pointer]
+          - generic [ref=f48e111]:
+            - heading "Status distribution" [level=3] [ref=f48e114]
+            - generic [ref=f48e115]:
+              - img "Horizontal bar chart of my consultations by status for the selected period" [ref=f48e117]
+              - group [ref=f48e118]:
+                - generic "View data as table" [ref=f48e119] [cursor=pointer]
+          - generic [ref=f48e120]:
+            - generic [ref=f48e121]:
+              - heading "Initial vs Follow-up" [level=3] [ref=f48e124]
+              - generic [ref=f48e125]:
+                - img "Proportion of my consultations that are initial versus follow-up" [ref=f48e127]
+                - group [ref=f48e128]:
+                  - generic "View data as table" [ref=f48e129] [cursor=pointer]
+            - generic [ref=f48e130]:
+              - heading "Priority mix" [level=3] [ref=f48e133]
+              - generic [ref=f48e134]:
+                - img "Proportion of my consultations that are High versus Normal priority" [ref=f48e136]
+                - group [ref=f48e137]:
+                  - generic "View data as table" [ref=f48e138] [cursor=pointer]
+        - region [ref=f48e139]:
+          - generic [ref=f48e141]:
+            - heading "What My Patients Are Reporting" [level=2] [ref=f48e142]
+            - paragraph [ref=f48e143]: Based on initial requests only. Follow-up consultations repeat the original request's symptoms, so including them would count the same report more than once.
+          - generic [ref=f48e144]:
+            - heading "Most reported symptoms" [level=3] [ref=f48e147]
+            - generic [ref=f48e148]:
+              - img "Horizontal bar chart of the top standardized symptoms across 2 of my requests with recorded symptoms" [ref=f48e150]
+              - group [ref=f48e151]:
+                - generic "View data as table" [ref=f48e152] [cursor=pointer]
+              - paragraph [ref=f48e153]: Out of 2 of my initial requests with at least one recorded symptom.

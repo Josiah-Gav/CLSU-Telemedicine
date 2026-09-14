@@ -1,0 +1,118 @@
+- generic [ref=f14e3]:
+  - navigation [ref=f14e4]:
+    - complementary [ref=f14e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f14e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f14e8]
+        - generic [ref=f14e9]: CLSU Telemedicine
+      - generic [ref=f14e11]:
+        - button [ref=f14e12] [cursor=pointer]
+        - link "Dashboard" [ref=f14e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "New Consultation" [ref=f14e19] [cursor=pointer]:
+          - /url: http://telemed.test/newconsultation
+        - link "Consultation History" [ref=f14e23] [cursor=pointer]:
+          - /url: http://telemed.test/consultations/history
+      - generic [ref=f14e31]:
+        - link "Profile" [ref=f14e32] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f14e34] [cursor=pointer]
+  - generic [ref=f14e35]:
+    - banner [ref=f14e36]:
+      - generic [ref=f14e37]:
+        - heading "New Consultation" [level=2] [ref=f14e39]
+        - button "Notifications" [ref=f14e42] [cursor=pointer]:
+          - generic [ref=f14e145]: "4"
+    - main [ref=f14e45]:
+      - generic [ref=f14e48]:
+        - generic [ref=f14e51]:
+          - paragraph [ref=f14e52]: Consultations Available
+          - paragraph [ref=f14e53]: You can submit a new consultation request.
+        - generic [ref=f14e55]:
+          - button "1 Patient Information Provide your details" [ref=f14e56] [cursor=pointer]:
+            - generic [ref=f14e57]: "1"
+            - generic [ref=f14e58]:
+              - paragraph [ref=f14e59]: Patient Information
+              - paragraph [ref=f14e60]: Provide your details
+          - button "2 Reason Why you're consulting online" [ref=f14e61] [cursor=pointer]:
+            - generic [ref=f14e62]: "2"
+            - generic [ref=f14e63]:
+              - paragraph [ref=f14e64]: Reason
+              - paragraph [ref=f14e65]: Why you're consulting online
+          - button "3 Symptoms Describe your condition" [ref=f14e66] [cursor=pointer]:
+            - generic [ref=f14e67]: "3"
+            - generic [ref=f14e68]:
+              - paragraph [ref=f14e69]: Symptoms
+              - paragraph [ref=f14e70]: Describe your condition
+          - button "4 Review Review your request" [ref=f14e71] [cursor=pointer]:
+            - generic [ref=f14e72]: "4"
+            - generic [ref=f14e73]:
+              - paragraph [ref=f14e74]: Review
+              - paragraph [ref=f14e75]: Review your request
+          - button "5 Submitted Request will be reviewed" [disabled] [ref=f14e76]:
+            - generic [ref=f14e77]: "5"
+            - generic [ref=f14e78]:
+              - paragraph [ref=f14e79]: Submitted
+              - paragraph [ref=f14e80]: Request will be reviewed
+        - generic [ref=f14e82]:
+          - generic [ref=f14e201]:
+            - generic [ref=f14e202]:
+              - heading "Symptoms" [level=3] [ref=f14e203]
+              - paragraph [ref=f14e204]: "You have selected 1 symptom: Headache"
+            - generic [ref=f14e205]:
+              - generic [ref=f14e206]:
+                - generic [ref=f14e207]:
+                  - button "Headache" [active] [ref=f14e208] [cursor=pointer]
+                  - button "Fever" [ref=f14e213] [cursor=pointer]
+                  - button "Cough" [ref=f14e218] [cursor=pointer]
+                  - button "Sore Throat" [ref=f14e223] [cursor=pointer]
+                  - button "Body Pain" [ref=f14e228] [cursor=pointer]
+                  - button "Fatigue" [ref=f14e233] [cursor=pointer]
+                  - button "Nausea / Vomiting" [ref=f14e238] [cursor=pointer]
+                  - button "Diarrhea" [ref=f14e243] [cursor=pointer]
+                  - button "Runny Nose" [ref=f14e248] [cursor=pointer]
+                  - button "Shortness of Breath" [ref=f14e253] [cursor=pointer]
+                  - button "Loss of Appetite" [ref=f14e258] [cursor=pointer]
+                  - button "Abdominal Pain" [ref=f14e263] [cursor=pointer]
+                  - button "Others Add symptoms not listed above" [ref=f14e268] [cursor=pointer]:
+                    - generic [ref=f14e272]:
+                      - text: Others
+                      - generic [ref=f14e273]: Add symptoms not listed above
+                - generic [ref=f14e274]:
+                  - text: Additional Notes (Optional)
+                  - paragraph [ref=f14e275]: Provide any additional details about your symptoms.
+                  - textbox "Type your message..." [ref=f14e276]
+              - generic [ref=f14e281]:
+                - paragraph [ref=f14e282]: Symptom details
+                - paragraph [ref=f14e283]: Each selected symptom can have a different date, time, and severity.
+                - generic [ref=f14e285]:
+                  - generic [ref=f14e286]:
+                    - generic [ref=f14e287]:
+                      - paragraph [ref=f14e288]: Headache
+                      - paragraph [ref=f14e289]: Track the onset and severity for this symptom.
+                    - button [ref=f14e290] [cursor=pointer]
+                  - generic [ref=f14e293]:
+                    - generic [ref=f14e294]:
+                      - text: Date
+                      - textbox [ref=f14e295]
+                    - generic [ref=f14e296]:
+                      - text: Time
+                      - textbox [ref=f14e297]
+                  - generic [ref=f14e298]:
+                    - paragraph [ref=f14e299]: Severity
+                    - generic [ref=f14e300]:
+                      - button "1 Very Mild" [ref=f14e301] [cursor=pointer]:
+                        - generic [ref=f14e302]: "1"
+                        - generic [ref=f14e303]: Very Mild
+                      - button "2 Mild" [ref=f14e304] [cursor=pointer]:
+                        - generic [ref=f14e305]: "2"
+                        - generic [ref=f14e306]: Mild
+                      - button "3 Moderate" [ref=f14e307] [cursor=pointer]:
+                        - generic [ref=f14e308]: "3"
+                        - generic [ref=f14e309]: Moderate
+                      - button "4 Severe" [ref=f14e310] [cursor=pointer]:
+                        - generic [ref=f14e311]: "4"
+                        - generic [ref=f14e312]: Severe
+          - generic [ref=f14e142]:
+            - button "Back" [ref=f14e199] [cursor=pointer]
+            - button "Next" [ref=f14e144] [cursor=pointer]

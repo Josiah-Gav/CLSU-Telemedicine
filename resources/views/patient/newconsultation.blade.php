@@ -25,6 +25,13 @@
              false so a stale page cannot keep offering a submission it knows
              will fail. --}}
         intakeAvailable: @json($intakeAvailable ?? true),
+        {{-- Common-reason checkboxes are a shortcut for filling the reason
+             textarea below and nothing more: they carry no name attribute, are
+             never submitted, and are never stored. online_reason remains the
+             single submitted value, so ConsultationController::store()'s
+             existing validation is unchanged. --}}
+        selectedReasons: [],
+        onlineReason: '',
         selectedSymptomsDisplay() { return this.selectedSymptoms.map(s => s.name).join(', '); }, 
         selectedSymptomsPhrase() { return this.selectedSymptoms.length === 1 ? this.selectedSymptoms[0].name.toLowerCase() : this.selectedSymptoms.map(s => s.name.toLowerCase()).join(', '); }, 
         isSymptomSelected(symptom) { return this.selectedSymptoms.some(s => s.name === symptom); }, 
@@ -32,6 +39,64 @@
         addCustomSymptom() { const value = this.customSymptomInput.trim(); if (!value) { return; } if (!this.selectedSymptoms.some(s => s.name.toLowerCase() === value.toLowerCase())) { this.selectedSymptoms.push({ name: value, date: '', time: '', severity: 3, custom: true }); } this.customSymptomInput = ''; this.showCustomSymptomInput = true; }, 
         removeSymptom(name) { const index = this.selectedSymptoms.findIndex(s => s.name === name); if (index > -1) { this.selectedSymptoms.splice(index, 1); } }, 
         toggleSymptom(symptom) { const index = this.selectedSymptoms.findIndex(s => s.name === symptom); if (index > -1) { this.selectedSymptoms.splice(index, 1); } else { this.selectedSymptoms.push({ name: symptom, date: '', time: '', severity: 3 }); } },
+        // Checking a common reason writes its phrase into the reason textarea;
+        // unchecking takes that same phrase back out. The text is edited in
+        // place rather than rebuilt from selectedReasons on purpose: whatever
+        // the patient typed themselves is never ours to rewrite, so the only
+        // thing a toggle may touch is the one phrase it owns.
+        toggleCommonReason(reason) {
+            const index = this.selectedReasons.indexOf(reason);
+
+            if (index > -1) {
+                this.selectedReasons.splice(index, 1);
+                this.removeCommonReasonText(reason);
+            } else {
+                this.selectedReasons.push(reason);
+                this.appendCommonReasonText(reason);
+            }
+        },
+        appendCommonReasonText(reason) {
+            const current = this.onlineReason.trim().replace(/[;,\s]+$/, '');
+
+            if (!current) {
+                this.onlineReason = reason;
+                return;
+            }
+
+            // A finished sentence the patient wrote gets a space after it; a
+            // running list of reasons gets the '; ' separator it is built with.
+            this.onlineReason = current + (/[.!?]$/.test(current) ? ' ' : '; ') + reason;
+        },
+        removeCommonReasonText(reason) {
+            const at = this.onlineReason.indexOf(reason);
+
+            // The patient reworded or deleted the phrase we inserted, so it is
+            // their text now — unchecking the box must leave the field alone.
+            if (at === -1) {
+                return;
+            }
+
+            let start = at;
+            let end = at + reason.length;
+            const separatorBefore = this.onlineReason.slice(0, start).match(/[;,]\s*$/);
+
+            // Take the separator that joined this phrase to the rest of the
+            // list with it, preferring the one in front so removing 'B' from
+            // 'A; B. note' leaves 'A. note' rather than 'A; . note'.
+            if (separatorBefore) {
+                start -= separatorBefore[0].length;
+            } else {
+                const separatorAfter = this.onlineReason.slice(end).match(/^\s*[;,]\s*/);
+
+                if (separatorAfter) {
+                    end += separatorAfter[0].length;
+                }
+            }
+
+            this.onlineReason = (this.onlineReason.slice(0, start) + this.onlineReason.slice(end))
+                .replace(/^[;,.\s]+/, '')
+                .trim();
+        },
         handleFiles(event) {
             const files = Array.from(event.target.files || []);
             this.uploadedFiles = files;
@@ -83,21 +148,21 @@
                 this.validationError('Consultation intake is currently unavailable. Please try again later.');
                 return false;
             }
-            if (step === 3 && this.selectedSymptoms.length === 0) {
-                this.validationError('Please add at least one symptom before proceeding to additional details.');
-                return false;
-            }
             if (step === 3) {
-                const futureSymptom = this.firstFutureSymptom();
-                if (futureSymptom) {
-                    this.validationError(`The onset date/time for '${futureSymptom.name}' cannot be in the future.`);
+                const reason = this.$refs.consultationForm.querySelector('[name=&quot;online_reason&quot;]')?.value?.trim() || '';
+                if (!reason) {
+                    this.validationError('Please provide a reason for seeking online consultation before proceeding to symptoms.');
                     return false;
                 }
             }
+            if (step === 4 && this.selectedSymptoms.length === 0) {
+                this.validationError('Please add at least one symptom before proceeding to review.');
+                return false;
+            }
             if (step === 4) {
-                const reason = this.$refs.consultationForm.querySelector('[name=&quot;online_reason&quot;]')?.value?.trim() || '';
-                if (!reason) {
-                    this.validationError('Please provide a reason for seeking online consultation before reviewing your request.');
+                const futureSymptom = this.firstFutureSymptom();
+                if (futureSymptom) {
+                    this.validationError(`The onset date/time for '${futureSymptom.name}' cannot be in the future.`);
                     return false;
                 }
             }
@@ -284,15 +349,15 @@
                         <button type="button" @click="if(currentStep < 5) goToStep(2)" :class="currentStep === 2 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 2 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">2</span>
                             <div>
-                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Symptoms</p>
-                                <p class="mt-1 text-sm font-semibold" :class="currentStep === 2 ? 'text-slate-900' : 'text-slate-500'">Describe your condition</p>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reason</p>
+                                <p class="mt-1 text-sm font-semibold" :class="currentStep === 2 ? 'text-slate-900' : 'text-slate-500'">Why you're consulting online</p>
                             </div>
                         </button>
                         <button type="button" @click="if(currentStep < 5) goToStep(3)" :class="currentStep === 3 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
                             <span :class="currentStep === 3 ? 'bg-brand-green text-white' : 'bg-slate-200 text-slate-700'" class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold">3</span>
                             <div>
-                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Additional Details</p>
-                                <p class="mt-1 text-sm font-semibold" :class="currentStep === 3 ? 'text-slate-900' : 'text-slate-500'">Add other information</p>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Symptoms</p>
+                                <p class="mt-1 text-sm font-semibold" :class="currentStep === 3 ? 'text-slate-900' : 'text-slate-500'">Describe your condition</p>
                             </div>
                         </button>
                         <button type="button" @click="if(currentStep < 5) goToStep(4)" :class="currentStep === 4 ? 'border-brand-green bg-white shadow-sm' : 'border-transparent bg-slate-50'" class="flex items-start gap-3 rounded-3xl border p-4 text-left transition">
@@ -417,9 +482,74 @@
                             </div>
                         </div>
 
-<!-- STEP 2 SYMPTOMS INTAKE -->
+<!-- STEP 2 REASON FOR ONLINE CONSULTATION / ATTACHMENTS -->
 
                         <div x-show="currentStep === 2" x-cloak class="space-y-4">
+                            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+
+                                <h3 class="text-lg font-semibold text-gray-900">Reason for Online Consultation</h3>
+                                <p class="mt-1 text-sm text-gray-500">Tell us why you're seeking an online consultation today, and optionally attach any supporting images or documents.</p>
+
+                                <div class="mt-6 space-y-6">
+                                    <fieldset>
+                                        <legend class="block text-sm font-medium text-gray-700">Common reasons for online consultation</legend>
+                                        <p class="mt-1 mb-3 text-sm text-gray-500">Tick any that apply and they are added to the reason below. You can still edit that text or add your own explanation in your own words.</p>
+                                        <div class="grid gap-2 sm:grid-cols-2">
+                                            <template x-for="reason in ['No available transportation', 'Flooding or severe weather', &quot;It's late at night&quot;, 'Unable to travel to the infirmary', 'Difficulty moving or walking', 'Bedridden', 'No available companion', 'Currently off campus', 'Class or work commitments', 'Infirmary temporarily unavailable']" :key="reason">
+                                                <label :class="selectedReasons.includes(reason) ? 'border-green-200 bg-green-50 text-slate-900' : 'border-gray-200 bg-white text-slate-700'" class="flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition hover:border-slate-300 hover:bg-slate-50">
+                                                    <input type="checkbox" :checked="selectedReasons.includes(reason)" @change="toggleCommonReason(reason)" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                                    <span x-text="reason"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </fieldset>
+
+                                    <div>
+                                        <label for="online_reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for seeking online consultation</label>
+                                        <textarea id="online_reason" name="online_reason" x-ref="online_reason" x-model="onlineReason" rows="4" required class="mt-1 block w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="Describe why you are seeking online consultation today."></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Attachments / Images (Optional)</label>
+                                        <div class="flex justify-center rounded-3xl border border-dashed border-gray-300 px-6 pt-5 pb-6 bg-slate-50 hover:bg-slate-100 transition relative">
+                                            <div class="space-y-1 text-center">
+                                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                </svg>
+                                                <div class="flex text-sm text-gray-600 justify-center">
+                                                    <label for="attachments" class="relative cursor-pointer rounded-md font-semibold text-emerald-600 hover:text-emerald-500 focus-within:outline-none">
+                                                        <span>Upload files</span>
+                                                        <input id="attachments" name="attachments[]" type="file" class="sr-only" multiple accept="image/*" x-ref="attachmentsInput" @change="handleFiles($event)">
+                                                    </label>
+                                                    <p class="pl-1">or drag and drop</p>
+                                                </div>
+                                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <template x-if="filePreviews.length > 0">
+                                    <div class="mt-6">
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Selected Attachments Preview</p>
+                                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                            <template x-for="(image, index) in filePreviews" :key="index">
+                                                <div class="relative group h-24 rounded-2xl border border-gray-200 overflow-hidden bg-gray-100 shadow-sm">
+                                                    <img :src="image" class="h-full w-full object-cover">
+                                                    <button type="button" @click="removeFile(index)" class="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-red-600 shadow hover:bg-red-50">
+                                                        &times;
+                                                    </button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                            </div>
+                        </div>
+
+                        <!-- STEP 3 SYMPTOMS INTAKE -->
+                        <div x-show="currentStep === 3" x-cloak class="space-y-4">
                             <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                                 <div class="pb-4 border-b border-gray-200">
                                     <h3 class="text-lg font-semibold text-gray-900">Symptoms</h3>
@@ -523,58 +653,6 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- STEP 3 PANELS PLACEHOLDER (ADD YOUR ADDITIONAL CODE FIELDS HERE IN FUTURE) -->
-                        <div x-show="currentStep === 3" x-cloak class="space-y-4">
-                            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                                
-                                <h3 class="text-lg font-semibold text-gray-900">Additional Details</h3>
-                                <p class="mt-1 text-sm text-gray-500">Provide optional context images or medical documentation regarding your ongoing condition symptoms.</p>
-                                
-                                <div class="mt-6 space-y-6">
-                                    <div>
-                                        <label for="online_reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for seeking online consultation</label>
-                                        <textarea id="online_reason" name="online_reason" x-ref="online_reason" rows="4" required class="mt-1 block w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-green-100" placeholder="Describe why you are seeking online consultation today."></textarea>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Attachments / Images (Optional)</label>
-                                        <div class="flex justify-center rounded-3xl border border-dashed border-gray-300 px-6 pt-5 pb-6 bg-slate-50 hover:bg-slate-100 transition relative">
-                                            <div class="space-y-1 text-center">
-                                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                                <div class="flex text-sm text-gray-600 justify-center">
-                                                    <label for="attachments" class="relative cursor-pointer rounded-md font-semibold text-emerald-600 hover:text-emerald-500 focus-within:outline-none">
-                                                        <span>Upload files</span>
-                                                        <input id="attachments" name="attachments[]" type="file" class="sr-only" multiple accept="image/*" x-ref="attachmentsInput" @change="handleFiles($event)">
-                                                    </label>
-                                                    <p class="pl-1">or drag and drop</p>
-                                                </div>
-                                                <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <template x-if="filePreviews.length > 0">
-                                    <div class="mt-6">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Selected Attachments Preview</p>
-                                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                                            <template x-for="(image, index) in filePreviews" :key="index">
-                                                <div class="relative group h-24 rounded-2xl border border-gray-200 overflow-hidden bg-gray-100 shadow-sm">
-                                                    <img :src="image" class="h-full w-full object-cover">
-                                                    <button type="button" @click="removeFile(index)" class="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-red-600 shadow hover:bg-red-50">
-                                                        &times;
-                                                    </button>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </template>
-
                             </div>
                         </div>
 

@@ -60,10 +60,6 @@
                         <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in-out duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" x-cloak class="whitespace-nowrap">{{ __('Scheduled Consultations') }}</span>
                     </x-nav-link>
-                    <x-nav-link :href="route('physician.consultation_intake', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_intake')">
-                        <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg>
-                        <span x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in-out duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" x-cloak class="whitespace-nowrap">{{ __('Consultation Intake') }}</span>
-                    </x-nav-link>
                     <x-nav-link :href="route('physician.consultation_history', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_history')">
                         <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in-out duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" x-cloak class="whitespace-nowrap">{{ __('Consultation History') }}</span>
@@ -329,7 +325,6 @@
             'history' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
             'active' => 'M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z',
             'scheduled' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5',
-            'intake' => 'M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75',
             'users' => 'M12 4.354a4 4 0 014 4V7h1.5a2.5 2.5 0 012.5 2.5v11a1 1 0 01-1 1H4a1 1 0 01-1-1v-11a2.5 2.5 0 012.5-2.5H8V8.354a4 4 0 014-4z',
             'new' => 'M12 4v16m8-8H4',
         ];
@@ -361,7 +356,6 @@
                 <x-mobile-nav-icon :href="route('physician.consultation_inbox', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_inbox')" :path="$navIcon['inbox']" label="Consultation Inbox" />
                 <x-mobile-nav-icon :href="route('physician.follow_up_requests', ['physician' => Auth::user()])" :active="request()->routeIs('physician.follow_up_requests')" :path="$navIcon['follow_up']" label="Follow-up Requests" />
                 <x-mobile-nav-icon :href="route('physician.scheduled_consultation', ['physician' => Auth::user()])" :active="request()->routeIs('physician.scheduled_consultation')" :path="$navIcon['scheduled']" label="Scheduled Consultations" />
-                <x-mobile-nav-icon :href="route('physician.consultation_intake', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_intake')" :path="$navIcon['intake']" label="Consultation Intake" />
                 <x-mobile-nav-icon :href="route('physician.consultation_history', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_history')" :path="$navIcon['history']" label="Consultation History" />
             @elseif(Auth::check() && Auth::user()->role === 'admin')
                 <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" />

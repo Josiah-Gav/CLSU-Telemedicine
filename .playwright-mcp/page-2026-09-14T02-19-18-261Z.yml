@@ -1,0 +1,133 @@
+- generic [ref=f53e3]:
+  - navigation [ref=f53e4]:
+    - complementary [ref=f53e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f53e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f53e8]
+        - generic [ref=f53e9]: CLSU Telemedicine
+      - generic [ref=f53e11]:
+        - button [ref=f53e12] [cursor=pointer]
+        - link "Dashboard" [ref=f53e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "User Management" [ref=f53e19] [cursor=pointer]:
+          - /url: http://telemed.test/admin/users
+      - generic [ref=f53e27]:
+        - link "Profile" [ref=f53e28] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f53e30] [cursor=pointer]
+  - generic [ref=f53e31]:
+    - banner [ref=f53e32]:
+      - generic [ref=f53e33]:
+        - heading "Admin Dashboard" [level=2] [ref=f53e35]
+        - button "Notifications" [ref=f53e38] [cursor=pointer]
+    - main [ref=f53e41]:
+      - generic [ref=f53e43]:
+        - generic [ref=f53e45]:
+          - paragraph [ref=f53e46]: Administrator
+          - heading "Hello Admin Admin" [level=2] [ref=f53e47]
+        - generic [ref=f53e48]:
+          - generic [ref=f53e50]:
+            - generic [ref=f53e51]:
+              - generic [ref=f53e52]: Showing
+              - combobox "Showing" [ref=f53e53]:
+                - option "Today"
+                - option "This Week"
+                - option "This Month"
+                - option "Last 30 Days" [selected]
+                - option "This Year"
+                - option "Custom Range"
+            - paragraph [ref=f53e54]: Applies to service-health, case-mix, and symptom analytics below. 'In flight now' always shows current state.
+          - button "Export" [ref=f53e57] [cursor=pointer]
+        - region [ref=f53e62]:
+          - heading "Service Health" [level=2] [ref=f53e65]
+          - generic [ref=f53e66]:
+            - generic [ref=f53e67]:
+              - paragraph [ref=f53e68]: Total requests
+              - paragraph [ref=f53e69]: "12"
+              - paragraph [ref=f53e70]: Submitted in this period
+            - generic [ref=f53e71]:
+              - paragraph [ref=f53e72]: Completed
+              - paragraph [ref=f53e73]: "10"
+              - paragraph [ref=f53e74]: Of requests submitted this period
+            - generic [ref=f53e75]:
+              - paragraph [ref=f53e76]: Completion Rate
+              - paragraph [ref=f53e77]: 90.9%
+              - paragraph [ref=f53e78]: 10 of 11 concluded requests
+              - paragraph [ref=f53e79]: Completed consultations as a percentage of concluded requests (completed + rejected + cancelled). In-progress requests are excluded.
+            - generic "1 requests currently in flight" [ref=f53e80]:
+              - paragraph [ref=f53e81]: In flight now
+              - paragraph [ref=f53e82]: "1"
+              - paragraph [ref=f53e83]: Current state — not affected by the date filter above
+              - generic [ref=f53e84]:
+                - generic [ref=f53e85]: Pending 0
+                - generic [ref=f53e86]: Reviewed 0
+                - generic [ref=f53e87]: Scheduled 1
+                - generic [ref=f53e88]: Active 0
+        - generic [ref=f53e89]:
+          - heading "Request volume over time" [level=3] [ref=f53e92]
+          - generic [ref=f53e93]:
+            - img "Line chart of system-wide request volume by submission date for the selected period" [ref=f53e95]
+            - group [ref=f53e96]:
+              - generic "View data as table" [ref=f53e97] [cursor=pointer]
+        - region [ref=f53e98]:
+          - heading "Case Mix" [level=2] [ref=f53e101]
+          - generic [ref=f53e102]:
+            - heading "Status distribution" [level=3] [ref=f53e105]
+            - generic [ref=f53e106]:
+              - img "Horizontal bar chart of all requests by status for the selected period" [ref=f53e108]
+              - group [ref=f53e109]:
+                - generic "View data as table" [ref=f53e110] [cursor=pointer]
+          - generic [ref=f53e111]:
+            - generic [ref=f53e112]:
+              - heading "Priority mix" [level=3] [ref=f53e115]
+              - generic [ref=f53e116]:
+                - img "Proportion of all requests that are High versus Normal priority" [ref=f53e118]
+                - group [ref=f53e119]:
+                  - generic "View data as table" [ref=f53e120] [cursor=pointer]
+                - paragraph [ref=f53e121]: Unclaimed pending requests carry the default Normal priority and have not yet been triaged by a nurse.
+            - generic [ref=f53e122]:
+              - heading "Initial vs Follow-up" [level=3] [ref=f53e125]
+              - generic [ref=f53e126]:
+                - img "Proportion of all requests that are initial versus follow-up" [ref=f53e128]
+                - group [ref=f53e129]:
+                  - generic "View data as table" [ref=f53e130] [cursor=pointer]
+        - region [ref=f53e131]:
+          - generic [ref=f53e133]:
+            - heading "What Patients Are Reporting" [level=2] [ref=f53e134]
+            - paragraph [ref=f53e135]: Based on initial requests only. Follow-up consultations repeat the original request's symptoms, so including them would count the same report more than once.
+          - generic [ref=f53e136]:
+            - heading "Most reported symptoms" [level=3] [ref=f53e139]
+            - generic [ref=f53e140]:
+              - img "Horizontal bar chart of the top standardized symptoms across 9 requests with recorded symptoms" [ref=f53e142]
+              - group [ref=f53e143]:
+                - generic "View data as table" [ref=f53e144] [cursor=pointer]
+              - paragraph [ref=f53e145]: Out of 9 initial requests with at least one recorded symptom.
+          - generic [ref=f53e146]:
+            - heading "Most reported custom symptoms" [level=3] [ref=f53e149]
+            - generic [ref=f53e150]:
+              - paragraph [ref=f53e152]: No custom symptom has been reported 3 or more times in this period.
+              - paragraph [ref=f53e153]: Custom symptom terms reported 3 or more times (fewer are hidden to protect patient privacy). Kept separate from the standardized chart above — a differently-worded custom entry for a similar complaint is not automatically merged with it.
+          - generic [ref=f53e154]:
+            - generic [ref=f53e155]:
+              - heading "Symptom severity distribution" [level=3] [ref=f53e158]
+              - generic [ref=f53e159]:
+                - img "Bar chart of symptom severity from 1 to 4, with 3 marked as the pre-selected default" [ref=f53e161]
+                - group [ref=f53e162]:
+                  - generic "View data as table" [ref=f53e163] [cursor=pointer]
+                - paragraph [ref=f53e164]: "Severity 3 is pre-selected when a symptom is added, so this bucket includes patients who did not change it — treat it as a mix of deliberate and default entries, not a peak of moderate cases. Severe (4) reports: 1."
+            - generic [ref=f53e165]:
+              - heading "Custom symptom usage" [level=3] [ref=f53e166]
+              - paragraph [ref=f53e167]: 11.1%
+              - paragraph [ref=f53e168]: 1 of 9 requests included a custom symptom.
+              - heading "Candidates for standardization" [level=4] [ref=f53e169]
+              - paragraph [ref=f53e170]: Custom symptoms reported 3 or more times. Some custom symptom terms are hidden when reported fewer than 3 times, to protect patient privacy.
+              - table [ref=f53e173]:
+                - caption [ref=f53e174]: Custom symptom terms reported three or more times
+                - rowgroup [ref=f53e175]:
+                  - row [ref=f53e176]:
+                    - columnheader "Term" [ref=f53e177]
+                    - columnheader "Reports" [ref=f53e178]
+                - rowgroup [ref=f53e179]:
+                  - row [ref=f53e180]:
+                    - cell "Low frequency (fewer than 3 reports)" [ref=f53e181]
+                    - cell "1 term" [ref=f53e182]

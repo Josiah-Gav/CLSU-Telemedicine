@@ -1,0 +1,76 @@
+- generic [ref=f45e3]:
+  - navigation [ref=f45e4]:
+    - complementary [ref=f45e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f45e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f45e8]
+        - generic [ref=f45e9]: CLSU Telemedicine
+      - generic [ref=f45e11]:
+        - button [ref=f45e12] [cursor=pointer]
+        - link "Dashboard" [ref=f45e15] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/dashboard
+        - link "Consultation Inbox" [ref=f45e19] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/consultation-inbox
+        - link "Follow-up Requests" [ref=f45e23] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/follow-up-requests
+        - link "Active Consultations" [ref=f45e27] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/active_consultation
+        - link "Scheduled Consultations" [ref=f45e31] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/scheduled_consultation
+        - link "Consultation History" [ref=f45e35] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/consultation-history
+      - generic [ref=f45e43]:
+        - link "Profile" [ref=f45e44] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f45e46] [cursor=pointer]
+  - generic [ref=f45e47]:
+    - banner [ref=f45e48]:
+      - generic [ref=f45e49]:
+        - heading "Scheduled Consultations" [level=2] [ref=f45e51]
+        - button "Notifications" [ref=f45e54] [cursor=pointer]
+    - main [ref=f45e57]:
+      - generic [ref=f45e59]:
+        - generic [ref=f45e60]:
+          - button "Scheduled Consultations" [ref=f45e61] [cursor=pointer]
+          - button "Schedule Availability" [active] [ref=f45e62] [cursor=pointer]
+        - generic [ref=f45e74]:
+          - generic [ref=f45e76]:
+            - heading "Create Schedule Availability" [level=3] [ref=f45e77]
+            - paragraph [ref=f45e78]: Generate appointment slots using one date, working hours, duration, and an optional break.
+            - generic [ref=f45e79]:
+              - generic [ref=f45e80]:
+                - generic [ref=f45e81]: Date
+                - textbox [ref=f45e82]: 2026-09-14
+              - generic [ref=f45e83]:
+                - generic [ref=f45e84]: Start Time
+                - textbox [ref=f45e85]: 08:00
+              - generic [ref=f45e86]:
+                - generic [ref=f45e87]: End Time
+                - textbox [ref=f45e88]: 17:00
+              - generic [ref=f45e89]:
+                - generic [ref=f45e90]: Appointment Duration
+                - combobox [ref=f45e91]:
+                  - option "15 minutes"
+                  - option "30 minutes" [selected]
+                  - option "45 minutes"
+                  - option "60 minutes"
+              - generic [ref=f45e92]:
+                - generic [ref=f45e93]: Break Start (Optional)
+                - textbox [ref=f45e94]
+              - generic [ref=f45e95]:
+                - generic [ref=f45e96]: Break End (Optional)
+                - textbox [ref=f45e97]
+            - button "Generate Schedule" [ref=f45e99] [cursor=pointer]
+          - generic [ref=f45e102]:
+            - heading "Saved Schedule Slots" [level=3] [ref=f45e103]
+            - paragraph [ref=f45e104]: Manage upcoming slots and review completed or missed slot outcomes.
+            - generic [ref=f45e105]:
+              - button "Upcoming Slots ( 0 )" [ref=f45e106] [cursor=pointer]:
+                - text: Upcoming Slots (
+                - generic [ref=f45e107]: "0"
+                - text: )
+              - button "Completed & Missed ( 8 )" [ref=f45e108] [cursor=pointer]:
+                - text: Completed & Missed (
+                - generic [ref=f45e109]: "8"
+                - text: )
+            - paragraph [ref=f45e110]: No upcoming slots yet.

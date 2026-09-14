@@ -1,0 +1,50 @@
+- generic [ref=f49e3]:
+  - navigation
+  - navigation [ref=f49e4]:
+    - generic [ref=f49e5]:
+      - link "Dashboard" [ref=f49e6] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/dashboard
+      - link "Consultation Inbox" [ref=f49e9] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/consultation-inbox
+      - link "Follow-up Requests" [ref=f49e12] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/follow-up-requests
+      - link "Scheduled Consultations" [ref=f49e15] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/scheduled_consultation
+      - link "Consultation History" [ref=f49e18] [cursor=pointer]:
+        - /url: http://telemed.test/physicians/7/consultation-history
+  - link "Active Consultations" [ref=f49e21] [cursor=pointer]:
+    - /url: http://telemed.test/physicians/7/active_consultation
+  - generic [ref=f49e24]:
+    - banner [ref=f49e25]:
+      - generic [ref=f49e26]:
+        - heading "Consultation Inbox" [level=2] [ref=f49e28]
+        - generic [ref=f49e29]:
+          - button "Notifications" [ref=f49e31] [cursor=pointer]
+          - button "Account menu" [ref=f49e37] [cursor=pointer]
+    - main [ref=f49e40]:
+      - generic [ref=f49e44]:
+        - generic [ref=f49e45]:
+          - button "Normal Priority ( 1 )" [ref=f49e46] [cursor=pointer]:
+            - text: Normal Priority (
+            - generic [ref=f49e47]: "1"
+            - text: )
+          - button "High Priority ( 0 )" [ref=f49e48] [cursor=pointer]:
+            - text: High Priority (
+            - generic [ref=f49e49]: "0"
+            - text: )
+        - article [ref=f49e51]:
+          - generic [ref=f49e52]:
+            - generic [ref=f49e53]:
+              - generic [ref=f49e54]:
+                - generic [ref=f49e55]: K
+                - generic [ref=f49e56]: Offline
+              - generic [ref=f49e58]:
+                - paragraph [ref=f49e59]: Kim Josiah Gavino
+                - paragraph [ref=f49e60]: Sep. 8, 2026 6:27 PM
+            - generic [ref=f49e61]: Normal Priority
+          - generic [ref=f49e63]:
+            - generic [ref=f49e64]: Scheduled
+            - generic [ref=f49e68]: 3 - Moderate
+          - paragraph [ref=f49e70]: Takeover Available
+          - paragraph [ref=f49e71]: 8:00 PM - 8:30 PM · Sep. 8, 2026
+          - button "Review" [ref=f49e73] [cursor=pointer]

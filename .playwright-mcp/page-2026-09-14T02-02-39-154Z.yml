@@ -1,0 +1,56 @@
+- generic [ref=f17e3]:
+  - navigation [ref=f17e4]:
+    - complementary [ref=f17e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f17e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f17e8]
+        - generic [ref=f17e9]: CLSU Telemedicine
+      - generic [ref=f17e11]:
+        - button [ref=f17e12] [cursor=pointer]
+        - link "Dashboard" [ref=f17e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "New Consultation" [ref=f17e19] [cursor=pointer]:
+          - /url: http://telemed.test/newconsultation
+        - link "Consultation History" [ref=f17e23] [cursor=pointer]:
+          - /url: http://telemed.test/consultations/history
+      - generic [ref=f17e31]:
+        - link "Profile" [ref=f17e32] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f17e34] [cursor=pointer]
+  - generic [ref=f17e35]:
+    - banner [ref=f17e36]:
+      - generic [ref=f17e37]:
+        - heading "Consultation Details" [level=2] [ref=f17e39]
+        - button "Notifications" [ref=f17e42] [cursor=pointer]:
+          - generic [ref=f17e45]: "4"
+    - main [ref=f17e46]:
+      - generic [ref=f17e51]:
+        - generic [ref=f17e53]:
+          - generic [ref=f17e54]:
+            - paragraph [ref=f17e55]: Active Consultation
+            - heading "General Consultation" [level=3] [ref=f17e57]
+          - generic [ref=f17e58]:
+            - generic [ref=f17e59]: Completed
+            - generic [ref=f17e60]:
+              - paragraph [ref=f17e61]: Submitted
+              - paragraph [ref=f17e62]: Aug 05, 2026 @ 07:07 PM
+        - generic [ref=f17e63]:
+          - paragraph [ref=f17e64]: Summary of Symptoms
+          - generic [ref=f17e66]:
+            - paragraph [ref=f17e67]: Abdominal Pain
+            - paragraph [ref=f17e68]: "Started: 2026-08-05 10:07"
+            - paragraph [ref=f17e69]: "Severity: 3"
+        - generic [ref=f17e70]:
+          - paragraph [ref=f17e71]: Reason for Online Consultation
+          - paragraph [ref=f17e72]: "123"
+        - generic [ref=f17e73]:
+          - paragraph [ref=f17e74]: Assigned Nurse
+          - paragraph [ref=f17e75]: Maria Dela Cruz
+        - generic [ref=f17e76]:
+          - paragraph [ref=f17e77]: Assigned Physician
+          - paragraph [ref=f17e78]: Dr. Bugs Bunny
+        - generic [ref=f17e79]:
+          - link "View Chats & Assessment" [ref=f17e80] [cursor=pointer]:
+            - /url: http://telemed.test/consultation-sessions/5/messaging
+          - link "Back to Dashboard" [ref=f17e81] [cursor=pointer]:
+            - /url: http://telemed.test/dashboard

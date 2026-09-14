@@ -1,0 +1,96 @@
+- generic [ref=f14e3]:
+  - navigation [ref=f14e4]:
+    - complementary [ref=f14e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f14e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f14e8]
+        - generic [ref=f14e9]: CLSU Telemedicine
+      - generic [ref=f14e11]:
+        - button [ref=f14e12] [cursor=pointer]
+        - link "Dashboard" [ref=f14e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "New Consultation" [ref=f14e19] [cursor=pointer]:
+          - /url: http://telemed.test/newconsultation
+        - link "Consultation History" [ref=f14e23] [cursor=pointer]:
+          - /url: http://telemed.test/consultations/history
+      - generic [ref=f14e31]:
+        - link "Profile" [ref=f14e32] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f14e34] [cursor=pointer]
+  - generic [ref=f14e35]:
+    - banner [ref=f14e36]:
+      - generic [ref=f14e37]:
+        - heading "New Consultation" [level=2] [ref=f14e39]
+        - button "Notifications" [ref=f14e42] [cursor=pointer]
+    - main [ref=f14e45]:
+      - generic [ref=f14e48]:
+        - generic [ref=f14e51]:
+          - paragraph [ref=f14e52]: Consultations Available
+          - paragraph [ref=f14e53]: You can submit a new consultation request.
+        - generic [ref=f14e55]:
+          - button "1 Patient Information Provide your details" [ref=f14e56] [cursor=pointer]:
+            - generic [ref=f14e57]: "1"
+            - generic [ref=f14e58]:
+              - paragraph [ref=f14e59]: Patient Information
+              - paragraph [ref=f14e60]: Provide your details
+          - button "2 Reason Why you're consulting online" [ref=f14e61] [cursor=pointer]:
+            - generic [ref=f14e62]: "2"
+            - generic [ref=f14e63]:
+              - paragraph [ref=f14e64]: Reason
+              - paragraph [ref=f14e65]: Why you're consulting online
+          - button "3 Symptoms Describe your condition" [ref=f14e66] [cursor=pointer]:
+            - generic [ref=f14e67]: "3"
+            - generic [ref=f14e68]:
+              - paragraph [ref=f14e69]: Symptoms
+              - paragraph [ref=f14e70]: Describe your condition
+          - button "4 Review Review your request" [ref=f14e71] [cursor=pointer]:
+            - generic [ref=f14e72]: "4"
+            - generic [ref=f14e73]:
+              - paragraph [ref=f14e74]: Review
+              - paragraph [ref=f14e75]: Review your request
+          - button "5 Submitted Request will be reviewed" [disabled] [ref=f14e76]:
+            - generic [ref=f14e77]: "5"
+            - generic [ref=f14e78]:
+              - paragraph [ref=f14e79]: Submitted
+              - paragraph [ref=f14e80]: Request will be reviewed
+        - generic [ref=f14e82]:
+          - generic [ref=f14e83]:
+            - generic [ref=f14e84]:
+              - heading "Patient Information" [level=3] [ref=f14e85]
+              - paragraph [ref=f14e86]: Please confirm your details before proceeding.
+            - generic [ref=f14e87]:
+              - generic [ref=f14e88]:
+                - paragraph [ref=f14e89]: Full Name
+                - paragraph [ref=f14e90]: Sandy Squirrel
+              - generic [ref=f14e91]:
+                - paragraph [ref=f14e92]: Student ID Number
+                - paragraph [ref=f14e93]: Student ID Number
+              - generic [ref=f14e94]:
+                - paragraph [ref=f14e95]: Program
+                - paragraph [ref=f14e96]: Course & Year
+            - generic [ref=f14e102]:
+              - paragraph [ref=f14e103]: Please verify your profile information.
+              - paragraph [ref=f14e104]: If any information is incorrect, please update it in your profile settings.
+          - generic [ref=f14e105]:
+            - generic [ref=f14e106]:
+              - heading "Consultation Type" [level=3] [ref=f14e107]
+              - paragraph [ref=f14e108]: Select the type of consultation you need.
+            - generic [ref=f14e109]:
+              - button [ref=f14e110] [cursor=pointer]:
+                - generic [ref=f14e111]:
+                  - paragraph [ref=f14e116]: New Consultation
+                  - paragraph [ref=f14e117]: For general health concerns, minor illnesses, and preventive care.
+              - button [ref=f14e121] [cursor=pointer]:
+                - generic [ref=f14e122]:
+                  - paragraph [ref=f14e127]: Follow-up Consultation
+                  - paragraph [ref=f14e128]: For follow-up checkups or continuation of previous consultation.
+            - generic [ref=f14e132]:
+              - generic [ref=f14e137]:
+                - paragraph [ref=f14e138]: To avoid duplicate requests, please check your active consultations first.
+                - paragraph [ref=f14e139]: If your concern is related to a previous consultation, you may reopen it instead.
+              - link "Go to Follow-up List" [ref=f14e141] [cursor=pointer]:
+                - /url: http://telemed.test/follow-up-list
+          - generic [ref=f14e142]:
+            - link "Cancel" [ref=f14e143] [cursor=pointer]:
+              - /url: http://telemed.test/dashboard
+            - button "Next" [ref=f14e144] [cursor=pointer]

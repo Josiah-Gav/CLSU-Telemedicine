@@ -1,0 +1,49 @@
+- generic [ref=f15e3]:
+  - navigation
+  - navigation [ref=f15e4]:
+    - generic [ref=f15e5]:
+      - link "Dashboard" [ref=f15e6] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+      - link "New Consultation" [ref=f15e9] [cursor=pointer]:
+        - /url: http://telemed.test/newconsultation
+      - link "Consultation History" [ref=f15e12] [cursor=pointer]:
+        - /url: http://telemed.test/consultations/history
+  - generic [ref=f15e15]:
+    - banner [ref=f15e16]:
+      - generic [ref=f15e17]:
+        - heading "Dashboard" [level=2] [ref=f15e19]
+        - generic [ref=f15e20]:
+          - button "Notifications" [ref=f15e22] [cursor=pointer]
+          - button "Account menu" [ref=f15e28] [cursor=pointer]
+    - main [ref=f15e31]:
+      - generic [ref=f15e33]:
+        - generic [ref=f15e35]:
+          - paragraph [ref=f15e36]: Welcome
+          - heading "Hello Sandy!" [level=2] [ref=f15e37]
+        - generic [ref=f15e40]:
+          - paragraph [ref=f15e41]: Consultations Available
+          - paragraph [ref=f15e42]: You can submit a new consultation request right now.
+        - generic [ref=f15e44]:
+          - heading "This Week's Consultation Hours" [level=3] [ref=f15e45]
+          - generic [ref=f15e46]:
+            - generic [ref=f15e47]:
+              - paragraph [ref=f15e48]: Sunday (Sep 13)
+              - paragraph [ref=f15e49]: Closed
+            - generic [ref=f15e50]:
+              - paragraph [ref=f15e51]: Monday (Sep 14) Today
+              - paragraph [ref=f15e52]: 8:00 AM - 12:00 PM, 1:00 PM - 4:00 PM, 8:30 PM - 9:00 PM
+            - generic [ref=f15e53]:
+              - paragraph [ref=f15e54]: Tuesday (Sep 15)
+              - paragraph [ref=f15e55]: Closed
+            - generic [ref=f15e56]:
+              - paragraph [ref=f15e57]: Wednesday (Sep 16)
+              - paragraph [ref=f15e58]: Closed
+            - generic [ref=f15e59]:
+              - paragraph [ref=f15e60]: Thursday (Sep 17)
+              - paragraph [ref=f15e61]: Closed
+            - generic [ref=f15e62]:
+              - paragraph [ref=f15e63]: Friday (Sep 18)
+              - paragraph [ref=f15e64]: Closed
+            - generic [ref=f15e65]:
+              - paragraph [ref=f15e66]: Saturday (Sep 19)
+              - paragraph [ref=f15e67]: Closed

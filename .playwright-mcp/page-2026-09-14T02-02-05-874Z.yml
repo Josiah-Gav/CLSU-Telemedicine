@@ -1,0 +1,103 @@
+- generic [ref=f16e3]:
+  - navigation [ref=f16e4]:
+    - complementary [ref=f16e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f16e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f16e8]
+        - generic [ref=f16e9]: CLSU Telemedicine
+      - generic [ref=f16e11]:
+        - button [ref=f16e12] [cursor=pointer]
+        - link "Dashboard" [ref=f16e15] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - link "New Consultation" [ref=f16e19] [cursor=pointer]:
+          - /url: http://telemed.test/newconsultation
+        - link "Consultation History" [ref=f16e23] [cursor=pointer]:
+          - /url: http://telemed.test/consultations/history
+      - generic [ref=f16e31]:
+        - link "Profile" [ref=f16e32] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f16e34] [cursor=pointer]
+  - generic [ref=f16e35]:
+    - banner [ref=f16e36]:
+      - generic [ref=f16e37]:
+        - heading "Consultation History" [level=2] [ref=f16e39]
+        - button "Notifications" [ref=f16e42] [cursor=pointer]
+    - main [ref=f16e45]:
+      - generic [ref=f16e50]:
+        - generic [ref=f16e51]:
+          - generic [ref=f16e52]:
+            - heading "Your Consultation History" [level=3] [ref=f16e53]
+            - paragraph [ref=f16e54]: Review your past consultation requests and their status.
+          - generic [ref=f16e55]:
+            - button "Export" [ref=f16e58] [cursor=pointer]
+            - link "New Consultation" [ref=f16e63] [cursor=pointer]:
+              - /url: http://telemed.test/consultations/create
+        - generic [ref=f16e66]:
+          - generic [ref=f16e67]:
+            - text: Date Range
+            - combobox "Date Range" [ref=f16e68]:
+              - option "All" [selected]
+              - option "Today"
+              - option "Last 7 Days"
+              - option "Last 30 Days"
+          - generic [ref=f16e69]:
+            - text: Status
+            - combobox "Status" [ref=f16e70]:
+              - option "All Statuses" [selected]
+              - option "Completed"
+              - option "Cancelled"
+              - option "Rejected"
+          - generic [ref=f16e71]:
+            - text: Consultation Type
+            - combobox "Consultation Type" [ref=f16e72]:
+              - option "All Types" [selected]
+              - option "Follow-up"
+              - option "General"
+          - generic [ref=f16e73]:
+            - button "Apply" [ref=f16e74] [cursor=pointer]
+            - link "Reset" [ref=f16e75] [cursor=pointer]:
+              - /url: http://telemed.test/consultations/history
+        - generic [ref=f16e76]:
+          - link "General Consultation Completed Submitted Aug 05, 2026 @ 07:07 PM Completed View details >" [ref=f16e77] [cursor=pointer]:
+            - /url: http://telemed.test/consultations/13
+            - generic [ref=f16e78]:
+              - generic [ref=f16e79]:
+                - paragraph [ref=f16e80]: General Consultation
+                - heading "Completed" [level=4] [ref=f16e81]
+                - paragraph [ref=f16e82]: Submitted Aug 05, 2026 @ 07:07 PM
+              - generic [ref=f16e83]:
+                - generic [ref=f16e84]: Completed
+                - generic [ref=f16e85]: View details >
+          - link "General Consultation Completed Submitted Aug 05, 2026 @ 03:40 PM Completed View details >" [ref=f16e86] [cursor=pointer]:
+            - /url: http://telemed.test/consultations/12
+            - generic [ref=f16e87]:
+              - generic [ref=f16e88]:
+                - paragraph [ref=f16e89]: General Consultation
+                - heading "Completed" [level=4] [ref=f16e90]
+                - paragraph [ref=f16e91]: Submitted Aug 05, 2026 @ 03:40 PM
+              - generic [ref=f16e92]:
+                - generic [ref=f16e93]: Completed
+                - generic [ref=f16e94]: View details >
+          - link "General Consultation Completed Submitted Aug 03, 2026 @ 06:39 PM Completed View details >" [ref=f16e95] [cursor=pointer]:
+            - /url: http://telemed.test/consultations/11
+            - generic [ref=f16e96]:
+              - generic [ref=f16e97]:
+                - paragraph [ref=f16e98]: General Consultation
+                - heading "Completed" [level=4] [ref=f16e99]
+                - paragraph [ref=f16e100]: Submitted Aug 03, 2026 @ 06:39 PM
+              - generic [ref=f16e101]:
+                - generic [ref=f16e102]: Completed
+                - generic [ref=f16e103]: View details >
+          - link "General Consultation Rejected Submitted Jul 14, 2026 @ 06:30 AM Rejected View details >" [ref=f16e104] [cursor=pointer]:
+            - /url: http://telemed.test/consultations/7
+            - generic [ref=f16e105]:
+              - generic [ref=f16e106]:
+                - paragraph [ref=f16e107]: General Consultation
+                - heading "Rejected" [level=4] [ref=f16e108]
+                - paragraph [ref=f16e109]: Submitted Jul 14, 2026 @ 06:30 AM
+              - generic [ref=f16e110]:
+                - generic [ref=f16e111]: Rejected
+                - generic [ref=f16e112]: View details >
+          - generic [ref=f16e113]:
+            - paragraph [ref=f16e114]: Decision for Rejection
+            - paragraph [ref=f16e115]: d pede

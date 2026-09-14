@@ -1,0 +1,108 @@
+- generic [ref=f18e3]:
+  - navigation
+  - navigation [ref=f18e168]:
+    - generic [ref=f18e169]:
+      - link "Dashboard" [ref=f18e170] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+      - link "New Consultation" [ref=f18e173] [cursor=pointer]:
+        - /url: http://telemed.test/newconsultation
+      - link "Consultation History" [ref=f18e176] [cursor=pointer]:
+        - /url: http://telemed.test/consultations/history
+  - generic [ref=f18e35]:
+    - banner [ref=f18e36]:
+      - generic [ref=f18e37]:
+        - heading "Consultation Messaging" [level=2] [ref=f18e39]
+        - generic [ref=f18e40]:
+          - generic [ref=f18e41]:
+            - button "Notifications" [active] [ref=f18e42] [cursor=pointer]:
+              - generic [ref=f18e45]: "4"
+            - generic [ref=f18e179]:
+              - generic [ref=f18e180]:
+                - generic [ref=f18e181]:
+                  - paragraph [ref=f18e182]: Notifications
+                  - paragraph [ref=f18e183]: Recent updates
+                - button "Mark all read" [ref=f18e184] [cursor=pointer]
+              - generic [ref=f18e185]:
+                - button "New 2 hours ago Consultation Completed Your consultation has been completed. You can view the summary and prescription in your consultation history." [ref=f18e186] [cursor=pointer]:
+                  - generic [ref=f18e187]:
+                    - generic [ref=f18e188]: New
+                    - generic [ref=f18e189]: 2 hours ago
+                  - paragraph [ref=f18e190]: Consultation Completed
+                  - paragraph [ref=f18e191]: Your consultation has been completed. You can view the summary and prescription in your consultation history.
+                - 'button "New 9/4/2026 New Message You received a new message for consultation #13." [ref=f18e192] [cursor=pointer]':
+                  - generic [ref=f18e193]:
+                    - generic [ref=f18e194]: New
+                    - generic [ref=f18e195]: 9/4/2026
+                  - paragraph [ref=f18e196]: New Message
+                  - paragraph [ref=f18e197]: "You received a new message for consultation #13."
+                - 'button "New 8/26/2026 New Message You received a new message for consultation #13." [ref=f18e198] [cursor=pointer]':
+                  - generic [ref=f18e199]:
+                    - generic [ref=f18e200]: New
+                    - generic [ref=f18e201]: 8/26/2026
+                  - paragraph [ref=f18e202]: New Message
+                  - paragraph [ref=f18e203]: "You received a new message for consultation #13."
+                - 'button "New 8/26/2026 New Message You received a new message for consultation #13." [ref=f18e204] [cursor=pointer]':
+                  - generic [ref=f18e205]:
+                    - generic [ref=f18e206]: New
+                    - generic [ref=f18e207]: 8/26/2026
+                  - paragraph [ref=f18e208]: New Message
+                  - paragraph [ref=f18e209]: "You received a new message for consultation #13."
+                - button "Read 8/17/2026 Consultation Started Your consultation has started. The physician is now available to assist you." [ref=f18e210] [cursor=pointer]:
+                  - generic [ref=f18e211]:
+                    - generic [ref=f18e212]: Read
+                    - generic [ref=f18e213]: 8/17/2026
+                  - paragraph [ref=f18e214]: Consultation Started
+                  - paragraph [ref=f18e215]: Your consultation has started. The physician is now available to assist you.
+              - link "View all Notifications" [ref=f18e217] [cursor=pointer]:
+                - /url: http://telemed.test/notifications/all
+          - button "Account menu" [ref=f18e221] [cursor=pointer]
+    - main [ref=f18e46]:
+      - generic [ref=f18e48]:
+        - link "Back to Dashboard" [ref=f18e50] [cursor=pointer]:
+          - /url: http://telemed.test/dashboard
+        - generic [ref=f18e53]:
+          - generic [ref=f18e55]:
+            - generic [ref=f18e56]:
+              - generic [aria-hidden] [ref=f18e58]: B
+              - generic [ref=f18e60]:
+                - heading "Bugs Bunny" [level=3] [ref=f18e61]
+                - generic [ref=f18e62]:
+                  - generic [ref=f18e63]: Attending physician
+                  - generic [aria-hidden] [ref=f18e64]: ·
+                  - generic [ref=f18e65]: "Session #5"
+                  - generic [aria-hidden] [ref=f18e66]: ·
+                  - status [ref=f18e67]:
+                    - generic [ref=f18e68]: Offline
+            - generic [ref=f18e71]:
+              - generic [ref=f18e72]: Completed
+              - generic [ref=f18e75]: Completed Sep 14, 2026 @ 07:55 AM
+          - generic [ref=f18e79]:
+            - button "Messages" [ref=f18e80] [cursor=pointer]
+            - button "Details" [ref=f18e83] [cursor=pointer]
+            - button "Patient Details" [ref=f18e86] [cursor=pointer]
+            - button "Assessment" [pressed] [ref=f18e89] [cursor=pointer]
+          - generic [ref=f18e139]:
+            - generic [ref=f18e140]:
+              - generic [ref=f18e141]:
+                - heading "Clinical Documentation" [level=4] [ref=f18e142]
+                - paragraph [ref=f18e143]: Assessment, plan, recommendations, diagnosis, and prescription
+              - generic [ref=f18e144]:
+                - status
+                - generic [ref=f18e145]: Completed
+            - generic [ref=f18e148]:
+              - generic [ref=f18e149]:
+                - paragraph [ref=f18e150]: Diagnosis
+                - paragraph [ref=f18e151]: No diagnosis added yet.
+              - generic [ref=f18e152]:
+                - paragraph [ref=f18e153]: Prescription
+                - paragraph [ref=f18e154]: No prescription uploaded yet.
+              - generic [ref=f18e155]:
+                - paragraph [ref=f18e156]: Assessment
+                - paragraph [ref=f18e157]: Initial assessment pending.
+              - generic [ref=f18e158]:
+                - paragraph [ref=f18e159]: Plan
+                - paragraph [ref=f18e160]: Plan to be documented during consultation.
+              - generic [ref=f18e161]:
+                - paragraph [ref=f18e162]: Recommendations
+                - paragraph [ref=f18e163]: Recommendations to follow after evaluation.
+            - generic [ref=f18e164]: This clinical documentation is locked because the consultation has been completed.

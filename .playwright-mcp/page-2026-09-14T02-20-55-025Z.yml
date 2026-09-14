@@ -1,0 +1,240 @@
+- generic [ref=f56e3]:
+  - navigation
+  - navigation [ref=f56e4]:
+    - generic [ref=f56e5]:
+      - link "Dashboard" [ref=f56e6] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+      - link "User Management" [ref=f56e9] [cursor=pointer]:
+        - /url: http://telemed.test/admin/users
+  - generic [ref=f56e12]:
+    - banner [ref=f56e13]:
+      - generic [ref=f56e14]:
+        - heading "User Management" [level=2] [ref=f56e16]
+        - generic [ref=f56e17]:
+          - button "Notifications" [ref=f56e19] [cursor=pointer]
+          - button "Account menu" [ref=f56e25] [cursor=pointer]
+    - main [ref=f56e28]:
+      - generic [ref=f56e32]:
+        - generic [ref=f56e33]:
+          - heading "Users" [level=3] [ref=f56e34]
+          - link "Create User" [ref=f56e35] [cursor=pointer]:
+            - /url: http://telemed.test/admin/users/create
+        - table [ref=f56e37]:
+          - rowgroup [ref=f56e38]:
+            - row [ref=f56e39]:
+              - columnheader "Name" [ref=f56e40]
+              - columnheader "Email" [ref=f56e41]
+              - columnheader "Role" [ref=f56e42]
+              - columnheader "Status" [ref=f56e43]
+              - columnheader "Invitation" [ref=f56e44]
+              - columnheader "Action" [ref=f56e45]
+          - rowgroup [ref=f56e46]:
+            - row [ref=f56e47]:
+              - cell "Josiah Gavino" [ref=f56e48]
+              - cell "josiah123@clsu2.edu.ph" [ref=f56e49]
+              - cell "Patient" [ref=f56e50]
+              - cell "Active" [ref=f56e51]
+              - cell "—" [ref=f56e52]
+              - cell [ref=f56e53]:
+                - link "Edit" [ref=f56e55] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/58/edit
+            - row [ref=f56e56]:
+              - cell "Emily Jacimto" [ref=f56e57]
+              - cell "emilyrjmd0213@gmail.com" [ref=f56e58]
+              - cell "Physician" [ref=f56e59]
+              - cell "Active" [ref=f56e60]
+              - cell "—" [ref=f56e61]
+              - cell [ref=f56e62]:
+                - link "Edit" [ref=f56e64] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/57/edit
+            - row [ref=f56e65]:
+              - cell "Marivel Dumale" [ref=f56e66]
+              - cell "marivelsiribandumale@gmail.com" [ref=f56e67]
+              - cell "Physician" [ref=f56e68]
+              - cell "Active" [ref=f56e69]
+              - cell "—" [ref=f56e70]
+              - cell [ref=f56e71]:
+                - link "Edit" [ref=f56e73] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/44/edit
+            - row [ref=f56e74]:
+              - cell "Mark Marky" [ref=f56e75]
+              - cell "nyx48162@gmail.com" [ref=f56e76]
+              - cell "Nurse" [ref=f56e77]
+              - cell "Active" [ref=f56e78]
+              - cell "—" [ref=f56e79]
+              - cell [ref=f56e80]:
+                - link "Edit" [ref=f56e82] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/43/edit
+            - row [ref=f56e83]:
+              - cell "Josiah Gavino" [ref=f56e84]
+              - cell "josiah94.gavino@gmail.com" [ref=f56e85]
+              - cell "Physician" [ref=f56e86]
+              - cell "Active" [ref=f56e87]
+              - cell "—" [ref=f56e88]
+              - cell [ref=f56e89]:
+                - link "Edit" [ref=f56e91] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/42/edit
+            - row [ref=f56e92]:
+              - cell "Steven Strange" [ref=f56e93]
+              - cell "strange@clsu.edu.ph" [ref=f56e94]
+              - cell "Physician" [ref=f56e95]
+              - cell "Active" [ref=f56e96]
+              - cell "—" [ref=f56e97]
+              - cell [ref=f56e98]:
+                - link "Edit" [ref=f56e100] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/28/edit
+            - row [ref=f56e101]:
+              - cell "Patrick Star" [ref=f56e102]
+              - cell "ps@clsu2.edu.ph" [ref=f56e103]
+              - cell "Patient" [ref=f56e104]
+              - cell "Active" [ref=f56e105]
+              - cell "—" [ref=f56e106]
+              - cell [ref=f56e107]:
+                - link "Edit" [ref=f56e109] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/27/edit
+            - row [ref=f56e110]:
+              - cell "Mark Jerrick Mana" [ref=f56e111]
+              - cell "markjerrick.mana@clsu2.edu.ph" [ref=f56e112]
+              - cell "Patient" [ref=f56e113]
+              - cell "Active" [ref=f56e114]
+              - cell "—" [ref=f56e115]
+              - cell [ref=f56e116]:
+                - link "Edit" [ref=f56e118] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/26/edit
+            - row [ref=f56e119]:
+              - cell "Jamar Stracke" [ref=f56e120]
+              - cell "annamarie49@example.net" [ref=f56e121]
+              - cell "Patient" [ref=f56e122]
+              - cell "Active" [ref=f56e123]
+              - cell "—" [ref=f56e124]
+              - cell [ref=f56e125]:
+                - link "Edit" [ref=f56e127] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/21/edit
+            - row [ref=f56e128]:
+              - cell "Bartholome Hammes" [ref=f56e129]
+              - cell "rudy84@example.com" [ref=f56e130]
+              - cell "Physician" [ref=f56e131]
+              - cell "Active" [ref=f56e132]
+              - cell "—" [ref=f56e133]
+              - cell [ref=f56e134]:
+                - link "Edit" [ref=f56e136] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/22/edit
+            - row [ref=f56e137]:
+              - cell "Ona Little" [ref=f56e138]
+              - cell "evert.okuneva@example.net" [ref=f56e139]
+              - cell "Patient" [ref=f56e140]
+              - cell "Active" [ref=f56e141]
+              - cell "—" [ref=f56e142]
+              - cell [ref=f56e143]:
+                - link "Edit" [ref=f56e145] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/20/edit
+            - row [ref=f56e146]:
+              - cell "Deonte Moore" [ref=f56e147]
+              - cell "thompson.theron@example.org" [ref=f56e148]
+              - cell "Physician" [ref=f56e149]
+              - cell "Active" [ref=f56e150]
+              - cell "—" [ref=f56e151]
+              - cell [ref=f56e152]:
+                - link "Edit" [ref=f56e154] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/19/edit
+            - row [ref=f56e155]:
+              - cell "Kim Gav" [ref=f56e156]
+              - cell "kimgav@clsu.edu.ph" [ref=f56e157]
+              - cell "Nurse" [ref=f56e158]
+              - cell "Active" [ref=f56e159]
+              - cell "—" [ref=f56e160]
+              - cell [ref=f56e161]:
+                - link "Edit" [ref=f56e163] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/18/edit
+            - row [ref=f56e164]:
+              - cell "Retha Bailey" [ref=f56e165]
+              - cell "mluettgen@example.com" [ref=f56e166]
+              - cell "Patient" [ref=f56e167]
+              - cell "Active" [ref=f56e168]
+              - cell "—" [ref=f56e169]
+              - cell [ref=f56e170]:
+                - link "Edit" [ref=f56e172] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/17/edit
+            - row [ref=f56e173]:
+              - cell "asd asd" [ref=f56e174]
+              - cell "asd1@clsu.edu.ph" [ref=f56e175]
+              - cell "Nurse" [ref=f56e176]
+              - cell "Inactive" [ref=f56e177]
+              - cell "Expired" [ref=f56e178]
+              - cell [ref=f56e180]:
+                - generic [ref=f56e181]:
+                  - link "Edit" [ref=f56e182] [cursor=pointer]:
+                    - /url: http://telemed.test/admin/users/15/edit
+                  - button "Resend Invitation" [ref=f56e184] [cursor=pointer]
+            - row [ref=f56e185]:
+              - cell "marky mana" [ref=f56e186]
+              - cell "mana@clsu.edu.ph" [ref=f56e187]
+              - cell "Physician" [ref=f56e188]
+              - cell "Active" [ref=f56e189]
+              - cell "—" [ref=f56e190]
+              - cell [ref=f56e191]:
+                - link "Edit" [ref=f56e193] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/12/edit
+            - row [ref=f56e194]:
+              - cell "Admin 1" [ref=f56e195]
+              - cell "admin@clsu.edu.ph" [ref=f56e196]
+              - cell "Admin" [ref=f56e197]
+              - cell "Active" [ref=f56e198]
+              - cell "—" [ref=f56e199]
+              - cell [ref=f56e200]:
+                - link "Edit" [ref=f56e202] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/10/edit
+            - row [ref=f56e203]:
+              - cell "Bugs Bunny" [ref=f56e204]
+              - cell "bug.bunny@clsu.edu.ph" [ref=f56e205]
+              - cell "Physician" [ref=f56e206]
+              - cell "Active" [ref=f56e207]
+              - cell "—" [ref=f56e208]
+              - cell [ref=f56e209]:
+                - link "Edit" [ref=f56e211] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/7/edit
+            - row [ref=f56e212]:
+              - cell "Sandy Squirrel" [ref=f56e213]
+              - cell "sandy@clsu2.edu.ph" [ref=f56e214]
+              - cell "Patient" [ref=f56e215]
+              - cell "Active" [ref=f56e216]
+              - cell "—" [ref=f56e217]
+              - cell [ref=f56e218]:
+                - link "Edit" [ref=f56e220] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/6/edit
+            - row [ref=f56e221]:
+              - cell "Spongebob Squarepants" [ref=f56e222]
+              - cell "ss@clsu2.edu.ph" [ref=f56e223]
+              - cell "Patient" [ref=f56e224]
+              - cell "Active" [ref=f56e225]
+              - cell "—" [ref=f56e226]
+              - cell [ref=f56e227]:
+                - link "Edit" [ref=f56e229] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/5/edit
+            - row [ref=f56e230]:
+              - cell "Maria Dela Cruz" [ref=f56e231]
+              - cell "maria.delacruz@clsu.edu.ph" [ref=f56e232]
+              - cell "Nurse" [ref=f56e233]
+              - cell "Active" [ref=f56e234]
+              - cell "—" [ref=f56e235]
+              - cell [ref=f56e236]:
+                - link "Edit" [ref=f56e238] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/4/edit
+            - row [ref=f56e239]:
+              - cell "Kim Josiah Gavino" [ref=f56e240]
+              - cell "kimjosiah.gavino@clsu2.edu.ph" [ref=f56e241]
+              - cell "Patient" [ref=f56e242]
+              - cell "Active" [ref=f56e243]
+              - cell "—" [ref=f56e244]
+              - cell [ref=f56e245]:
+                - link "Edit" [ref=f56e247] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/2/edit
+            - row [ref=f56e248]:
+              - cell "Test User" [ref=f56e249]
+              - cell "test@example.com" [ref=f56e250]
+              - cell "Patient" [ref=f56e251]
+              - cell "Active" [ref=f56e252]
+              - cell "—" [ref=f56e253]
+              - cell [ref=f56e254]:
+                - link "Edit" [ref=f56e256] [cursor=pointer]:
+                  - /url: http://telemed.test/admin/users/1/edit

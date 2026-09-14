@@ -1,0 +1,32 @@
+- generic [ref=f47e3]:
+  - navigation [ref=f47e4]:
+    - complementary [ref=f47e5]:
+      - link "CLSU logo CLSU Telemedicine" [ref=f47e7] [cursor=pointer]:
+        - /url: http://telemed.test/dashboard
+        - img "CLSU logo" [ref=f47e8]
+        - generic [ref=f47e9]: CLSU Telemedicine
+      - generic [ref=f47e11]:
+        - button [ref=f47e12] [cursor=pointer]
+        - link "Dashboard" [ref=f47e15] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/dashboard
+        - link "Consultation Inbox" [ref=f47e19] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/consultation-inbox
+        - link "Follow-up Requests" [ref=f47e23] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/follow-up-requests
+        - link "Active Consultations" [ref=f47e27] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/active_consultation
+        - link "Scheduled Consultations" [ref=f47e31] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/scheduled_consultation
+        - link "Consultation History" [ref=f47e35] [cursor=pointer]:
+          - /url: http://telemed.test/physicians/7/consultation-history
+      - generic [ref=f47e43]:
+        - link "Profile" [ref=f47e44] [cursor=pointer]:
+          - /url: http://telemed.test/profile
+        - button "Log Out" [ref=f47e46] [cursor=pointer]
+  - generic [ref=f47e47]:
+    - banner [ref=f47e48]:
+      - generic [ref=f47e49]:
+        - heading "Active Consultations" [level=2] [ref=f47e51]
+        - button "Notifications" [ref=f47e54] [cursor=pointer]
+    - main [ref=f47e57]:
+      - paragraph [ref=f47e63]: You do not have any active consultations yet.
