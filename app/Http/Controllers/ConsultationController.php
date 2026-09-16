@@ -513,7 +513,7 @@ class ConsultationController extends Controller
         if ($consultation->assigned_nurse_id) {
             NotificationService::send(
                 $consultation->assigned_nurse_id,
-                NotificationType::SYSTEM_ALERT,
+                NotificationType::CONSULTATION_CANCELLED,
                 'Consultation Cancelled',
                 'A patient cancelled their consultation request.',
                 [

@@ -419,7 +419,10 @@ class ConsultationOwnershipService
                     ->first();
 
                 if ($previousSlot && $previousSlot->status === 'booked') {
-                    $previousSlot->update(['status' => 'available']);
+                    // Reset the reminder flag too: this slot row goes back into the
+                    // pool and may be booked again for a different consultation,
+                    // which needs its own reminder later.
+                    $previousSlot->update(['status' => 'available', 'reminder_sent_at' => null]);
                 }
             }
 
@@ -440,6 +443,7 @@ class ConsultationOwnershipService
                 'consultation' => $consultation->fresh(),
                 'session' => $session->fresh(),
                 'slot' => $slot->fresh(),
+                'rescheduled' => $previousSlotId > 0,
             ];
         });
     }

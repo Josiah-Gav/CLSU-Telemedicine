@@ -20,10 +20,12 @@ class ScheduleSlot extends Model
         'start_time',
         'end_time',
         'status',
+        'reminder_sent_at',
     ];
 
     protected $casts = [
         'slot_date' => 'date',
+        'reminder_sent_at' => 'datetime',
     ];
 
     public function physician(): BelongsTo

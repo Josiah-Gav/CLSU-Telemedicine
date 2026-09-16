@@ -23,6 +23,10 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
 use App\Enums\NotificationType;
+use App\Notifications\ConsultationScheduled;
+use App\Notifications\FollowUpScheduled;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use App\Services\ConsultationOwnershipService;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Export\ConsultationHistoryQuery;
@@ -514,6 +518,7 @@ class PhysicianController extends Controller
 
             $consultation = $result['consultation'];
             $slot = $result['slot'];
+            $rescheduled = (bool) ($result['rescheduled'] ?? false);
         } catch (\RuntimeException $e) {
             return response()->json([
                 'success' => false,
@@ -523,15 +528,27 @@ class PhysicianController extends Controller
 
         NotificationService::sendUnique(
             $consultation->patient_id,
-            NotificationType::CONSULTATION_SCHEDULED,
-            'Consultation Scheduled',
-            'Your consultation is scheduled for ' . optional($slot?->slot_date)->format('M d, Y') . ' at ' . $slot?->start_time . '.',
+            $rescheduled ? NotificationType::CONSULTATION_RESCHEDULED : NotificationType::CONSULTATION_SCHEDULED,
+            $rescheduled ? 'Consultation Rescheduled' : 'Consultation Scheduled',
+            ($rescheduled ? 'Your consultation was rescheduled to ' : 'Your consultation is scheduled for ')
+                . optional($slot?->slot_date)->format('M d, Y') . ' at ' . $slot?->start_time . '.',
             [
                 'consultation_id' => $consultation->request_id,
                 'request_id' => $consultation->request_id,
                 'schedule_slot_id' => $slot?->slot_id,
             ]
         );
+
+        if ($consultation->patient && $slot) {
+            try {
+                $consultation->patient->notify(new ConsultationScheduled($consultation, $slot, $rescheduled));
+            } catch (Throwable $exception) {
+                Log::error('Consultation scheduled email could not be sent.', [
+                    'request_id' => $consultation->request_id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -646,16 +663,47 @@ class PhysicianController extends Controller
             return back()->with('status', 'Follow-up request rejected.');
         }
 
-        NotificationService::sendUnique(
-            $followUpRequest->patient_id,
-            NotificationType::FOLLOW_UP_APPROVED,
-            'Follow-up Request Approved',
-            'Your follow-up request has been approved and a consultation has been created.',
-            [
-                'follow_up_request_id' => $followUpRequest->id,
-                'consultation_id' => $followUpRequest->consultation_id,
-            ]
-        );
+        $newSession = ConsultationSession::query()
+            ->where('follow_up_request_id', $followUpRequest->id)
+            ->with(['request.patient', 'slot'])
+            ->first();
+
+        if ($validated['mode'] === 'scheduled' && $newSession && $newSession->slot) {
+            NotificationService::sendUnique(
+                $followUpRequest->patient_id,
+                NotificationType::FOLLOW_UP_SCHEDULED,
+                'Follow-up Scheduled',
+                'Your follow-up consultation is scheduled for '
+                    . optional($newSession->slot->slot_date)->format('M d, Y') . ' at ' . $newSession->slot->start_time . '.',
+                [
+                    'follow_up_request_id' => $followUpRequest->id,
+                    'consultation_id' => $newSession->request_id,
+                    'session_id' => $newSession->id,
+                ]
+            );
+
+            if ($newSession->request && $newSession->request->patient) {
+                try {
+                    $newSession->request->patient->notify(new FollowUpScheduled($newSession->request, $newSession->slot));
+                } catch (Throwable $exception) {
+                    Log::error('Follow-up scheduled email could not be sent.', [
+                        'follow_up_request_id' => $followUpRequest->id,
+                        'exception' => $exception::class,
+                    ]);
+                }
+            }
+        } else {
+            NotificationService::sendUnique(
+                $followUpRequest->patient_id,
+                NotificationType::FOLLOW_UP_APPROVED,
+                'Follow-up Request Approved',
+                'Your follow-up request has been approved and a consultation has been created.',
+                [
+                    'follow_up_request_id' => $followUpRequest->id,
+                    'consultation_id' => $followUpRequest->consultation_id,
+                ]
+            );
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -795,7 +843,7 @@ class PhysicianController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($session, $validated) {
+            $followUpConsultation = DB::transaction(function () use ($session, $validated) {
                 $followUpConsultation = $this->createFollowUpConsultationFromSource(
                     $session,
                     Auth::id(),
@@ -818,6 +866,8 @@ class PhysicianController extends Controller
                 $followUpConsultation->update([
                     'request_status' => $validated['mode'] === 'immediate' ? 'active' : 'scheduled',
                 ]);
+
+                return $followUpConsultation;
             });
         } catch (\RuntimeException $e) {
             return response()->json([
@@ -837,6 +887,35 @@ class PhysicianController extends Controller
                 'session_id' => $session->id,
             ]
         );
+
+        if ($validated['mode'] === 'scheduled') {
+            $newSession = $followUpConsultation->consultationSession()->with('slot')->first();
+            $patient = $session->request?->patient;
+
+            if ($newSession && $newSession->slot && $patient) {
+                NotificationService::sendUnique(
+                    $patient->user_id,
+                    NotificationType::FOLLOW_UP_SCHEDULED,
+                    'Follow-up Scheduled',
+                    'Your follow-up consultation is scheduled for '
+                        . optional($newSession->slot->slot_date)->format('M d, Y') . ' at ' . $newSession->slot->start_time . '.',
+                    [
+                        'consultation_id' => $followUpConsultation->request_id,
+                        'request_id' => $followUpConsultation->request_id,
+                        'session_id' => $newSession->id,
+                    ]
+                );
+
+                try {
+                    $patient->notify(new FollowUpScheduled($followUpConsultation, $newSession->slot));
+                } catch (Throwable $exception) {
+                    Log::error('Follow-up scheduled email could not be sent.', [
+                        'request_id' => $followUpConsultation->request_id,
+                        'exception' => $exception::class,
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,

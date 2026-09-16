@@ -20,6 +20,7 @@ enum NotificationType: string
     case CONSULTATION_STARTED = 'consultation_started';
     case CONSULTATION_COMPLETED = 'consultation_completed';
     case CONSULTATION_MISSED = 'consultation_missed';
+    case CONSULTATION_CANCELLED = 'consultation_cancelled';
 
     // Messaging
     case NEW_MESSAGE = 'new_message';

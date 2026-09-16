@@ -6,6 +6,7 @@ use App\Models\ConsultationSession;
 use App\Models\Message;
 use App\Models\User;
 use App\Enums\NotificationType;
+use App\Notifications\ConsultationCompleted;
 use App\Services\ConsultationVideoService;
 use App\Services\NotificationService;
 use App\Services\MedicalFileStorage;
@@ -15,7 +16,9 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 class ConsultationMessageController extends Controller
 {
@@ -349,6 +352,17 @@ class ConsultationMessageController extends Controller
                     'session_id' => $session->id,
                 ]
             );
+
+            if ($consultationRequest->patient) {
+                try {
+                    $consultationRequest->patient->notify(new ConsultationCompleted($consultationRequest));
+                } catch (Throwable $exception) {
+                    Log::error('Consultation completed email could not be sent.', [
+                        'request_id' => $consultationRequest->request_id,
+                        'exception' => $exception::class,
+                    ]);
+                }
+            }
         }
 
         return response()->json([
