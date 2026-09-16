@@ -8,13 +8,12 @@ use App\Models\SymptomLog; // Double-check that your SymptomLog model exists
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
-use Illuminate\Support\Facades\Storage;
 use App\Models\FollowUpRequest;
 use App\Enums\NotificationType;
 use App\Services\NotificationService;
 use App\Services\ConsultationOwnershipService;
 use App\Services\PhysicianAvailabilityService;
+use App\Services\MedicalFileStorage;
 use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
 use App\Support\CsvDownload;
@@ -26,7 +25,30 @@ class ConsultationController extends Controller
     public function __construct(
         private readonly ConsultationOwnershipService $ownershipService,
         private readonly PhysicianAvailabilityService $availabilityService,
+        private readonly MedicalFileStorage $medicalFiles,
     ) {
+    }
+
+    /**
+     * Guard the two nurse-triage actions below (approve/reject).
+     *
+     * These live on ConsultationController rather than NurseController, so they
+     * are not covered by NurseController::authorizeNurse(). Their routes carry
+     * no {nurse} parameter either, so there is no route-bound user to match
+     * against — the acting nurse is always auth()->id(), which is what both
+     * actions already pass to ConsultationOwnershipService.
+     *
+     * ConsultationOwnershipService is deliberately role-agnostic: it validates
+     * workflow state and assignment, never who is asking. That is by design and
+     * is not changed here — this is the missing role half, and it has to live at
+     * the controller boundary, exactly as FollowUpRequestController does it for
+     * the patient-facing follow-up actions.
+     */
+    private function authorizeNurse(): void
+    {
+        if (auth()->user()?->role !== 'nurse') {
+            abort(403, 'Unauthorized access.');
+        }
     }
 
     /**
@@ -307,28 +329,24 @@ class ConsultationController extends Controller
             }
         }
 
-        // 3. Process uploads. Prefer Cloudinary, but fall back to local storage if it fails.
-        $uploadedFilesUrls = [];
+        // 3. Process uploads.
+        //
+        // These are patient-submitted medical images. They used to be stored as
+        // a public Cloudinary URL, or — when Cloudinary threw — on the *public*
+        // local disk behind asset('storage/...'), which the web server serves
+        // straight off the filesystem with no authorization at all. Both are
+        // now handled by MedicalFileStorage: authenticated Cloudinary delivery,
+        // falling back to the private disk, and what is persisted is a
+        // reference rather than a URL. Nothing here is reachable without going
+        // through AttachmentController::show, which authorizes first.
+        $uploadedFileReferences = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                try {
-                    $uploadResult = Cloudinary::uploadApi()->upload($file->getRealPath(), [
-                        'folder' => 'telemed_consultations',
-                        'resource_type' => 'auto',
-                        // Bounds a stalled upload so it cannot hold a PHP worker
-                        // for the SDK's 60-second default before the local-disk
-                        // fallback below runs. See config/cloudinary.php.
-                        'timeout' => config('cloudinary.upload_timeout'),
-                        'connect_timeout' => config('cloudinary.upload_timeout'),
-                    ]);
-
-                    $uploadedFilesUrls[] = $uploadResult['secure_url'] ?? ($uploadResult['url'] ?? null);
-                } catch (\Exception $uploadError) {
-                    Log::error('Cloudinary Single Upload Error: ' . $uploadError->getMessage());
-
-                    $path = $file->store('consultation-attachments', 'public');
-                    $uploadedFilesUrls[] = asset('storage/' . $path);
-                }
+                $uploadedFileReferences[] = $this->medicalFiles->store(
+                    $file,
+                    'telemed_consultations',
+                    'consultation-attachments/' . auth()->id()
+                );
             }
         }
 
@@ -342,7 +360,8 @@ class ConsultationController extends Controller
                 'symptoms_desc'           => $symptomsData,
                 'online_reason'           => $validated['online_reason'] ?? null,
                 'additional_information'  => $validated['additional_notes'] ?? null,
-                'file_attachments'        => !empty($uploadedFilesUrls) ? $uploadedFilesUrls : null, // Securely stores the remote Cloudinary cloud link array
+                // Stored references, not URLs — see MedicalFileStorage.
+                'file_attachments'        => !empty($uploadedFileReferences) ? $uploadedFileReferences : null,
                 'request_status'          => 'pending',
             ]);
 
@@ -384,6 +403,8 @@ class ConsultationController extends Controller
 
     function rejectionConsultation(Request $request, Consultation $consultation)
     {
+        $this->authorizeNurse();
+
         // Validate the rejection reason
         $request->validate([
             'rejection_reason' => 'required|string|max:1000',
@@ -392,6 +413,7 @@ class ConsultationController extends Controller
         try {
             $consultation = $this->ownershipService->rejectByNurse(
                 (int) $consultation->request_id,
+                (int) auth()->id(),
                 (string) $request->input('rejection_reason')
             );
         } catch (\RuntimeException $e) {
@@ -418,6 +440,8 @@ class ConsultationController extends Controller
 
     function approveConsultation(Request $request, Consultation $consultation)
     {
+        $this->authorizeNurse();
+
         $validated = $request->validate([
             'priority_level' => 'required|in:High,Normal',
         ]);

@@ -49,9 +49,16 @@ class ConsultationOwnershipService
         });
     }
 
-    public function rejectByNurse(int $consultationRequestId, string $rejectionReason): Consultation
+    /**
+     * $nurseId is recorded on the request, exactly as claimByNurse() records a
+     * claim and rejectReviewedByPhysician() records the rejecting physician. A
+     * rejection used to leave assigned_nurse_id null, so a rejected request had
+     * no attributable reviewer at all. Role is still the caller's
+     * responsibility — see this class's design note in CLAUDE.md.
+     */
+    public function rejectByNurse(int $consultationRequestId, int $nurseId, string $rejectionReason): Consultation
     {
-        return DB::transaction(function () use ($consultationRequestId, $rejectionReason) {
+        return DB::transaction(function () use ($consultationRequestId, $nurseId, $rejectionReason) {
             $consultation = Consultation::query()
                 ->where('request_id', $consultationRequestId)
                 ->lockForUpdate()
@@ -61,9 +68,16 @@ class ConsultationOwnershipService
                 throw new \RuntimeException('Only pending consultations can be rejected.');
             }
 
+            // Same guard claimByNurse() applies: a request another nurse has
+            // already taken is not this nurse's to conclude.
+            if ($consultation->assigned_nurse_id && (int) $consultation->assigned_nurse_id !== $nurseId) {
+                throw new \RuntimeException('This consultation is already being handled by another nurse.');
+            }
+
             $consultation->update([
                 'request_status' => 'rejected',
                 'rejection_reason' => $rejectionReason,
+                'assigned_nurse_id' => $nurseId,
             ]);
 
             return $consultation->fresh();

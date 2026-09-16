@@ -30,6 +30,7 @@ use App\Services\Export\ConsultationHistoryRows;
 use App\Services\Export\DashboardExportRows;
 use App\Services\NotificationService;
 use App\Services\PhysicianAvailabilityService;
+use App\Services\MedicalFileStorage;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use App\Support\StatusBadge;
@@ -41,6 +42,7 @@ class PhysicianController extends Controller
         private readonly ConsultationOwnershipService $ownershipService,
         private readonly DashboardAnalyticsService $analyticsService,
         private readonly PhysicianAvailabilityService $availabilityService,
+        private readonly MedicalFileStorage $medicalFiles,
     ) {
         $this->middleware('auth');
     }
@@ -430,12 +432,13 @@ class PhysicianController extends Controller
      */
     private function serializeAttachmentUrls(Consultation $consultation): array
     {
-        return array_values(array_map(function ($path) use ($consultation) {
-            $urlPath = parse_url($path, PHP_URL_PATH) ?: $path;
-
+        return array_values(array_map(function ($reference) use ($consultation) {
+            // MedicalFileStorage owns the reference format and therefore the
+            // key it is addressed by; deriving it here a second time is how the
+            // link and AttachmentController::show()'s lookup would drift apart.
             return route('consultation.attachment', [
                 'consultation' => $consultation->request_id,
-                'file' => basename($urlPath),
+                'file' => $this->medicalFiles->attachmentKey($reference),
             ]);
         }, $consultation->file_attachments ?? []));
     }

@@ -309,15 +309,21 @@ class UserManagementController extends Controller
             'specialization' => ['nullable', 'string', 'max:100'],
         ];
 
-        // 'inactive' means "awaiting email verification" (a freshly invited
-        // nurse/physician who hasn't activated yet, or a freshly self-registered
-        // patient) and is set only by that verification/activation flow, never
-        // chosen by an admin. While the account is still in that state the edit
-        // form has no status field to submit at all, so nothing is required here
-        // and account_status is simply left off $validated — fill() then leaves
-        // the existing 'inactive' value untouched. Once verified, an admin may
-        // only ever toggle between active and suspended.
-        $rules['account_status'] = $user->account_status === 'inactive'
+        // Scoped to accounts awaiting *staff* activation, not to every inactive
+        // account. An invited nurse/physician holds a random password nobody
+        // knows, so only their own invitation link may make them active; while
+        // they are in that state the edit form has no status field to submit at
+        // all, so nothing is required here and account_status is left off
+        // $validated — fill() then leaves the existing 'inactive' value alone.
+        //
+        // A patient is a different lifecycle: they set their own password at
+        // registration and an admin may legitimately activate them directly.
+        // This condition used to be a bare `account_status === 'inactive'`,
+        // which roped patients in too and made them permanently unactivatable —
+        // and made the role-scoped guard immediately below unreachable for
+        // them. User::awaitsStaffActivation() is the single source of truth for
+        // this distinction, shared with activation and invitation resend.
+        $rules['account_status'] = $user->awaitsStaffActivation()
             ? ['nullable', 'in:inactive']
             : ['required', 'in:active,suspended'];
 

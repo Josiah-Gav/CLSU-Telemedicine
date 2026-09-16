@@ -108,14 +108,23 @@
                                 <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Attachments</p>
                                 <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                                     @foreach($consultation->file_attachments as $attachment)
+                                        @php
+                                            // Never the stored reference itself: attachments are
+                                            // served only through the authorizing route, exactly as
+                                            // the nurse and physician views already do it.
+                                            $attachmentUrl = route('consultation.attachment', [
+                                                'consultation' => $consultation->request_id,
+                                                'file' => basename($attachment),
+                                            ]);
+                                        @endphp
                                         <button
                                             type="button"
-                                            @click="previewFile = @js($attachment)"
+                                            @click="previewFile = @js($attachmentUrl)"
                                             class="group relative h-24 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm transition hover:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
                                         >
                                             <span class="sr-only">{{ __('View attachment') }}</span>
                                             <img
-                                                src="{{ $attachment }}"
+                                                src="{{ $attachmentUrl }}"
                                                 alt="{{ __('Attachment preview') }}"
                                                 x-on:error="$el.style.display = 'none'; $el.nextElementSibling.style.display = 'flex';"
                                                 class="h-full w-full object-cover transition group-hover:scale-105"

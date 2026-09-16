@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Consultation;
+use App\Services\MedicalFileStorage;
+use Illuminate\Support\Facades\Auth;
 
 class AttachmentController extends Controller
 {
-    public function __construct()
+    public function __construct(private readonly MedicalFileStorage $medicalFiles)
     {
         $this->middleware('auth');
     }
@@ -23,41 +22,29 @@ class AttachmentController extends Controller
     private const PHYSICIAN_POOL_STATUSES = ['reviewed', 'assigned', 'scheduled'];
 
     /**
-     * Serve a consultation attachment to the staff who are allowed to see it.
+     * Serve a consultation attachment to someone allowed to see it.
+     *
+     * This is now the only way in. The stored values used to be URLs — a public
+     * Cloudinary link, or asset('storage/...') pointing at the public disk —
+     * which meant the file was fetchable without ever reaching this method.
+     * They are MedicalFileStorage references now, so the bytes are behind
+     * either an authenticated-delivery signature this action mints or a private
+     * disk the web server cannot serve.
      */
     public function show(Consultation $consultation, $file)
     {
         if (! $this->canViewAttachments($consultation)) {
             abort(403, 'Unauthorized access.');
         }
-        $attachments = $consultation->file_attachments ?? [];
 
-        foreach ($attachments as $path) {
-            // Normalize filename for comparison
-            $urlPath = parse_url($path, PHP_URL_PATH) ?: $path;
-            $basename = basename($urlPath);
-            if ($basename !== $file) {
+        foreach ($consultation->file_attachments ?? [] as $reference) {
+            if ($this->medicalFiles->attachmentKey($reference) !== $file) {
                 continue;
             }
 
-            // If it's a remote URL (Cloudinary or other http(s)), redirect to it
-            if (preg_match('#^https?://#i', $path)) {
-                return redirect()->away($path);
-            }
-
-            // If it's an asset URL like /storage/..., extract relative storage path
-            if (strpos($urlPath, '/storage/') !== false) {
-                $relative = ltrim(substr($urlPath, strpos($urlPath, '/storage/') + strlen('/storage/')), '/');
-                // Check public disk
-                if (Storage::disk('public')->exists($relative)) {
-                    return Storage::disk('public')->download($relative);
-                }
-            }
-
-            // Fallback: try direct storage path
-            if (Storage::exists($path)) {
-                return Storage::download($path);
-            }
+            // Inline, not attachment: every view that links here renders the
+            // result in an <img> preview.
+            return $this->medicalFiles->response($reference, $file, asAttachment: false);
         }
 
         abort(404);
@@ -67,9 +54,14 @@ class AttachmentController extends Controller
      * Nurses keep blanket access (unchanged). A physician gets access only to
      * what their inbox already shows them: a request still in the shared triage
      * pool, or one assigned to them personally at any status. A request that
-     * has left the pool and belongs to another physician is off limits, and so
-     * is every other role — patients included, who reach their own attachments
-     * through ConsultationController instead.
+     * has left the pool and belongs to another physician is off limits.
+     *
+     * The patient who submitted the request is allowed their own attachments.
+     * They previously reached these files by way of the raw public URL embedded
+     * in the page; with that URL gone, this route is the only path left, and
+     * refusing them here would hide a patient's own uploads from them.
+     * Ownership is checked against the request row, so it grants nothing beyond
+     * the attachments they themselves submitted.
      */
     private function canViewAttachments(Consultation $consultation): bool
     {
@@ -77,6 +69,10 @@ class AttachmentController extends Controller
 
         if ($user->role === 'nurse') {
             return true;
+        }
+
+        if ($user->role === 'patient') {
+            return (int) $consultation->patient_id === (int) $user->user_id;
         }
 
         if ($user->role !== 'physician') {

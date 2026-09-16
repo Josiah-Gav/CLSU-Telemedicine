@@ -6,12 +6,15 @@
     </x-slot>
 
     @php
+        // Resolved once per render rather than per attachment: the service is
+        // stateless and this block builds the whole page payload in one pass.
+        $medicalFiles = app(\App\Services\MedicalFileStorage::class);
         $isPatientOnline = fn ($patient) => $patient
             && $patient->online_status === 'online'
             && $patient->last_seen_at
             && $patient->last_seen_at->gt(now()->subMinutes(2));
 
-        $pendingFollowUpPayload = collect($pendingRequests)->map(function ($followUp) use ($nurse, $isPatientOnline) {
+        $pendingFollowUpPayload = collect($pendingRequests)->map(function ($followUp) use ($nurse, $isPatientOnline, $medicalFiles) {
             $originalSession = $followUp->consultation;
             $originalRequest = optional($originalSession)->request;
             $patientName = trim((optional($followUp->patient)->first_name ?? '') . ' ' . (optional($followUp->patient)->last_name ?? '')) ?: 'Unknown Patient';
@@ -34,7 +37,7 @@
                     'online_reason' => $originalRequest->online_reason ?? null,
                     'additional_information' => $originalRequest->additional_information ?? null,
                     'file_attachments' => $originalRequest
-                        ? array_map(fn ($p) => url('/consultations/' . $originalRequest->request_id . '/attachments/' . basename($p)), $originalRequest->file_attachments ?? [])
+                        ? array_map(fn ($reference) => url('/consultations/' . $originalRequest->request_id . '/attachments/' . $medicalFiles->attachmentKey($reference)), $originalRequest->file_attachments ?? [])
                         : [],
                     'diagnosis' => $originalSession?->hasDiagnosis() ? $originalSession->diagnosis : null,
                     'assessment' => $originalSession?->hasMeaningfulAssessment() ? $originalSession->assessment : null,

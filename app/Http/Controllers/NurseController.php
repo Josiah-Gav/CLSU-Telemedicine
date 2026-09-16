@@ -14,6 +14,7 @@ use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
 use App\Services\Export\DashboardExportRows;
 use App\Services\NotificationService;
+use App\Services\MedicalFileStorage;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -23,6 +24,7 @@ class NurseController extends Controller
     public function __construct(
         private readonly ConsultationOwnershipService $ownershipService,
         private readonly DashboardAnalyticsService $analyticsService,
+        private readonly MedicalFileStorage $medicalFiles,
     ) {
         $this->middleware('auth');
     }
@@ -399,8 +401,12 @@ class NurseController extends Controller
                 'symptoms_desc' => $request->symptoms_desc,
                 'online_reason' => $request->online_reason,
                 'additional_information' => $request->additional_information,
-                'file_attachments' => array_map(function ($path) use ($request) {
-                    return url('/consultations/'.$request->request_id.'/attachments/'.basename($path));
+                // Keyed by MedicalFileStorage::attachmentKey(), the single
+                // definition AttachmentController::show() matches against, so a
+                // change to the stored reference format cannot desynchronise
+                // the link from the lookup.
+                'file_attachments' => array_map(function ($reference) use ($request) {
+                    return url('/consultations/'.$request->request_id.'/attachments/'.$this->medicalFiles->attachmentKey($reference));
                 }, $request->file_attachments ?? []),
             ];
         })->values()->all();

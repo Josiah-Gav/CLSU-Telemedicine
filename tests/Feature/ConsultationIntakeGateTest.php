@@ -133,8 +133,9 @@ it('still notifies nurses when an accepted submission goes through the gate', fu
         ->count())->toBe(1);
 });
 
-it('still stores attachments on an accepted submission', function () {
+it('still stores attachments on an accepted submission, on the private disk', function () {
     Storage::fake('public');
+    Storage::fake('message_attachments');
     gatePhysician();
     $patient = gatePatient();
 
@@ -146,7 +147,12 @@ it('still stores attachments on an accepted submission', function () {
 
     expect(Consultation::where('patient_id', $patient->user_id)->sole()->file_attachments)
         ->not->toBeEmpty()
-        ->and(Storage::disk('public')->allFiles('consultation-attachments'))->toHaveCount(1);
+        // The fallback now lands on the private disk. This assertion used to
+        // read Storage::disk('public'), which is precisely the exposure that
+        // made intake attachments anonymously downloadable at
+        // /storage/consultation-attachments/... — nothing may go there again.
+        ->and(Storage::disk('message_attachments')->allFiles('consultation-attachments/'.$patient->user_id))->toHaveCount(1)
+        ->and(Storage::disk('public')->allFiles('consultation-attachments'))->toBeEmpty();
 });
 
 /*

@@ -26,4 +26,19 @@ return [
     */
     'upload_timeout' => env('CLOUDINARY_UPLOAD_TIMEOUT', 10),
 
+    /*
+    | Lifetime, in seconds, of a signed download URL minted for a medical file
+    | held on Cloudinary (App\Services\MedicalFileStorage).
+    |
+    | Medical uploads use delivery type "authenticated", so the asset's own URL
+    | returns 401 and the only way in is a signature this application issues
+    | after authorizing the request. That signature travels to the browser as a
+    | redirect target, which means it can be copied out of history or a referrer
+    | — so it is deliberately short-lived. Five minutes is comfortably longer
+    | than a redirect-and-fetch (including a large scan on a slow connection)
+    | while keeping a leaked URL close to worthless; a user who needs the file
+    | again simply requests it again and gets a fresh signature.
+    */
+    'signed_url_ttl' => env('CLOUDINARY_SIGNED_URL_TTL', 300),
+
 ];

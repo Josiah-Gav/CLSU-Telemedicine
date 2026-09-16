@@ -533,7 +533,11 @@
                         @if(!empty($consultationRequest->file_attachments))
                             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach($consultationRequest->file_attachments as $attachment)
-                                    <a href="{{ $attachment }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2">
+                                    {{-- Served through the authorizing route, never as the stored
+                                         reference: this page is shown to the patient and the
+                                         assigned physician, and both reach intake attachments
+                                         only via AttachmentController::show. --}}
+                                    <a href="{{ route('consultation.attachment', ['consultation' => $consultationRequest->request_id, 'file' => basename($attachment)]) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
                                         </svg>

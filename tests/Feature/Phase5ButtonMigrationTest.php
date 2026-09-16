@@ -80,7 +80,7 @@ it('leaves the icon-only attachment-thumbnail and modal-close buttons, and the A
     // that without evaluating an Alpine expression as PHP.
     $source = file_get_contents(resource_path('views/patient/consultation-details.blade.php'));
 
-    expect($source)->toContain('@click="previewFile = @js($attachment)"')
+    expect($source)->toContain('@click="previewFile = @js($attachmentUrl)"')
         ->and($source)->toContain('@click="previewFile = null"')
         ->and($source)->toContain('<a :href="previewFile"');
 });

@@ -260,25 +260,17 @@ test('an activated staff account can still be deactivated and reactivated', func
     expect($alice->fresh()->account_status)->toBe('active');
 });
 
-// KNOWN FAILING — flagged, not silently broken. Investigated during the
-// baseline-failure pass: UserManagementController::update()'s account_status
-// rule is `$user->account_status === 'inactive' ? ['nullable','in:inactive'] : ...`,
-// which rejects 'active' for ANY inactive user regardless of role, before the
-// method's own role-scoped activation guard below it (`in_array($user->role,
-// self::INVITED_ROLES, true)`, with a nurse/physician-specific error message)
-// ever runs — that guard is currently unreachable dead code for this path.
-// Two readings are equally plausible from the code alone and only a product
-// decision can settle which is correct: (a) the guard's role-scoping and
-// staff-specific wording suggest patients were originally meant to be
-// activatable directly by an admin, and the blanket rule accidentally roped
-// them in too — in which case the smallest fix is scoping that rule to
-// self::INVITED_ROLES to match the guard beneath it; or (b) the surrounding
-// UI/comment ("becomes editable... automatically" for every role, patients
-// included) reflects a deliberate later widening to "no admin ever
-// hand-activates an inactive account, of any role" — in which case this test
-// itself is stale and should assert the opposite. Left failing rather than
-// guessed at; not covered by this project's regression-protection list, so
-// changing UserManagementController to resolve it needs sign-off first.
+// Resolved: reading (a) was chosen. UserManagementController::update()'s
+// account_status rule is now scoped with User::awaitsStaffActivation()
+// instead of a bare `account_status === 'inactive'`, so the restriction
+// applies only to invited nurses/physicians — whose password can only be set
+// through their own invitation link — and no longer to patients, who set
+// their own password at registration and were previously left permanently
+// unactivatable. The role-scoped guard beneath that rule
+// (in_array($user->role, self::INVITED_ROLES, true)) is reachable again,
+// which is what keeps an unactivated nurse/physician from being flipped
+// active by an admin. resources/views/admin/users/edit.blade.php gates its
+// status field on the same method so the form and the rule cannot disagree.
 test('patients and admins are unaffected by the activation guard', function () {
     $patient = User::factory()->unverified()->create([
         'role' => 'patient',

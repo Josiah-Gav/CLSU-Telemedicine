@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Storage;
  * has no assigned physician at all. Scoping access to "assigned physician
  * only" would therefore 403 exactly the unclaimed rows physicians work from,
  * which is why the pool statuses grant access as well.
+ *
+ * Patients were blocked here originally because their own pages embedded the
+ * raw storage/Cloudinary URL, so this route was not how they reached their
+ * files. Making consultation attachments private removed those URLs, leaving
+ * this route the only way in — so the owning patient is now allowed, scoped to
+ * their own request. Any other patient is still refused.
  */
 function attachmentStaff(string $role): User
 {
@@ -84,9 +90,25 @@ it('still lets any nurse open an attachment, unchanged', function () {
     fetchAttachment(attachmentStaff('nurse'), $consultation)->assertOk();
 });
 
-it('still blocks a patient, including the one who owns the consultation', function () {
+it('lets the owning patient open their own attachment', function () {
     $consultation = attachmentConsultation();
     $owner = User::find($consultation->patient_id);
 
-    fetchAttachment($owner, $consultation)->assertForbidden();
+    fetchAttachment($owner, $consultation)->assertOk();
+});
+
+it('blocks a patient from another patient\'s attachment', function () {
+    $consultation = attachmentConsultation();
+    $stranger = User::factory()->create(['role' => 'patient', 'user_type' => 'student']);
+
+    fetchAttachment($stranger, $consultation)->assertForbidden();
+});
+
+it('blocks a guest outright', function () {
+    $consultation = attachmentConsultation();
+
+    test()->get(route('consultation.attachment', [
+        'consultation' => $consultation->request_id,
+        'file' => 'scan.png',
+    ]))->assertRedirect(route('login'));
 });

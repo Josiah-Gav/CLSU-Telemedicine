@@ -22,6 +22,20 @@ function onsetPatient(array $overrides = []): User
     return User::factory()->create(array_merge(['role' => 'patient', 'user_type' => 'student'], $overrides));
 }
 
+/*
+ * Two tests below build a same-day onset by shifting the clock an hour either
+ * way while sending now()->toDateString() as the date. Run inside the first or
+ * last hour of the day that shift crosses midnight, so the time wraps while the
+ * date does not, and the payload lands on the opposite side of "now" from the
+ * one intended — the suite then failed purely because of when it was run.
+ * Pinning every test in this file to midday keeps both an hour from any
+ * boundary; no test here depends on the actual wall-clock time, only on the
+ * ordering between the onset and now.
+ */
+beforeEach(function () {
+    $this->travelTo(now()->startOfDay()->addHours(12));
+});
+
 function onsetStorePayload(array $symptoms, array $overrides = []): array
 {
     return array_merge([

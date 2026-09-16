@@ -8,30 +8,18 @@ use App\Models\User;
 use App\Enums\NotificationType;
 use App\Services\ConsultationVideoService;
 use App\Services\NotificationService;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use App\Services\MedicalFileStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class ConsultationMessageController extends Controller
 {
     private const TYPING_TTL_SECONDS = 8;
-
-    /**
-     * Disk holding message attachments and prescriptions that fell back to
-     * local storage because Cloudinary was unavailable. It is deliberately not
-     * the public disk: files there are served straight off the filesystem by
-     * the web server through the public/storage symlink, which would bypass
-     * the authorization every download action in this controller performs.
-     * See config/filesystems.php for why it is also not the "local" disk.
-     */
-    private const PRIVATE_DISK = 'message_attachments';
 
     /**
      * How long a browser may reuse an already-downloaded message attachment.
@@ -59,6 +47,8 @@ class ConsultationMessageController extends Controller
      * play back without transcoding, which this application does not do.
      */
     private const ATTACHMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'mp4'];
+
+    public function __construct(private readonly MedicalFileStorage $medicalFiles) {}
 
     public function show(ConsultationSession $session)
     {
@@ -172,35 +162,15 @@ class ConsultationMessageController extends Controller
         ]);
 
         foreach ($files as $file) {
-            $storedPath = null;
-
-            try {
-                $uploadResult = Cloudinary::uploadApi()->upload($file->getRealPath(), [
-                    'folder' => 'message_attachments',
-                    'resource_type' => 'auto',
-                    // Bounds how long a stalled Cloudinary call may hold this PHP
-                    // worker before the local-disk fallback below takes over. The
-                    // SDK's own default is 60 seconds, which is long enough for one
-                    // bad upload to block every other request on the server. These
-                    // two keys are not upload parameters — buildUploadParams()
-                    // whitelists those, so they never reach the request signature;
-                    // the SDK forwards them to its HTTP client instead.
-                    'timeout' => config('cloudinary.upload_timeout'),
-                    'connect_timeout' => config('cloudinary.upload_timeout'),
-                ]);
-
-                $storedPath = $uploadResult['secure_url'] ?? ($uploadResult['url'] ?? null);
-            } catch (\Exception $uploadError) {
-                Log::error('Cloudinary Message Attachment Upload Error: ' . $uploadError->getMessage());
-            }
-
-            if (!$storedPath) {
-                // Private disk, not 'public': a fallback attachment is patient
-                // data and must only be reachable through downloadAttachment()
-                // below, which authorizes first. The relative path stored in the
-                // database is unchanged — only the disk it resolves against.
-                $storedPath = $file->store('message-attachments/' . $session->id, self::PRIVATE_DISK);
-            }
+            // Cloudinary (authenticated delivery) with a private-disk fallback,
+            // both owned by MedicalFileStorage. What is stored is a reference,
+            // never a URL, so downloadAttachment() below stays the only way to
+            // reach the bytes whichever backend actually took the file.
+            $storedPath = $this->medicalFiles->store(
+                $file,
+                'message_attachments',
+                'message-attachments/' . $session->id
+            );
 
             $message->attachments()->create([
                 'file_name' => $file->getClientOriginalName(),
@@ -274,26 +244,14 @@ class ConsultationMessageController extends Controller
 
         if ($request->hasFile('prescription')) {
             $file = $request->file('prescription');
-            $storedPath = null;
 
-            try {
-                $uploadResult = Cloudinary::uploadApi()->upload($file->getRealPath(), [
-                    'folder' => 'consultation_prescriptions',
-                    'resource_type' => 'auto',
-                    // Same bound as the message attachment upload above.
-                    'timeout' => config('cloudinary.upload_timeout'),
-                    'connect_timeout' => config('cloudinary.upload_timeout'),
-                ]);
-
-                $storedPath = $uploadResult['secure_url'] ?? ($uploadResult['url'] ?? null);
-            } catch (\Exception $uploadError) {
-                Log::error('Cloudinary Prescription Upload Error: ' . $uploadError->getMessage());
-            }
-
-            if (!$storedPath) {
-                // Same private disk as message attachments, in its own directory.
-                $storedPath = $file->store('consultation-prescriptions/' . $session->id, self::PRIVATE_DISK);
-            }
+            // Same storage contract as a message attachment, in its own
+            // Cloudinary folder and its own directory on the private disk.
+            $storedPath = $this->medicalFiles->store(
+                $file,
+                'consultation_prescriptions',
+                'consultation-prescriptions/' . $session->id
+            );
 
             $this->deletePrescriptionFile($session);
 
@@ -421,10 +379,33 @@ class ConsultationMessageController extends Controller
         ]);
     }
 
+    /**
+     * Unread message counts for the consultations the caller is a party to.
+     *
+     * Only a patient and the assigned physician are ever parties to a
+     * consultation conversation — ConsultationSessionPolicy::viewMessaging
+     * admits nobody else, and only the two views that belong to those roles
+     * (patient/dashboard, physician/active_consultation) call this endpoint.
+     *
+     * The early return is load-bearing, not defensive tidying. The role
+     * conditions below are added inside a where() closure, so for any other
+     * role that closure contributed no condition at all and the query matched
+     * EVERY active session in the system — handing a nurse or an admin a
+     * per-session unread count for conversations they cannot open and are not
+     * part of. Counts are metadata rather than message content, but they still
+     * disclose that a given session exists and how much traffic it carries.
+     */
     public function unreadCounts(): JsonResponse
     {
         $currentUser = Auth::user();
         $currentUserId = (int) $currentUser->user_id;
+
+        if (! in_array($currentUser->role, ['patient', 'physician'], true)) {
+            return response()->json([
+                'counts' => [],
+                'total_unread' => 0,
+            ]);
+        }
 
         $sessionIds = ConsultationSession::query()
             ->where('consultation_status', 'active')
@@ -567,28 +548,14 @@ class ConsultationMessageController extends Controller
 
         abort_unless($session->prescription_file_path, 404);
 
-        if (is_string($session->prescription_file_path) && str_starts_with($session->prescription_file_path, 'http')) {
-            return redirect()->away($this->forceCloudinaryDownload($session->prescription_file_path));
-        }
-
-        // Authorization above has already run; only then is the private file
-        // read. Nothing here ever produces a URL to the file itself.
-        return Storage::disk(self::PRIVATE_DISK)->download(
+        // Authorization above has already run; only then is the file resolved.
+        // A Cloudinary-held prescription becomes a signed URL valid for minutes,
+        // a local one is streamed off the private disk — neither produces a
+        // durable URL to the file itself.
+        return $this->medicalFiles->response(
             $session->prescription_file_path,
             $session->prescription_file_name ?? 'prescription'
         );
-    }
-
-    /**
-     * Cloudinary serves a plain secure_url with Content-Disposition: inline, so
-     * the browser opens the file (a PDF, say) in a new tab instead of downloading
-     * it. Cloudinary's own "fl_attachment" delivery flag switches that header to
-     * attachment; every secure_url contains exactly one "/upload/" delivery-type
-     * segment to insert it after, regardless of resource type (image/video/raw).
-     */
-    private function forceCloudinaryDownload(string $url): string
-    {
-        return preg_replace('#/upload/#', '/upload/fl_attachment/', $url, 1) ?? $url;
     }
 
     public function downloadAttachment(\App\Models\MessageAttachment $attachment)
@@ -599,18 +566,20 @@ class ConsultationMessageController extends Controller
         abort_unless($session, 404);
         $this->authorize('viewMessaging', $session);
 
-        if (is_string($attachment->file_path) && str_starts_with($attachment->file_path, 'http')) {
-            return redirect()->away($attachment->file_path);
-        }
-
         // A stored attachment is immutable: replacing a file means a new row and
         // therefore a new URL, so the bytes behind this URL never change and the
         // browser can safely reuse them instead of re-downloading on every render.
         // Deliberately 'private', never 'public': this is patient data and must
         // not sit in a shared or proxy cache. Authorization above still runs on
         // every request that actually reaches the server, and the window is kept
-        // short so a revoked viewer's own cached copy expires quickly.
-        return Storage::disk(self::PRIVATE_DISK)->download($attachment->file_path, $attachment->file_name, [
+        // short so a revoked viewer's own cached copy expires quickly. The header
+        // applies to the locally-served case; a Cloudinary reference is answered
+        // with a redirect to a signed URL that expires on its own.
+        //
+        // Inline rather than attachment, which is what this action has always
+        // done for its Cloudinary branch: the messaging view renders image
+        // attachments straight into an <img> preview from this same URL.
+        return $this->medicalFiles->response($attachment->file_path, $attachment->file_name, false, [
             'Cache-Control' => 'private, max-age=' . self::ATTACHMENT_CACHE_SECONDS,
         ]);
     }
@@ -742,11 +711,7 @@ class ConsultationMessageController extends Controller
 
     private function deletePrescriptionFile(ConsultationSession $session): void
     {
-        if (!$session->prescription_file_path || str_starts_with((string) $session->prescription_file_path, 'http')) {
-            return;
-        }
-
-        Storage::disk(self::PRIVATE_DISK)->delete($session->prescription_file_path);
+        $this->medicalFiles->delete($session->prescription_file_path);
     }
 
     private function typingKey(int $sessionId, int $userId): string

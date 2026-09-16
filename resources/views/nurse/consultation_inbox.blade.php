@@ -6,6 +6,9 @@
     </x-slot>
 
     @php
+        // Resolved once per render rather than per attachment: the service is
+        // stateless and this block builds the whole page payload in one pass.
+        $medicalFiles = app(\App\Services\MedicalFileStorage::class);
         $isPatientOnline = fn ($patient) => $patient
             && $patient->online_status === 'online'
             && $patient->last_seen_at
@@ -44,7 +47,7 @@
             ->unique('request_id')
             ->values();
 
-        $inboxRequestsJson = $allInboxRequests->map(function ($request) use ($isPatientOnline) {
+        $inboxRequestsJson = $allInboxRequests->map(function ($request) use ($isPatientOnline, $medicalFiles) {
             return [
                 'request_id' => $request->request_id,
                 'patient_id' => $request->patient_id,
@@ -60,8 +63,11 @@
                 'symptoms_desc' => $request->symptoms_desc,
                 'online_reason' => $request->online_reason,
                 'additional_information' => $request->additional_information,
-                'file_attachments' => array_map(function ($p) use ($request) {
-                    return url('/consultations/' . $request->request_id . '/attachments/' . basename($p));
+                // attachmentKey() is the single definition of how a stored
+                // reference is addressed; AttachmentController::show() matches
+                // on the same call, so the two cannot drift apart.
+                'file_attachments' => array_map(function ($reference) use ($request, $medicalFiles) {
+                    return url('/consultations/' . $request->request_id . '/attachments/' . $medicalFiles->attachmentKey($reference));
                 }, $request->file_attachments ?? []),
             ];
         })->toArray();

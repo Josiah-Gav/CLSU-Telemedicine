@@ -37,12 +37,17 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Account Status</label>
-                                @if($user->account_status === 'inactive')
-                                    {{-- Not an admin choice: this account is still waiting on the
-                                         invited staff member's own activation link (or, for a
-                                         patient, on email verification). It becomes editable —
-                                         Active or Suspended — automatically once that happens. --}}
-                                    <input type="text" value="Inactive &mdash; awaiting email verification" disabled class="mt-1 w-full rounded-md border-gray-200 bg-gray-100 text-gray-500 shadow-sm">
+                                @if($user->awaitsStaffActivation())
+                                    {{-- Not an admin choice: this invited nurse/physician is still
+                                         waiting on their own activation link, which is the only
+                                         thing that can set their password. It becomes editable —
+                                         Active or Suspended — automatically once they activate.
+                                         Mirrors the account_status rule in
+                                         UserManagementController::update(); the two must agree, or
+                                         the form submits a value validation refuses. Patients are
+                                         deliberately not in this branch: an admin may activate
+                                         them directly. --}}
+                                    <input type="text" value="Inactive &mdash; awaiting invitation activation" disabled class="mt-1 w-full rounded-md border-gray-200 bg-gray-100 text-gray-500 shadow-sm">
                                 @else
                                     <select name="account_status" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                         <option value="active" {{ old('account_status', $user->account_status) === 'active' ? 'selected' : '' }}>Active</option>
