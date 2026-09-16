@@ -16,7 +16,16 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    // Deliberately looser than the throttle:6,1 used elsewhere in this file.
+    // Laravel throttles a guest route by IP, and CLSU campus traffic arrives
+    // NATed behind a small number of addresses — during a demo or an
+    // orientation session many legitimate students register from one apparent
+    // IP within the same minute, and 6 would lock them out. Scripted abuse is
+    // already bounded by registration itself: the address must be unique and
+    // must match the @clsu.edu.ph / @clsu2.edu.ph rule in
+    // RegisteredUserController, so an attacker cannot mint accounts freely.
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:10,1');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -26,13 +35,23 @@ Route::middleware('guest')->group(function () {
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
+    // The mail-bomb gate. config/auth.php already throttles the broker at 60s
+    // per *email address*, which stops one mailbox being flooded; this adds the
+    // per-IP half, which is what stops a script walking a list of addresses and
+    // burning the SMTP quota the whole application depends on for first login.
+    // Matches the throttle:6,1 used by the other credential-bearing guest
+    // endpoints in this file.
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
+    // Same limit, different reason: this endpoint accepts a one-time reset
+    // token, so an unthrottled POST is an offline-free guessing surface.
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.store');
 
     // Nurse/physician account activation. Deliberately outside the auth+verified
