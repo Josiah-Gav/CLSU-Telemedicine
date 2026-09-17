@@ -117,34 +117,49 @@ reached directly, bypassing it.
 php artisan migrate --force
 ```
 
-Against an **empty** database. Never run `php artisan db:seed` — `DatabaseSeeder`
-creates `test@example.com` with the password `password`.
+Against an **empty** database. **Never run the plain `php artisan db:seed`** —
+`DatabaseSeeder` creates `test@example.com` with the password `password`, which
+must never exist in production. `AdminUserSeeder` below is the only seeder
+intended for production/admin provisioning, and it is always invoked by its
+own class name, never through the default seeder.
 
 ### Create the first admin
 
 There is no admin in a fresh database, and `admin/users/*` is the only path that
 provisions nurses and physicians, so without this the deployment is unusable.
-`User::booted()` auto-verifies an admin, so the account can sign in immediately.
+`database/seeders/AdminUserSeeder.php` creates exactly one admin from
+environment variables, and is idempotent: if an account with the configured
+email already exists it makes no changes at all, so re-running it is always
+safe. `User::booted()` auto-verifies an admin, so the account can sign in
+immediately — the seeder does not need to, and does not, set that itself.
 
-From `php artisan tinker` on the server:
+Lifecycle for a fresh deployment:
 
-```php
-App\Models\User::create([
-    'first_name'     => 'Firstname',
-    'last_name'      => 'Lastname',
-    'email'          => 'admin@clsu.edu.ph',
-    'password'       => Illuminate\Support\Facades\Hash::make('<a strong password>'),
-    'role'           => 'admin',
-    'account_status' => 'active',
-    'user_type'      => 'staff',
-    'department'     => 'Infirmary',
-]);
-```
+1. `php artisan migrate --force`
+2. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` as real environment variables on the
+   server (not in a file that gets committed — see the warnings below).
+3. `php artisan db:seed --class=AdminUserSeeder --force`
+4. Sign in as that admin and confirm access.
+5. Remove `ADMIN_PASSWORD` from the server environment if it's no longer
+   needed. This does **not** affect the account that was already created —
+   only the password's hash is stored, never the plaintext, so deleting the
+   environment variable neither removes nor disables the admin.
 
-Type the password interactively rather than pasting it into a script, and change
-it after first sign-in. Create exactly one admin this way; every later staff
-account goes through the invitation flow at `/admin/users/create`, which emails
-the invitee a link to set their own password.
+`ADMIN_FIRST_NAME`/`ADMIN_LAST_NAME` are optional and default to `Admin`/`User`
+if omitted. Every later staff account goes through the invitation flow at
+`/admin/users/create` instead, which emails the invitee a link to set their
+own password — this seeder is only for the one account that has to exist
+before that flow can be used.
+
+**Warnings:**
+
+- Never commit a real admin email/password to Git, including in `.env` or any
+  deployment script. `.env.example` ships with `ADMIN_EMAIL`/`ADMIN_PASSWORD`
+  left blank for exactly this reason.
+- Never run the default `php artisan db:seed` in production (see above).
+- The password is only ever read from the environment at the moment the
+  seeder runs; it is never logged, echoed, or persisted anywhere but the
+  hashed `users.password` column.
 
 ## Scheduler
 
