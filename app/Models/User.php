@@ -9,7 +9,11 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable; // Removed 'HasApiTokens' from here
+    // No HasApiTokens here on purpose: Sanctum is installed for the CHIS
+    // integration, but that token principal is App\Models\ChisIntegrationClient,
+    // not a User row — see that class for why. Nothing else in this
+    // application issues API tokens to a CLSU account.
+    use HasFactory, Notifiable;
 
     // Tell Eloquent the table's primary key name
     protected $primaryKey = 'user_id';

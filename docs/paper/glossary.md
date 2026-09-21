@@ -288,7 +288,8 @@ done in controllers; only the two policies above are registered.
 
 | Do not write | Because |
 |---|---|
-| "CHIS integration", "CHIS sync", "CHIS interoperability" | Not implemented. One static UI placeholder exists (`resources/views/consultations/messaging.blade.php:633`), with no backend of any kind. CHIS may be mentioned only under limitations / future enhancements. |
+| "CHIS integration", "connected to CHIS", "synced with CHIS" **unqualified** | CHIS does not exist. A real, tested API now exists (see `docs/paper/features/chis-integration.md`), but the receive direction is served by fixture data standing in for CHIS. Always write **"simulated CHIS integration"** — the qualifier is load-bearing, not decorative. |
+| "real CHIS integration", "live CHIS connection", "production CHIS" | There is no real CHIS to connect to yet. Never imply the receive direction talks to an actual external system. |
 | "real-time websocket", "socket connection", "push" | All messaging and presence are HTTP-polled. |
 | "`general` consultation type" (as a stored value) | The stored value is `initial`; `general` is a filter label only. |
 | "status `assigned`" as a workflow state | Dead enum value, never written. |
@@ -296,6 +297,20 @@ done in controllers; only the two policies above are registered.
 | "`preffered_consultation_type`" | Dropped; verified absent from the live MySQL schema. |
 | "policy layer" (as a description of the whole system) | Only two policies are registered; the rest is controller-level authorization. |
 | bare "consultation" where request vs session matters | See section 1. |
+
+---
+
+## 15. Simulated CHIS integration terms (added with `chis-integration.md`)
+
+| Term | Backed by | Definition |
+|---|---|---|
+| Simulated CHIS integration | `docs/paper/features/chis-integration.md` | The umbrella term for this feature. Always qualified — never "CHIS integration" bare. |
+| Send direction | `Api\ChisIntegrationController::encounterSummary` | This application serving its own real data to an external caller. Not simulated — real data, real endpoint. |
+| Receive direction | `ChisClient::getIdentity`/`::getMedicalProfile` | This application consuming identity/clinical-context data. Simulated — currently `FakeChisClient` reading fixture data. |
+| `ChisClient` contract | `App\Contracts\ChisClient` | The interface the application depends on for the receive direction; the swap point for a future real CHIS client. |
+| `FakeChisClient` | `App\Services\Chis\FakeChisClient` | The only implementation of `ChisClient` that exists. Reads `chis_mock_patient_records` and `users.clsu_id`. Never call it "the CHIS client" without "Fake" — that name is the honesty signal in the code itself. |
+| CHIS integration client | `App\Models\ChisIntegrationClient` / `chis_integration_clients` | The Sanctum token principal for an external system caller. Deliberately not a `users` row. |
+| Mock patient record | `App\Models\ChisMockPatientRecord` / `chis_mock_patient_records` | Fixture data standing in for what CHIS would hold. Never call this "the medical record" — that phrasing is exactly what the "No Health Records Management" limitation forbids. |
 
 ---
 

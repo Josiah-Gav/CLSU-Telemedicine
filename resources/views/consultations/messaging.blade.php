@@ -552,16 +552,42 @@
                 </div>
 
                 <div x-show="activeTab === 'patient'" x-cloak class="bg-brand-muted px-3 py-4 sm:px-6 sm:py-5">
-                    {{-- Placeholder only: no Hospital Information System integration exists
-                         yet. Every value below is a static "No Data" stand-in so the layout
-                         is ready for when that feed is wired up — nothing here is fetched,
-                         stored, or backed by a route. --}}
-                    <div class="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                        </svg>
-                        <span><span class="font-semibold">Not connected yet.</span> This tab is reserved for records pulled from the Hospital Information System (HIS) integration. Fields will populate automatically once that connection is built &mdash; for now they show as placeholders.</span>
-                    </div>
+                    @php
+                        // CHIS does not exist yet, so this is fetched live on every page
+                        // load from FakeChisClient (seeded fixture data), never persisted
+                        // here or anywhere else in this application — see the ChisClient
+                        // contract's docblock and the "No Health Records Management"
+                        // limitation this is written to keep true.
+                        $bmi = null;
+                        if ($chisMedicalProfile && $chisMedicalProfile['height_cm'] && $chisMedicalProfile['weight_kg']) {
+                            $heightM = $chisMedicalProfile['height_cm'] / 100;
+                            $bmi = round($chisMedicalProfile['weight_kg'] / ($heightM * $heightM), 1);
+                        }
+                        $formatList = fn (array $items) => count($items) ? implode(', ', $items) : 'None reported';
+                    @endphp
+
+                    @if(!$consultationRequest->patient?->clsu_id)
+                        <div class="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                            <span><span class="font-semibold">No CLSU ID on file.</span> This patient record has no clsu_id to look up against CHIS, so nothing can be fetched.</span>
+                        </div>
+                    @elseif(!$chisMedicalProfile)
+                        <div class="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                            <span><span class="font-semibold">No matching CHIS record.</span> No profile was found for CLSU ID {{ $consultationRequest->patient->clsu_id }}.</span>
+                        </div>
+                    @else
+                        <div class="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l1.5 1.5 3-3.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span><span class="font-semibold">Simulated CHIS data.</span> Fetched live for CLSU ID {{ $consultationRequest->patient->clsu_id }} on this page load — this is fixture data standing in for the future CHIS integration, not this application's own medical record.</span>
+                        </div>
+                    @endif
 
                     <div class="mt-4 grid gap-4 lg:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -569,19 +595,19 @@
                             <dl class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Blood Type</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['blood_type'] ?? 'No Data' }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Height</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['height_cm'] ?? null ? $chisMedicalProfile['height_cm'] . ' cm' : 'No Data' }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Weight</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['weight_kg'] ?? null ? $chisMedicalProfile['weight_kg'] . ' kg' : 'No Data' }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">BMI</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $bmi ?? 'No Data' }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -591,15 +617,15 @@
                             <dl class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Name</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['emergency_contact']['name'] ?? 'No Data' }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Relationship</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['emergency_contact']['relationship'] ?? 'No Data' }}</dd>
                                 </div>
                                 <div class="sm:col-span-2">
                                     <dt class="text-xs font-medium text-slate-500">Contact Number</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                                    <dd class="mt-1 text-sm font-semibold text-slate-900">{{ $chisMedicalProfile['emergency_contact']['contact_number'] ?? 'No Data' }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -608,39 +634,46 @@
                     <div class="mt-4 grid gap-4 lg:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Known Allergies</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile ? $formatList($chisMedicalProfile['known_allergies']) : 'No Data' }}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Chronic Illnesses / Conditions</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile ? $formatList($chisMedicalProfile['chronic_conditions']) : 'No Data' }}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Current Medications</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile ? $formatList($chisMedicalProfile['current_medications']) : 'No Data' }}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Past Injuries / Surgeries</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile ? $formatList($chisMedicalProfile['past_injuries_surgeries']) : 'No Data' }}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Immunization History</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile ? $formatList($chisMedicalProfile['immunization_history']) : 'No Data' }}</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Family Medical History</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
+                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-900">{{ $chisMedicalProfile['family_medical_history'] ?? ($chisMedicalProfile ? 'None reported' : 'No Data') }}</p>
                         </div>
                     </div>
 
                     <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                         <div class="flex items-center justify-between gap-3">
                             <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">CHIS Sync Status</h4>
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
-                                Not connected
-                            </span>
+                            @if($chisMedicalProfile)
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                    <span class="inline-block h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
+                                    Simulated &mdash; found
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                    <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
+                                    No record
+                                </span>
+                            @endif
                         </div>
-                        <p class="mt-2 text-sm text-slate-400">Last synced: No Data</p>
+                        <p class="mt-2 text-sm text-slate-400">{{ $chisMedicalProfile ? 'Fetched live on this page load — not stored.' : 'Last synced: No Data' }}</p>
                     </div>
                 </div>
 

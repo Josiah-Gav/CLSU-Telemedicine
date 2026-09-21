@@ -87,40 +87,44 @@ opened and verified during this pass.
 
 ---
 
-## Not Implemented
+## Table X.6 Feature Inventory — Simulated External System Integration
 
-The following appears in the project description or the user interface but has **no
-implementation in the current source**. It is recorded here so it is not mistaken
-for a feature, and so the manuscript does not claim it.
+**Revision note (dated after the Phase 4 pass below).** This table and the section
+that follows replace what was previously titled "CHIS integration — Not
+Implemented." That section was accurate at the time it was written — the only
+trace of CHIS anywhere in the repository was one hardcoded "Not connected" badge
+with no backend, and it correctly instructed the manuscript not to claim otherwise.
+On the capstone author's explicit, later instruction, a real implementation was
+subsequently built to satisfy Objective 8 with working code rather than a
+description of intent. The verification standard is unchanged: every row below was
+derived by reading the current source, exactly as the rest of this document was.
 
-### CHIS integration — Not Implemented
+| Feature | User Role | Description | Implementation Evidence | Main Routes | Controllers | Services | Models / Tables | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| Simulated CHIS integration | Physician (receive, via UI); external system (both directions, via API) | RESTful, Sanctum-authenticated exchange in both directions with a **simulated** CHIS (CHIS itself does not exist — see `docs/paper/features/chis-integration.md`). Send: this system serves a closed consultation's encounter summary. Receive: this system consumes patient identity and limited clinical context (allergies, past injuries/surgeries, etc.) through one interface, currently fixture-backed. | `App\Contracts\ChisClient` (interface) bound to `App\Services\Chis\FakeChisClient` in `AppServiceProvider::register()`; `Api\ChisIntegrationController::encounterSummary/identity/medicalProfile`; `ChisIntegrationClient` (Sanctum token principal, not a `users` row); no data from the receive direction is ever persisted — fetched live and discarded per request | `GET /api/v1/consultations/{consultation}/encounter-summary`, `GET /api/v1/patients/{clsu_id}/identity`, `GET /api/v1/patients/{clsu_id}/medical-profile` | `Api\ChisIntegrationController` | `FakeChisClient` (behind the `ChisClient` contract) | `ChisIntegrationClient` / `chis_integration_clients`; `ChisMockPatientRecord` / `chis_mock_patient_records`; consumes existing `Consultation`, `ConsultationSession`, `User.clsu_id` | `tests/Feature/Api/ChisEncounterSummaryEndpointTest.php`, `ChisPatientLookupEndpointTest.php` (11 cases) | **Implemented (Simulated)** |
 
-**Classification: Not Implemented. Future enhancement only.**
+**Classification: Implemented (Simulated).** Every endpoint, model, migration,
+service, binding, and test listed above exists and passes. "Simulated" is a
+structural fact, not a hedge: CHIS is a separate capstone project with no API of
+its own yet, so the receive direction is served by `FakeChisClient` reading seeded
+fixture data, behind a `ChisClient` contract designed to be swapped for a real
+implementation with a one-line change once CHIS exposes an actual API. The send
+direction is not simulated — it serves this application's own real data to
+whichever caller presents a valid token.
 
-The system does **not** have CHIS interoperability. There is no CHIS API client, no
-simulated API, no dummy CHIS database, no controller, no service, no route, no
-configuration key, no model, no migration, and no test.
+Consequences for the manuscript, superseding the prior instruction:
 
-The only trace anywhere in the repository is presentational. A repository-wide
-case-insensitive search for `chis` across `app/` and `resources/views/` returns
-exactly one match:
-`resources/views/consultations/messaging.blade.php:633`, which renders a card
-headed "CHIS Sync Status" containing a hardcoded badge reading "Not connected" and
-the static text "Last synced: No Data". The two cards immediately above it,
-"Immunization History" and "Family Medical History", are likewise hardcoded to
-"No Data" with no data source behind them.
-
-Consequences for the manuscript, per the author's instruction:
-
-- No `chis-simulation.md` or `chis-integration.md` feature file will be created.
-- CHIS must not be described as implemented, integrated, simulated, or partially
-  working anywhere in the paper.
-- No CHIS endpoint, API contract, data flow, sequence, or workflow may be
-  documented, because none exists to document.
-- CHIS may appear only in the limitations / future enhancements chapter, phrased as
-  planned future integration — and only if the manuscript scope supports it.
-- The static placeholder cards should be described, if at all, as UI placeholders
-  reserved for future integration, never as a sync status.
+- `docs/paper/features/chis-integration.md` **is** the feature file for this
+  capability, at the same depth as every other feature file.
+- CHIS interoperability **may** be described as implemented — but only ever
+  qualified as **simulated**, and only for the receive direction. The send
+  direction (encounter summary) is real, unqualified functionality.
+- Never write "connected to CHIS," "synced with CHIS," or "CHIS integration" bare
+  and unqualified — see `docs/paper/glossary.md` §14 for the corrected wording
+  rule.
+- The defense demonstration (Postman collection at
+  `docs/postman/chis-integration.postman_collection.json`) is evidence for this
+  table, not a substitute for it.
 
 ---
 
@@ -128,16 +132,16 @@ Consequences for the manuscript, per the author's instruction:
 
 ### 1. Number of major features identified
 
-**22 major implemented features**, grouped into five domains: Authentication and
+**23 major implemented features**, grouped into six domains: Authentication and
 Account Management (7), Consultation Request Lifecycle (12), Consultation Session
-(5), Follow-Up Care (3), Cross-Cutting Services (6). The inventory tables above
-carry 33 rows; several rows are grouped into a single documentation file, and the
-mapping is in section 2. CHIS is excluded from this count entirely — it is not a
-feature (see **Not Implemented** above).
+(5), Follow-Up Care (3), Cross-Cutting Services (6), Simulated External System
+Integration (1, added after this pass — see Table X.6 and its revision note
+above). The inventory tables above carry 34 rows; several rows are grouped into a
+single documentation file, and the mapping is in section 2.
 
 ### 2. Final feature documentation files
 
-Final contents of `docs/paper/features/` — **22 files**:
+Final contents of `docs/paper/features/` — **23 files**:
 
 | # | Filename | Covers which inventory rows |
 |---|---|---|
@@ -163,9 +167,7 @@ Final contents of `docs/paper/features/` — **22 files**:
 | 20 | `dashboard-analytics.md` | Dashboard analytics |
 | 21 | `consultation-history-and-exports.md` | Consultation history and exports |
 | 22 | `concurrency-and-state-transitions.md` | Concurrency control for state transitions |
-
-No CHIS file is created, in either direction. CHIS has no implementation to
-document and appears only in the limitations / future enhancements chapter.
+| 23 | `chis-integration.md` | Simulated CHIS integration (Table X.6) |
 
 ### 3. Grouping decisions and why
 
@@ -210,10 +212,9 @@ document and appears only in the limitations / future enhancements chapter.
 
 ### 4. Features from the project description that could NOT be verified
 
-- **CHIS integration / CHIS simulation — classified Not Implemented.** See the
-  **Not Implemented** section above for the full evidence and the resulting
-  documentation rules. In short: one presentational placeholder, no backend of any
-  kind, and the manuscript must not claim CHIS interoperability.
+None remaining. CHIS integration was listed here as unverifiable in the original
+Phase 4 pass; it has since been implemented as a simulation and moved to Table X.6
+(see the revision note there).
 
 ### 5. Unexpected features discovered in the code
 
@@ -264,7 +265,7 @@ These are all implemented and all absent from `CLAUDE.md`:
 | L-16 | **`updateClinicalDetails` is a full replace and can write null into `NOT NULL` columns.** Omitted fields are mapped to null, but `consultations.assessment`, `.plan`, and `.recommendations` are `NOT NULL` in the live MySQL schema (verified with `SHOW COLUMNS`). Unreachable through the UI, unguarded at the application layer, and completely untested. | `ConsultationMessageController::updateClinicalDetails`; live schema. |
 | L-17 | **`PhysicianController::activeConsultations` writes on a GET request.** It backfills a missing consultation session and may rewrite `physician_id` and `consultation_status` on an existing one, with no transaction, no lock, and no route through `ConsultationOwnershipService`. | `PhysicianController::activeConsultations`. |
 | L-14 | **`MarkMissedScheduleSlots` has no test at all**, unlike its sibling `ExpireStaleIntakeSessions` (19 cases). Related: when the scheduled command marks a slot missed, **no notification is sent** — only the page-triggered `syncMissedSlotsForPhysician` notifies, and it skips slots already marked `missed`. | `tests/` contains no file referencing the command; `MarkMissedScheduleSlots::handle` sends no notifications. |
-| L-10 | **The system is single-institution and has no external clinical integration.** There is no CHIS client, no HL7/FHIR layer, no external EMR exchange, and no interoperability surface of any kind. The Immunization History and Family Medical History panels on the messaging screen are hardcoded "No Data" with no data source. | Repository-wide search; see the **Not Implemented** section. |
+| L-10 | **Superseded — see the Addendum at the end of this document.** This row originally read "the system is single-institution and has no external clinical integration... no CHIS client... no interoperability surface of any kind," and was accurate at the time. A simulated CHIS integration was subsequently built (Table X.6, `docs/paper/features/chis-integration.md`); its own limitations section (CH-L1–CH-L6) is the current, accurate record — most importantly CH-L1: CHIS itself still does not exist, so this remains, correctly, a simulation and not real interoperability. | See the Addendum, and `docs/paper/features/chis-integration.md` §18. |
 
 ### 8. Terminology conflicts
 
@@ -278,11 +279,13 @@ These are all implemented and all absent from `CLAUDE.md`:
 
 ### 9. Decisions applied
 
-1. **CHIS — no file.** Classified Not Implemented, removed from the feature tables,
-   and recorded under **Not Implemented** and gap L-10. No CHIS endpoint, simulated
-   API, dummy database, controller, service, or workflow is documented anywhere,
-   because none exists. CHIS may appear only under limitations / future
-   enhancements, and the system is never described as having CHIS interoperability.
+1. **CHIS — superseded, see the Addendum.** At the time of this Phase 4 pass, CHIS
+   was classified Not Implemented, excluded from the feature tables, and recorded
+   under gap L-10. A simulated CHIS integration was subsequently built on the
+   capstone author's explicit instruction; it now has its own file
+   (`docs/paper/features/chis-integration.md`) and its own table (X.6). This
+   decision entry is left as the historical record of what Phase 4 decided at the
+   time; it no longer describes the current state.
 2. **Grouping applied.** `patient-cancellation.md` merged into
    `patient-request-tracking-and-cancellation.md`; `presence-tracking.md` merged
    into `physician-intake.md`. File count 24 → 22. The one-feature-one-file rule is
@@ -329,3 +332,22 @@ actually needed): the bodies of the largest controllers — `PhysicianController
 beyond the sections cited here, and the Blade views other than
 `consultations/messaging.blade.php`. Feature-level UI claims in Phase 5 must be
 verified against the views before they are written.
+
+---
+
+### Addendum — Simulated CHIS Integration added
+
+The statement above describes the original Phase 4 reconnaissance pass, and is
+left unedited as the historical record of what that pass covered. Table X.6 and
+`docs/paper/features/chis-integration.md` were added afterward, on the capstone
+author's explicit instruction, once a real (simulated) CHIS integration was built.
+That addition was verified the same way: every claim in Table X.6 and the feature
+file was checked directly against `routes/api.php`, `bootstrap/app.php`,
+`app/Contracts/ChisClient.php`, `app/Services/Chis/FakeChisClient.php`,
+`app/Http/Controllers/Api/ChisIntegrationController.php`, the two new migrations,
+both new models, `AppServiceProvider`, `ConsultationMessageController::show`, the
+updated `messaging.blade.php`, and a passing run of
+`tests/Feature/Api/ChisEncounterSummaryEndpointTest.php` and
+`ChisPatientLookupEndpointTest.php` (11 cases, all green). `docs/paper/glossary.md`
+§14 was updated in the same pass to remove the now-superseded prohibition on the
+term "CHIS integration."

@@ -1,0 +1,213 @@
+{
+  "info": {
+    "name": "CLSU Telemedicine — Simulated CHIS Integration",
+    "description": "Demonstrates the two directions of the simulated CHIS data exchange described in Objective 8: (1) CHIS pulling a closed consultation's encounter summary from this system, and (2) this system pulling patient identity and limited clinical context (allergies, past injuries/surgeries, etc.) from CHIS. CHIS does not exist yet — see App\\Contracts\\ChisClient and App\\Services\\Chis\\FakeChisClient. Run `php artisan chis:issue-token` to get a value for {{chis_token}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{chis_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "chis_token", "value": "REPLACE_WITH_TOKEN_FROM_chis:issue-token" },
+    { "key": "consultation_request_id", "value": "1" },
+    { "key": "clsu_id_with_record", "value": "2021012345" },
+    { "key": "clsu_id_unknown", "value": "0000000000" }
+  ],
+  "item": [
+    {
+      "name": "1. Encounter Summary (send: CHIS pulls from us)",
+      "item": [
+        {
+          "name": "No token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": "{{base_url}}/api/v1/consultations/{{consultation_request_id}}/encounter-summary"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 without a token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Valid token → 200 with encounter summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/consultations/{{consultation_request_id}}/encounter-summary"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has the expected encounter fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('encounter_reference');",
+                  "    pm.expect(json).to.have.property('patient_identifier');",
+                  "    pm.expect(json).to.have.property('diagnosis');",
+                  "    pm.expect(json).to.have.property('assessment');",
+                  "    pm.expect(json).to.have.property('plan');",
+                  "    pm.expect(json).to.have.property('consultation_status');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Patient Identity (receive: we pull from CHIS)",
+      "item": [
+        {
+          "name": "No token → 401",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_with_record}}/identity"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 without a token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Known clsu_id → 200 with identity",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_with_record}}/identity"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has identity fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('clsu_id');",
+                  "    pm.expect(json).to.have.property('full_name');",
+                  "    pm.expect(json).to.have.property('eligibility_status');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown clsu_id → 404",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_unknown}}/identity"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404 for an unknown identifier', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Patient Medical Profile (receive: allergies, past injuries/surgeries, etc.)",
+      "item": [
+        {
+          "name": "No token → 401",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_with_record}}/medical-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 without a token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Known clsu_id → 200 with medical profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_with_record}}/medical-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response includes allergies and past injuries/surgeries', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('known_allergies').that.is.an('array');",
+                  "    pm.expect(json).to.have.property('past_injuries_surgeries').that.is.an('array');",
+                  "    pm.expect(json).to.have.property('emergency_contact');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown clsu_id → 404",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/patients/{{clsu_id_unknown}}/medical-profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404 for an unknown identifier', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

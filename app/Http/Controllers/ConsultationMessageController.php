@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\ChisClient;
+use App\Enums\NotificationType;
 use App\Models\ConsultationSession;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\User;
-use App\Enums\NotificationType;
 use App\Notifications\ConsultationCompleted;
 use App\Services\ConsultationVideoService;
-use App\Services\NotificationService;
 use App\Services\MedicalFileStorage;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -51,7 +53,10 @@ class ConsultationMessageController extends Controller
      */
     private const ATTACHMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'mp4'];
 
-    public function __construct(private readonly MedicalFileStorage $medicalFiles) {}
+    public function __construct(
+        private readonly MedicalFileStorage $medicalFiles,
+        private readonly ChisClient $chis,
+    ) {}
 
     public function show(ConsultationSession $session)
     {
@@ -67,8 +72,17 @@ class ConsultationMessageController extends Controller
             'physician',
         ]);
 
+        // Fetched live on every view, never persisted here — see the
+        // ChisClient contract's docblock for why. A patient with no clsu_id
+        // on file simply has nothing to look up.
+        $clsuId = $session->request->patient->clsu_id ?? null;
+        $chisIdentity = $clsuId ? $this->chis->getIdentity($clsuId) : null;
+        $chisMedicalProfile = $clsuId ? $this->chis->getMedicalProfile($clsuId) : null;
+
         return view('consultations.messaging', [
             'session' => $session,
+            'chisIdentity' => $chisIdentity,
+            'chisMedicalProfile' => $chisMedicalProfile,
         ]);
     }
 
@@ -97,10 +111,10 @@ class ConsultationMessageController extends Controller
 
         $validator = Validator::make($request->all(), [
             'message' => 'nullable|string|max:2000',
-            'attachments' => 'nullable|array|max:' . self::MAX_ATTACHMENTS_PER_MESSAGE,
-            'attachments.*' => ['file', 'mimes:' . implode(',', self::ATTACHMENT_EXTENSIONS)],
+            'attachments' => 'nullable|array|max:'.self::MAX_ATTACHMENTS_PER_MESSAGE,
+            'attachments.*' => ['file', 'mimes:'.implode(',', self::ATTACHMENT_EXTENSIONS)],
         ], [
-            'attachments.max' => 'You can attach up to ' . self::MAX_ATTACHMENTS_PER_MESSAGE . ' files per message.',
+            'attachments.max' => 'You can attach up to '.self::MAX_ATTACHMENTS_PER_MESSAGE.' files per message.',
             'attachments.*.mimes' => 'This file type is not supported.',
         ]);
 
@@ -112,7 +126,7 @@ class ConsultationMessageController extends Controller
             $videoCount = 0;
 
             foreach ($request->file('attachments', []) as $index => $file) {
-                if (!$file->isValid()) {
+                if (! $file->isValid()) {
                     continue;
                 }
 
@@ -172,7 +186,7 @@ class ConsultationMessageController extends Controller
             $storedPath = $this->medicalFiles->store(
                 $file,
                 'message_attachments',
-                'message-attachments/' . $session->id
+                'message-attachments/'.$session->id
             );
 
             $message->attachments()->create([
@@ -186,7 +200,7 @@ class ConsultationMessageController extends Controller
         $this->setTyping((int) $session->id, (int) Auth::user()->user_id, false);
         $this->touchLastSeen((int) $session->id, (int) Auth::user()->user_id);
 
-        $this->notifyMessageRecipients($session, $body !== '', !empty($files));
+        $this->notifyMessageRecipients($session, $body !== '', ! empty($files));
 
         // The sender is already known, so it is set rather than re-queried;
         // attachments must be re-read because the relation was resolved before
@@ -235,7 +249,7 @@ class ConsultationMessageController extends Controller
 
         $removePrescription = (bool) ($validated['remove_prescription'] ?? false);
 
-        if ($removePrescription && !$request->hasFile('prescription')) {
+        if ($removePrescription && ! $request->hasFile('prescription')) {
             $this->deletePrescriptionFile($session);
             $session->forceFill([
                 'prescription_file_name' => null,
@@ -253,7 +267,7 @@ class ConsultationMessageController extends Controller
             $storedPath = $this->medicalFiles->store(
                 $file,
                 'consultation_prescriptions',
-                'consultation-prescriptions/' . $session->id
+                'consultation-prescriptions/'.$session->id
             );
 
             $this->deletePrescriptionFile($session);
@@ -510,7 +524,7 @@ class ConsultationMessageController extends Controller
         }
 
         $peerUserId = $peerUser ? (int) $peerUser->user_id : null;
-        $peerName = trim((optional($peerUser)->first_name ?? '') . ' ' . (optional($peerUser)->last_name ?? ''));
+        $peerName = trim((optional($peerUser)->first_name ?? '').' '.(optional($peerUser)->last_name ?? ''));
         $peerIsTyping = $peerUserId
             ? Cache::has($this->typingKey((int) $session->id, $peerUserId))
             : false;
@@ -572,7 +586,7 @@ class ConsultationMessageController extends Controller
         );
     }
 
-    public function downloadAttachment(\App\Models\MessageAttachment $attachment)
+    public function downloadAttachment(MessageAttachment $attachment)
     {
         $message = $attachment->message;
         $session = optional($message)->consultation;
@@ -594,7 +608,7 @@ class ConsultationMessageController extends Controller
         // done for its Cloudinary branch: the messaging view renders image
         // attachments straight into an <img> preview from this same URL.
         return $this->medicalFiles->response($attachment->file_path, $attachment->file_name, false, [
-            'Cache-Control' => 'private, max-age=' . self::ATTACHMENT_CACHE_SECONDS,
+            'Cache-Control' => 'private, max-age='.self::ATTACHMENT_CACHE_SECONDS,
         ]);
     }
 
@@ -608,7 +622,7 @@ class ConsultationMessageController extends Controller
         return [
             'message_id' => $message->message_id,
             'sender_id' => $message->sender_id,
-            'sender_name' => trim((optional($message->sender)->first_name ?? '') . ' ' . (optional($message->sender)->last_name ?? '')),
+            'sender_name' => trim((optional($message->sender)->first_name ?? '').' '.(optional($message->sender)->last_name ?? '')),
             'message' => $message->message,
             'read_at' => optional($message->read_at)?->toIso8601String(),
             'created_at' => optional($message->created_at)?->toIso8601String(),
@@ -630,7 +644,7 @@ class ConsultationMessageController extends Controller
      */
     private function notifyMessageRecipients(ConsultationSession $session, bool $hasMessage, bool $hasAttachments): void
     {
-        if (!$hasMessage && !$hasAttachments) {
+        if (! $hasMessage && ! $hasAttachments) {
             return;
         }
 
@@ -646,7 +660,7 @@ class ConsultationMessageController extends Controller
             $recipientUser = optional($session->request)->patient;
         }
 
-        if (!$recipientUser) {
+        if (! $recipientUser) {
             return;
         }
 
@@ -657,7 +671,7 @@ class ConsultationMessageController extends Controller
                 $recipientId,
                 NotificationType::NEW_MESSAGE,
                 'New Message',
-                'You received a new message for consultation #' . $session->request_id . '.',
+                'You received a new message for consultation #'.$session->request_id.'.',
                 [
                     'consultation_id' => $session->request_id,
                     'request_id' => $session->request_id,
@@ -671,7 +685,7 @@ class ConsultationMessageController extends Controller
                 $recipientId,
                 NotificationType::NEW_ATTACHMENT,
                 'New Attachment',
-                'A new attachment was uploaded to consultation #' . $session->request_id . '.',
+                'A new attachment was uploaded to consultation #'.$session->request_id.'.',
                 [
                     'consultation_id' => $session->request_id,
                     'request_id' => $session->request_id,
@@ -687,6 +701,7 @@ class ConsultationMessageController extends Controller
 
         if ($isTyping) {
             Cache::put($cacheKey, true, now()->addSeconds(self::TYPING_TTL_SECONDS));
+
             return;
         }
 
@@ -730,11 +745,11 @@ class ConsultationMessageController extends Controller
 
     private function typingKey(int $sessionId, int $userId): string
     {
-        return 'consultation:' . $sessionId . ':typing:' . $userId;
+        return 'consultation:'.$sessionId.':typing:'.$userId;
     }
 
     private function lastSeenKey(int $sessionId, int $userId): string
     {
-        return 'consultation:' . $sessionId . ':last_seen:' . $userId;
+        return 'consultation:'.$sessionId.':last_seen:'.$userId;
     }
 }

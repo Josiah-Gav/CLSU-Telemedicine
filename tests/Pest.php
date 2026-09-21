@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\ChisIntegrationClient;
+use App\Models\PhysicianAvailabilitySession;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /*
@@ -68,20 +72,20 @@ function something()
  * User::$fillable, which is also why TrackUserPresence and PresenceController
  * write it that way.
  */
-function makeConsultationIntakeAvailable(): App\Models\User
+function makeConsultationIntakeAvailable(): User
 {
-    $physician = App\Models\User::factory()->create([
+    $physician = User::factory()->create([
         'role' => 'physician',
         'user_type' => 'staff',
         'account_status' => 'active',
         'online_status' => 'online',
     ]);
 
-    Illuminate\Support\Facades\DB::table('users')
+    DB::table('users')
         ->where('user_id', $physician->user_id)
         ->update(['last_seen_at' => now()]);
 
-    App\Models\PhysicianAvailabilitySession::create([
+    PhysicianAvailabilitySession::create([
         'physician_id' => $physician->user_id,
         'started_at' => now(),
         'last_seen_at' => now(),
@@ -90,4 +94,17 @@ function makeConsultationIntakeAvailable(): App\Models\User
     ]);
 
     return $physician->refresh();
+}
+
+/**
+ * Issue a Sanctum token for a fresh ChisIntegrationClient, for the two
+ * tests/Feature/Api/Chis*Test.php suites. Shared here rather than declared
+ * in either test file because both need it, and a top-level function
+ * declared in two included test files fatals with "cannot redeclare".
+ */
+function issueChisToken(array $abilities = ['chis:read-encounters', 'chis:read-patients']): string
+{
+    $client = ChisIntegrationClient::create(['name' => 'Test CHIS Client']);
+
+    return $client->createToken('test', $abilities)->plainTextToken;
 }

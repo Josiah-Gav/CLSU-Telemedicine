@@ -204,11 +204,14 @@ The **Assessment** tab in `messaging.blade.php`. Verified from the view:
 - On completion the Alpine component switches `activeTab = 'assessment'`, so the
   physician lands on the record they just finalised.
 
-The same tab also renders the **Patient** tab's static panels — Immunization
-History, Family Medical History, and the "CHIS Sync Status" card — which are
-hardcoded "No Data" placeholders with **no data source**. They are not part of this
-feature and must not be described as clinical data. See `00-feature-inventory.md`,
-*Not Implemented*.
+The **Patient Info** tab (a separate tab from this one, not part of clinical
+documentation) now renders live data — identity and limited clinical context
+(allergies, past injuries/surgeries, etc.) fetched from a simulated CHIS on each
+page load, never persisted. It is documented in full as its own feature: see
+`docs/paper/features/chis-integration.md`. Do not describe it here as part of
+clinical documentation — the two are populated by entirely different code paths
+(`ConsultationMessageController::show` for the CHIS tab vs. `::updateClinicalDetails`
+for this one) with different authorization and different data sources.
 
 ## 16. Tests
 
