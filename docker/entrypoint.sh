@@ -66,4 +66,15 @@ php artisan view:cache   || echo "warning: view:cache failed; views will compile
 # confusing failure if a future view did use it.
 php artisan storage:link >/dev/null 2>&1 || true
 
+# Diagnostic only, temporary: the build-time check (Dockerfile's
+# `apache2ctl -M`) shows a clean single-MPM image, yet the container still
+# crashes on "AH00534: More than one MPM loaded" at this exact point in
+# deploy logs. That's a contradiction if the runtime filesystem matches what
+# was built. Printing the live state here, in the same container, right
+# before the crash, tells us whether it actually does.
+echo "--- mods-enabled MPM diagnostic ---"
+ls -la /etc/apache2/mods-enabled/ | grep -i mpm || echo "(no mpm files found in mods-enabled)"
+apache2ctl -M 2>&1 || echo "apache2ctl -M exited non-zero"
+echo "--- end diagnostic ---"
+
 exec "$@"
