@@ -92,20 +92,14 @@ test('creating a patient does not send a staff invitation notification', functio
     Notification::assertNothingSent();
 });
 
-test('creating an admin does not send a staff invitation notification', function () {
+test('creating an admin sends a staff invitation notification', function () {
     Notification::fake();
 
-    test()->actingAs(invitingAdmin())->post(route('admin.users.store'), [
-        'first_name' => 'Ada',
-        'last_name' => 'Reyes',
-        'email' => 'ada@clsu.edu.ph',
-        'password' => 'admin-password-1',
-        'password_confirmation' => 'admin-password-1',
-        'role' => 'admin',
-        'account_status' => 'active',
-    ])->assertSessionHasNoErrors();
+    submitStaff(['role' => 'admin', 'email' => 'ada@clsu.edu.ph'])->assertSessionHasNoErrors();
 
-    Notification::assertNothingSent();
+    $user = User::where('email', 'ada@clsu.edu.ph')->firstOrFail();
+
+    Notification::assertSentTo($user, StaffAccountInvitation::class);
 });
 
 // --- notification content ----------------------------------------------------
