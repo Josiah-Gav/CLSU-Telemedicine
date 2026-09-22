@@ -65,6 +65,14 @@ return [
             'transport' => 'resend',
         ],
 
+        // Registered in AppServiceProvider::boot() via Mail::extend() — not
+        // one of Laravel's built-in transports. Sends over SendGrid's HTTPS
+        // API rather than SMTP; see SendGridApiTransport's docblock.
+        'sendgrid' => [
+            'transport' => 'sendgrid',
+            'key' => env('SENDGRID_API_KEY'),
+        ],
+
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
