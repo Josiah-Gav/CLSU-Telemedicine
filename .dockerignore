@@ -1,0 +1,59 @@
+# Build context exclusions.
+#
+# The first two groups are security, not size: .env holds the Cloudinary
+# secret, the Jitsi private key, the mail password and the one-off ADMIN_*
+# values, and storage/app/medical holds real medical files. Neither may ever be
+# baked into an image layer, where it would survive every later RUN that
+# appears to delete it.
+
+.env
+.env.*
+!.env.example
+
+storage/app/medical
+storage/app/public
+storage/app/private
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/debugbar
+
+# Rebuilt inside the image; copying the host's copies would ship the wrong
+# platform's binaries and stale assets.
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+
+# Local-only tooling and history.
+.git
+.gitignore
+.github
+.vscode
+.idea
+.fleet
+.nova
+.zed
+.claude
+.playwright-mcp
+.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+auth.json
+
+# No runtime role. The test suite is not installed in the image anyway
+# (composer install --no-dev), so shipping its files would be dead weight.
+tests
+phpunit.xml
+
+# Development databases and docs that have no runtime role. "laravel" is a
+# stray SQLite file that used to be tracked; it is now removed and gitignored,
+# but a developer may still have one locally.
+database/database.sqlite
+laravel
+docs
+design-system
+README.md
+CLAUDE.md

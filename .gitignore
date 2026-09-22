@@ -17,6 +17,10 @@
 # screenshots here as a side effect of browser-tool verification — not
 # hand-authored config or test files, so they don't belong in the repo.
 /.playwright-mcp
+# A stray SQLite database that was tracked by mistake. It held schema and no
+# rows, and nothing in the application ever pointed at it — the dev database is
+# MySQL and the test database is :memory:. Ignored so it cannot come back.
+/laravel
 /public/build
 /public/hot
 /public/storage
