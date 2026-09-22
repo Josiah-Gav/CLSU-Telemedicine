@@ -65,7 +65,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * Roles that are provisioned by admin invitation rather than by
      * self-registration or direct creation.
      */
-    public const INVITED_ROLES = ['nurse', 'physician'];
+    public const INVITED_ROLES = ['nurse', 'physician', 'admin'];
 
     /**
      * Whether this account is a staff account still waiting to be activated
@@ -104,12 +104,18 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected static function booted(): void
     {
-        // Admins are provisioned directly (no self-registration, no invitation flow),
-        // so they would otherwise be locked out by the 'verified' middleware.
-        // Nurses and physicians are deliberately excluded: they verify by accepting
-        // their activation invitation.
+        // A directly-created admin (AdminUserSeeder, or any future direct
+        // creation with account_status 'active') would otherwise be locked out
+        // by the 'verified' middleware, since nothing else stamps this. Scoped
+        // to account_status !== 'inactive' so an *invited* admin — created
+        // 'inactive' by UserManagementController::store(), same as an invited
+        // nurse/physician — is excluded and stays unverified until they accept
+        // their invitation. Without that check, an invited admin would read as
+        // already verified despite never having set their own password, which
+        // would let UserManagementController::update()'s
+        // email_verified_at === null guard be bypassed.
         static::creating(function (self $user): void {
-            if (empty($user->email_verified_at) && $user->role === 'admin') {
+            if (empty($user->email_verified_at) && $user->role === 'admin' && $user->account_status !== 'inactive') {
                 $user->email_verified_at = now();
             }
         });

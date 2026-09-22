@@ -104,7 +104,7 @@ function breakResendMail(): void
 
 // --- 1-4. the recoverable states -------------------------------------------
 
-test('an admin can resend for an inactive nurse or physician holding a valid invitation', function (string $role) {
+test('an admin can resend for an inactive nurse, physician, or admin holding a valid invitation', function (string $role) {
     Notification::fake();
 
     $target = resendTarget(['role' => $role]);
@@ -117,7 +117,7 @@ test('an admin can resend for an inactive nurse or physician holding a valid inv
     expect(session('status'))->toContain('Invitation email sent to '.$target->email);
 
     Notification::assertSentTo($target, StaffAccountInvitation::class);
-})->with(['nurse', 'physician']);
+})->with(['nurse', 'physician', 'admin']);
 
 test('an admin can resend once the invitation has expired', function () {
     Notification::fake();
@@ -241,7 +241,6 @@ test('resend is refused for accounts that are not awaiting activation', function
     'active staff' => [['account_status' => 'active']],
     'suspended staff' => [['account_status' => 'suspended']],
     'patient' => [['role' => 'patient']],
-    'admin' => [['role' => 'admin']],
 ]);
 
 test('resend for a nonexistent user is a 404', function () {

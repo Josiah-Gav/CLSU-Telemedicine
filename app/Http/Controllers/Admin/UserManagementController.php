@@ -24,9 +24,10 @@ class UserManagementController extends Controller
 {
     /**
      * Roles that are provisioned by invitation rather than by the admin
-     * choosing a password. Kept in step with StaffInvitationController.
+     * choosing a password. Kept in step with User::INVITED_ROLES, which
+     * StaffInvitationController reads through awaitsStaffActivation().
      */
-    private const INVITED_ROLES = ['nurse', 'physician'];
+    private const INVITED_ROLES = ['nurse', 'physician', 'admin'];
 
     private function authorizeAdmin(): void
     {

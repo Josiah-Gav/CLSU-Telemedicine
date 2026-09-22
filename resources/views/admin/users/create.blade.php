@@ -41,6 +41,7 @@
                                 <select name="role" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                     <option value="nurse" {{ old('role') === 'nurse' ? 'selected' : '' }}>Nurse</option>
                                     <option value="physician" {{ old('role') === 'physician' ? 'selected' : '' }}>Physician</option>
+                                    <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                                 </select>
                             </div>
                             <div>

@@ -35,7 +35,7 @@ function createStaff(array $overrides = []): TestResponse
 
 // --- creation ---------------------------------------------------------------
 
-test('an admin can create a nurse or physician by invitation', function (string $role) {
+test('an admin can create a nurse, physician, or admin by invitation', function (string $role) {
     $response = createStaff(['role' => $role]);
 
     $response->assertSessionHasNoErrors()->assertRedirect(route('admin.users.index'));
@@ -46,7 +46,7 @@ test('an admin can create a nurse or physician by invitation', function (string 
         ->and($user->account_status)->toBe('inactive')
         ->and($user->online_status)->toBe('offline')
         ->and($user->email_verified_at)->toBeNull();
-})->with(['nurse', 'physician']);
+})->with(['nurse', 'physician', 'admin']);
 
 test('the profile fields the admin entered are stored', function () {
     createStaff(['role' => 'physician', 'specialization' => 'Cardiology']);
@@ -223,23 +223,40 @@ test('patient creation without a password is still rejected', function () {
     $this->assertDatabaseMissing('users', ['email' => 'juan@clsu.edu.ph']);
 });
 
-test('admin creation still works and stays verified and active', function () {
-    $this->actingAs(admin())->post(route('admin.users.store'), [
-        'first_name' => 'Ada',
-        'last_name' => 'Reyes',
-        'email' => 'ada@clsu.edu.ph',
-        'password' => 'admin-password-1',
-        'password_confirmation' => 'admin-password-1',
-        'role' => 'admin',
-        'account_status' => 'active',
-    ])->assertSessionHasNoErrors()->assertRedirect(route('admin.users.index'));
+test('an invited admin stays unverified until activation, then can sign in as admin', function () {
+    // Regression coverage for a real gap this change introduced: User::booted()
+    // auto-verifies any role => admin on creation, which would silently
+    // bypass this invited path's 'inactive'/unverified state unless that hook
+    // is scoped to exclude account_status 'inactive'.
+    createStaff(['role' => 'admin', 'email' => 'ada@clsu.edu.ph']);
 
     $user = User::where('email', 'ada@clsu.edu.ph')->firstOrFail();
 
+    expect($user->account_status)->toBe('inactive')
+        ->and($user->email_verified_at)->toBeNull();
+
+    $token = Password::broker('staff_invitations')->createToken($user);
+
+    auth()->logout();
+
+    $this->post(route('staff.activate.store'), [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'chosen-by-the-admin-1',
+        'password_confirmation' => 'chosen-by-the-admin-1',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
+
+    $user->refresh();
+
     expect($user->account_status)->toBe('active')
         ->and($user->email_verified_at)->not->toBeNull()
-        ->and(Hash::check('admin-password-1', $user->password))->toBeTrue()
-        ->and(DB::table('staff_invitation_tokens')->count())->toBe(0);
+        ->and($user->role)->toBe('admin')
+        ->and(Hash::check('chosen-by-the-admin-1', $user->password))->toBeTrue();
+
+    $this->post(route('login'), [
+        'email' => $user->email,
+        'password' => 'chosen-by-the-admin-1',
+    ])->assertRedirect(route('dashboard'));
 });
 
 test('user editing still works', function () {
