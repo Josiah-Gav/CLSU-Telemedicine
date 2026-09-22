@@ -196,6 +196,12 @@
                                     'decide_url' => route('physician.follow_up_requests.decide', ['physician' => $physician->user_id, 'followUpRequest' => $followUp->id]),
                                     'available_slots_url' => route('physician.follow_up_requests.available_slots', ['physician' => $physician->user_id, 'followUpRequest' => $followUp->id]),
                                 ];
+                                // Blade component tags (<x-button-*>) only compile {{ }} echoes inside
+                                // their plain attribute values — a bare @js(...) directive is left as
+                                // literal, uncompiled text (ComponentTagCompiler::compileAttributeEchos()
+                                // only runs compileEchos(), not the full directive pass). Js::from()
+                                // implements Htmlable, so {{ }} embeds it raw instead of double-escaping.
+                                $followUpJsSafe = \Illuminate\Support\Js::from($followUpJs);
                             @endphp
                             <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                 <div class="flex min-w-0 items-center gap-2">
@@ -204,13 +210,13 @@
                                 </div>
                                 <p class="mt-2 text-sm text-slate-700">{{ $followUp->reason }}</p>
                                 <div class="mt-4 flex flex-col gap-2">
-                                    <x-button-primary class="w-full" @click="startFollowUpNow(@js($followUpJs))">
+                                    <x-button-primary class="w-full" @click="startFollowUpNow({{ $followUpJsSafe }})">
                                         Approve &amp; Start Now
                                     </x-button-primary>
-                                    <x-button-primary class="w-full" @click="approveScheduled(@js($followUpJs))">
+                                    <x-button-primary class="w-full" @click="approveScheduled({{ $followUpJsSafe }})">
                                         Approve &amp; Schedule
                                     </x-button-primary>
-                                    <x-button-danger class="w-full" @click="rejectRequest(@js($followUpJs))">
+                                    <x-button-danger class="w-full" @click="rejectRequest({{ $followUpJsSafe }})">
                                         Reject
                                     </x-button-danger>
                                 </div>
@@ -262,15 +268,19 @@
                                                 'decide_url' => route('physician.follow_up_requests.decide', ['physician' => $physician->user_id, 'followUpRequest' => $followUp->id]),
                                                 'available_slots_url' => route('physician.follow_up_requests.available_slots', ['physician' => $physician->user_id, 'followUpRequest' => $followUp->id]),
                                             ];
+                                            // See the mobile card block above for why this goes through
+                                            // {{ }} instead of @js() — @js() is never compiled inside a
+                                            // plain <x-button-*> attribute value.
+                                            $rowJsSafe = \Illuminate\Support\Js::from($rowJs);
                                         @endphp
                                         <div class="flex flex-wrap gap-2">
-                                            <x-button-primary size="sm" @click="startFollowUpNow(@js($rowJs))">
+                                            <x-button-primary size="sm" @click="startFollowUpNow({{ $rowJsSafe }})">
                                                 Approve &amp; Start Now
                                             </x-button-primary>
-                                            <x-button-primary size="sm" @click="approveScheduled(@js($rowJs))">
+                                            <x-button-primary size="sm" @click="approveScheduled({{ $rowJsSafe }})">
                                                 Approve &amp; Schedule
                                             </x-button-primary>
-                                            <x-button-danger size="sm" @click="rejectRequest(@js($rowJs))">
+                                            <x-button-danger size="sm" @click="rejectRequest({{ $rowJsSafe }})">
                                                 Reject
                                             </x-button-danger>
                                         </div>
