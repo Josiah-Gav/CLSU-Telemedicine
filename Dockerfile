@@ -99,17 +99,27 @@ FROM php:8.2-apache AS runtime
 # (resources/views/exports/*.blade.php) contains an image, a font-face or a
 # background-image.
 #
-# mod_php is not thread-safe and requires the prefork MPM. Recent Debian
-# apache2 packages enable mpm_event by default alongside it, which Apache
-# refuses to start with ("AH00534: More than one MPM loaded") — this is a
-# known issue with the official php:*-apache images, not application-specific.
-# Disabling mpm_event and enabling mpm_prefork explicitly makes the choice
-# stable across base-image rebuilds instead of depending on Debian's default.
+# mod_php is not thread-safe and requires the prefork MPM. Something in this
+# base image tag ends up with a second MPM (mpm_event and/or mpm_worker) still
+# symlinked into mods-enabled alongside mpm_prefork, which made Apache refuse
+# to start with "AH00534: More than one MPM loaded" — deleting the *.load and
+# *.conf symlinks directly is unambiguous where a2dismod's exit code is not
+# (a2dismod on an already-disabled module is not a build failure, so chaining
+# it with && silently continues either way), and covers both alternate MPMs
+# rather than guessing which one is present.
 RUN docker-php-ext-install pdo_mysql \
-    && a2dismod mpm_event 2>/dev/null || true \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.load \
+             /etc/apache2/mods-enabled/mpm_event.conf \
+             /etc/apache2/mods-enabled/mpm_worker.load \
+             /etc/apache2/mods-enabled/mpm_worker.conf \
     && a2enmod mpm_prefork \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
+
+# Build-time self-check: fail here, in Build Logs, rather than at container
+# start on Railway. apache2ctl -M loads the full module set and exits non-zero
+# on exactly the "more than one MPM" conflict this stage exists to prevent.
+RUN apache2ctl -M
 
 # Laravel's own recommended baseline, applied to the production INI.
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
