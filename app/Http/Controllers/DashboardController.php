@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Models\Consultation;
 use App\Models\FollowUpRequest;
+use App\Models\User;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Export\DashboardExportRows;
 use App\Services\PhysicianAvailabilityService;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
     public function __construct(
         private readonly DashboardAnalyticsService $analyticsService,
         private readonly PhysicianAvailabilityService $availabilityService,
-    ) {
-    }
+    ) {}
 
     /** Mirrors Admin\UserManagementController::authorizeAdmin() — role check only, no per-record ownership. */
     private function authorizeAdmin(): void
@@ -97,11 +98,11 @@ class DashboardController extends Controller
      */
     private function staffInvitationSummary(): array
     {
-        $invitedUsers = \App\Models\User::where('account_status', 'inactive')
+        $invitedUsers = User::where('account_status', 'inactive')
             ->whereIn('role', ['nurse', 'physician'])
             ->get();
 
-        $states = \App\Http\Controllers\Admin\UserManagementController::invitationStates($invitedUsers)->filter();
+        $states = UserManagementController::invitationStates($invitedUsers)->filter();
 
         return [
             'pending' => $states->where('state', 'pending')->count(),
@@ -129,8 +130,9 @@ class DashboardController extends Controller
                 $intakeAvailable = $this->availabilityService->isServiceAvailable();
                 $nextScheduledWindow = $intakeAvailable ? null : $this->availabilityService->nextScheduledWindow();
                 $weeklySchedule = $this->availabilityService->weeklyScheduleOverview();
+                $tamEvaluationSessionId = $this->getPatientMostRecentCompletedConsultationSessionId($patientInfo->user_id);
 
-                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule'));
+                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule', 'tamEvaluationSessionId'));
             case 'physician':
                 // Physicians land here on first login/verification (Breeze's
                 // redirect()->intended(route('dashboard')) — see
@@ -200,7 +202,7 @@ class DashboardController extends Controller
             'physician_follow_up' => $physicianFollowUp,
         ]);
     }
-    
+
     public function newconsultation()
     {
         $patientInfo = Auth::user();
@@ -210,7 +212,7 @@ class DashboardController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        $hasActiveConsultation = \App\Models\Consultation::where('patient_id', auth()->id())
+        $hasActiveConsultation = Consultation::where('patient_id', auth()->id())
             ->whereIn('request_status', ['pending', 'reviewed', 'assigned', 'scheduled', 'active'])
             ->where(function ($query) {
                 $query->whereDoesntHave('consultationSession')
@@ -249,9 +251,27 @@ class DashboardController extends Controller
             ->first();
     }
 
+    // The most recently completed consultation, if any — used only to hand the
+    // TAM evaluation card a session id. getPatientActiveConsultation() above
+    // explicitly excludes 'completed', so this is a separate query rather than
+    // a shared one.
+    private function getPatientMostRecentCompletedConsultationSessionId(int $patientId): ?int
+    {
+        $consultation = Consultation::with('consultationSession')
+            ->where('patient_id', $patientId)
+            ->where('request_status', 'completed')
+            ->whereHas('consultationSession', function ($sessionQuery) {
+                $sessionQuery->where('consultation_status', 'completed');
+            })
+            ->latest('submitted_at')
+            ->first();
+
+        return $consultation?->consultationSession?->id;
+    }
+
     private function getConsultationSummary(?Consultation $consultation): ?string
     {
-        if (!$consultation) {
+        if (! $consultation) {
             return null;
         }
 
@@ -272,7 +292,7 @@ class DashboardController extends Controller
             ->latest('updated_at')
             ->first();
 
-        if (!$followUpRequest) {
+        if (! $followUpRequest) {
             return [
                 'exists' => false,
                 'status' => 'none',
@@ -302,10 +322,10 @@ class DashboardController extends Controller
         $baseClass = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ';
 
         return match ($status) {
-            'approved' => $baseClass . 'bg-emerald-100 text-emerald-700',
-            'pending', 'forwarded' => $baseClass . 'bg-yellow-100 text-yellow-700',
-            'rejected' => $baseClass . 'bg-red-100 text-red-700',
-            default => $baseClass . 'bg-slate-100 text-slate-700',
+            'approved' => $baseClass.'bg-emerald-100 text-emerald-700',
+            'pending', 'forwarded' => $baseClass.'bg-yellow-100 text-yellow-700',
+            'rejected' => $baseClass.'bg-red-100 text-red-700',
+            default => $baseClass.'bg-slate-100 text-slate-700',
         };
     }
 
@@ -334,7 +354,7 @@ class DashboardController extends Controller
             ->latest('submitted_at')
             ->first();
 
-        if (!$consultation) {
+        if (! $consultation) {
             return null;
         }
 
@@ -347,7 +367,7 @@ class DashboardController extends Controller
             'status_label' => ucfirst($consultation->request_status),
             'status_badge_class' => $this->getPatientStatusBadgeClass($consultation->request_status),
             'submitted_at' => optional($consultation->submitted_at)->format('M d, Y'),
-            'physician_name' => trim(optional($consultation->physician)->first_name . ' ' . optional($consultation->physician)->last_name) ?: 'Your physician',
+            'physician_name' => trim(optional($consultation->physician)->first_name.' '.optional($consultation->physician)->last_name) ?: 'Your physician',
             'consultation_status' => $consultation->request_status,
             'scheduled_slot' => $consultation->consultationSession?->slot ? [
                 'slot_date' => $consultation->consultationSession->slot->slot_date?->format('M d, Y') ?? (string) $consultation->consultationSession->slot->slot_date,
@@ -368,7 +388,7 @@ class DashboardController extends Controller
 
     private function serializePatientConsultation(?Consultation $consultation): ?array
     {
-        if (!$consultation) {
+        if (! $consultation) {
             return null;
         }
 
@@ -414,26 +434,26 @@ class DashboardController extends Controller
         $statusClasses = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ';
 
         if (in_array($status, ['rejected', 'cancelled'], true)) {
-            return $statusClasses . 'bg-red-100 text-red-700';
+            return $statusClasses.'bg-red-100 text-red-700';
         }
 
         if ($status === 'completed') {
-            return $statusClasses . 'bg-emerald-100 text-emerald-700';
+            return $statusClasses.'bg-emerald-100 text-emerald-700';
         }
 
         if (in_array($status, ['pending', 'assigned'], true)) {
-            return $statusClasses . 'bg-yellow-100 text-yellow-700';
+            return $statusClasses.'bg-yellow-100 text-yellow-700';
         }
 
         if ($status === 'scheduled') {
-            return $statusClasses . 'bg-indigo-100 text-indigo-700';
+            return $statusClasses.'bg-indigo-100 text-indigo-700';
         }
 
         if ($status === 'active') {
-            return $statusClasses . 'bg-blue-100 text-blue-700';
+            return $statusClasses.'bg-blue-100 text-blue-700';
         }
 
-        return $statusClasses . 'bg-slate-100 text-slate-700';
+        return $statusClasses.'bg-slate-100 text-slate-700';
     }
 
     /**

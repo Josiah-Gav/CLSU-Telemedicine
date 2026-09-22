@@ -54,6 +54,7 @@
     <script>
         window.patientConsultation = @json($patientConsultationPayload);
         window.physicianFollowUp = @json($physicianFollowUp);
+        window.tamEvaluationSessionId = @json($tamEvaluationSessionId);
 
         function cancelFollowUpRequest(triggerElement) {
             const cancelUrl = triggerElement?.dataset?.cancelUrl;
@@ -100,7 +101,7 @@
             });
         }
 
-        function patientDashboard(initialConsultation, initialPhysicianFollowUp, refreshUrl, unreadUrl) {
+        function patientDashboard(initialConsultation, initialPhysicianFollowUp, refreshUrl, unreadUrl, tamEvaluationSessionId) {
             return {
                 consultation: initialConsultation,
                 physicianFollowUp: initialPhysicianFollowUp,
@@ -108,6 +109,13 @@
                 unreadUrl,
                 refreshTimer: null,
                 unreadTimer: null,
+                // TAM evaluation reminder card. Shares its localStorage key format
+                // with the post-completion modal in consultations/messaging.blade.php
+                // (tam_evaluation_handled_{sessionId}) so clicking through from
+                // either page hides both. Distinct from that modal's own
+                // "dismissed" key: dismissing the modal must not hide this card.
+                tamEvaluationSessionId,
+                tamEvaluationHandled: false,
                 init() {
                     if (this.refreshTimer || this.unreadTimer) {
                         return;
@@ -117,6 +125,20 @@
                     this.updateUnreadBadge();
                     this.refreshTimer = window.setInterval(() => this.refreshConsultation(), 5000);
                     this.unreadTimer = window.setInterval(() => this.updateUnreadBadge(), 5000);
+
+                    if (this.tamEvaluationSessionId) {
+                        try {
+                            this.tamEvaluationHandled = Boolean(localStorage.getItem('tam_evaluation_handled_' + this.tamEvaluationSessionId));
+                        } catch (e) {}
+                    }
+                },
+                markTamEvaluationHandled() {
+                    this.tamEvaluationHandled = true;
+
+                    try {
+                        localStorage.setItem('tam_prompt_dismissed_' + this.tamEvaluationSessionId, '1');
+                        localStorage.setItem('tam_evaluation_handled_' + this.tamEvaluationSessionId, '1');
+                    } catch (e) {}
                 },
                 refreshConsultation() {
                     $.ajax({
@@ -187,7 +209,7 @@
         }
     </script>
 
-    <div class="py-12" x-data="patientDashboard(window.patientConsultation, window.physicianFollowUp, '{{ route('dashboard.active_consultation') }}', '{{ route('consultations.messaging.unread_counts') }}')" x-init="init()">
+    <div class="py-12" x-data="patientDashboard(window.patientConsultation, window.physicianFollowUp, '{{ route('dashboard.active_consultation') }}', '{{ route('consultations.messaging.unread_counts') }}', window.tamEvaluationSessionId)" x-init="init()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="overflow-hidden rounded-3xl border border-brand-border bg-gradient-to-r from-brand-green-soft via-white to-brand-gold-soft shadow-sm">
                 <div class="p-6 text-brand-green-deep sm:p-8">
@@ -355,6 +377,34 @@
                 <x-button-primary href="{{ route('newconsultation') }}" class="mt-4">
                     {{ __('Request a Consultation') }}
                 </x-button-primary>
+            </div>
+
+            {{-- Persistent TAM evaluation reminder. Only appears once a
+                 completed consultation exists whose evaluation invitation
+                 hasn't been clicked through yet (see tamEvaluationHandled in
+                 patientDashboard() above) — dismissing the post-completion
+                 modal on the messaging page does not hide this, only actually
+                 clicking through to the form does. The Google Form is linked,
+                 never embedded, and carries no query parameters. --}}
+            <div class="mt-6 rounded-3xl border border-gray-200 bg-white shadow-sm" x-show="tamEvaluationSessionId && !tamEvaluationHandled" x-cloak>
+                <div class="p-6 sm:p-8">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ __('Evaluation Invitation') }}</p>
+                            <h3 class="mt-2 text-xl font-bold text-slate-900">{{ __('Help Us Evaluate the Telemedicine System') }}</h3>
+                            <p class="mt-1 text-sm text-slate-600">{{ __('You recently completed a telemedicine consultation. Share your experience by answering our short evaluation form.') }}</p>
+                        </div>
+                        <x-button-primary
+                            href="https://forms.gle/UFHjvbFmUnXHdeMCA"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            @click="markTamEvaluationHandled()"
+                            class="flex-shrink-0"
+                        >
+                            {{ __('Answer Evaluation') }}
+                        </x-button-primary>
+                    </div>
+                </div>
             </div>
 
             {{-- Service-level availability, not this patient's own consultation

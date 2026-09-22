@@ -281,3 +281,111 @@ it('replaces the composer with a read-only notice once the consultation is compl
     expect($html)->toContain('This consultation has been completed. Messaging is now read-only.')
         ->not->toContain('@submit.prevent="sendMessage"');
 });
+
+it('shows the patient a TAM evaluation prompt linking to the Google Form once the consultation is completed', function () {
+    ['patient' => $patient, 'session' => $session] = messagingUiScenario('completed');
+
+    $html = $this->actingAs($patient)
+        ->get(route('consultations.messaging.show', $session))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('Consultation Completed')
+        ->toContain('Answer Evaluation Form')
+        ->toContain('href="https://forms.gle/UFHjvbFmUnXHdeMCA"')
+        ->toContain('target="_blank"')
+        ->toContain('rel="noopener noreferrer"')
+        ->toContain('maybeShowTamPrompt')
+        ->toContain('dismissTamPrompt');
+});
+
+it('distinguishes dismissing the TAM modal from actually clicking through to the evaluation form', function () {
+    ['patient' => $patient, 'session' => $session] = messagingUiScenario('completed');
+
+    $html = $this->actingAs($patient)
+        ->get(route('consultations.messaging.show', $session))
+        ->assertOk()
+        ->getContent();
+
+    // "Maybe Later" and the close (x) button must only suppress the modal
+    // popping up again — they must NOT mark the evaluation as handled, since
+    // that flag is what hides the dashboard's persistent reminder card.
+    expect($html)->toContain('@click="dismissTamPrompt()"');
+
+    // Only clicking through to the actual Google Form marks it handled.
+    expect($html)->toContain('@click="markTamEvaluationHandled()"')
+        ->toContain("localStorage.setItem('tam_evaluation_handled_' + this.sessionId, '1')");
+});
+
+it('does not show the TAM evaluation prompt to a patient while the consultation is still active', function () {
+    ['patient' => $patient, 'session' => $session] = messagingUiScenario('active');
+
+    $html = $this->actingAs($patient)
+        ->get(route('consultations.messaging.show', $session))
+        ->assertOk()
+        ->getContent();
+
+    // The prompt's own markup is always present in the DOM for a patient
+    // (matching this file's existing preview-modal pattern: gated by Alpine
+    // x-show/x-cloak, not conditional Blade rendering). The status guard that
+    // keeps it hidden while active lives client-side in maybeShowTamPrompt(),
+    // so — per this file's no-browser-runner precedent — the server-rendered
+    // assertion is on the status value that guard reads, not on the markup.
+    expect($html)->toContain("consultationStatus: 'active'")
+        ->toContain('showTamPrompt: false');
+});
+
+it('carries the session consultation_status through the existing message poll endpoint', function () {
+    ['patient' => $patient, 'physician' => $physician, 'session' => $session] = messagingUiScenario('active');
+
+    // Before completion, the poll endpoint the patient's page already hits
+    // every 3s reports 'active'.
+    $before = $this->actingAs($patient)
+        ->getJson(route('consultations.messaging.index', $session))
+        ->assertOk()
+        ->json();
+    expect($before['consultation_status'])->toBe('active');
+
+    // The physician completes the consultation out-of-band (as if via their
+    // own "Complete consultation" action) — the patient never reloads.
+    $this->actingAs($physician)
+        ->postJson(route('consultations.messaging.complete', $session))
+        ->assertOk();
+
+    // The same poll endpoint, hit again without any page reload, must now
+    // report the transition so the patient's existing poller can pick it up.
+    $after = $this->actingAs($patient)
+        ->getJson(route('consultations.messaging.index', $session))
+        ->assertOk()
+        ->json();
+    expect($after['consultation_status'])->toBe('completed');
+});
+
+it('wires fetchMessages() to update consultationStatus and watches it to trigger the TAM prompt', function () {
+    ['physician' => $physician, 'session' => $session] = messagingUiScenario('active');
+
+    $html = $this->actingAs($physician)
+        ->get(route('consultations.messaging.show', $session))
+        ->assertOk()
+        ->getContent();
+
+    // fetchMessages() already polls on the existing interval; it must now
+    // also sync consultationStatus from that same response, and a $watch
+    // must react to the transition by calling the existing TAM logic — no
+    // new setInterval, no page reload.
+    expect($html)->toContain('this.consultationStatus = data.consultation_status')
+        ->toContain("this.\$watch('consultationStatus'")
+        ->toContain('this.maybeShowTamPrompt()');
+});
+
+it('does not render the patient TAM evaluation prompt for the physician viewing a completed consultation', function () {
+    ['physician' => $physician, 'session' => $session] = messagingUiScenario('completed');
+
+    $html = $this->actingAs($physician)
+        ->get(route('consultations.messaging.show', $session))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->not->toContain('Consultation Completed')
+        ->not->toContain('Answer Evaluation Form');
+});

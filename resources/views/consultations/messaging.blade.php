@@ -895,6 +895,78 @@
                 </div>
             </div>
         </div>
+
+        {{-- Post-completion TAM evaluation prompt. Patient-only: rendered server-side
+             only for the patient role so it never reaches the physician's markup. --}}
+        @if($currentUser && $currentUser->role === 'patient')
+            <div
+                x-show="showTamPrompt"
+                x-cloak
+                @click.self="dismissTamPrompt()"
+                x-transition:enter="ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 p-3 backdrop-blur-sm sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-label="{{ __('Consultation completed evaluation prompt') }}"
+            >
+                <div
+                    x-effect="if (showTamPrompt) { $nextTick(() => $refs.tamCloseButton?.focus()); }"
+                    x-transition:enter="ease-out duration-200"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="ease-in duration-150"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+                >
+                    <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4">
+                        <p class="text-base font-semibold text-gray-900">{{ __('Consultation Completed') }}</p>
+                        <button
+                            type="button"
+                            x-ref="tamCloseButton"
+                            @click="dismissTamPrompt()"
+                            class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+                        >
+                            <span class="sr-only">{{ __('Close') }}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="px-5 py-4">
+                        <p class="text-sm text-gray-600">
+                            {{ __('Your telemedicine consultation has been completed successfully.') }}
+                        </p>
+                        <p class="mt-3 text-sm text-gray-600">
+                            {{ __('Help us evaluate the system by answering our short evaluation form. Your feedback will help us assess the usefulness and ease of use of the CLSU Infirmary Telemedicine System.') }}
+                        </p>
+                    </div>
+                    <div class="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:justify-end">
+                        <button
+                            type="button"
+                            @click="dismissTamPrompt()"
+                            class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+                        >
+                            {{ __('Maybe Later') }}
+                        </button>
+                        <a
+                            href="https://forms.gle/UFHjvbFmUnXHdeMCA"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            @click="markTamEvaluationHandled()"
+                            class="inline-flex items-center justify-center rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-green-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2"
+                        >
+                            {{ __('Answer Evaluation Form') }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     <script>
@@ -956,6 +1028,10 @@
                 jitsiApi: null,
                 consultationStatus: @js($session->consultation_status),
                 consultationCompletedAt: @js(optional($session->completed_at)?->toIso8601String()),
+                // Post-completion TAM evaluation prompt (patient-only). Dismissal is
+                // remembered per-session in localStorage rather than a DB column —
+                // this is purely "don't re-annoy this browser", not workflow state.
+                showTamPrompt: false,
                 clinical: {
                     assessment: @js($session->assessment),
                     plan: @js($session->plan),
@@ -993,6 +1069,45 @@
                         this.sendTypingState(false);
                         this.markOffline();
                     });
+                    // Covers the session already being completed on page load.
+                    this.maybeShowTamPrompt();
+                    // Covers it completing while this page stays open: fetchMessages()
+                    // (already running on the existing poller above) syncs
+                    // consultationStatus from the server on every poll; $watch only
+                    // fires on an actual change, so this reacts to the real
+                    // non-completed -> completed transition rather than re-running on
+                    // every "still completed" poll.
+                    this.$watch('consultationStatus', () => this.maybeShowTamPrompt());
+                },
+                maybeShowTamPrompt() {
+                    if (this.consultationStatus !== 'completed') return;
+
+                    try {
+                        if (localStorage.getItem('tam_prompt_dismissed_' + this.sessionId)) return;
+                    } catch (e) {}
+
+                    this.showTamPrompt = true;
+                },
+                dismissTamPrompt() {
+                    this.showTamPrompt = false;
+
+                    try {
+                        localStorage.setItem('tam_prompt_dismissed_' + this.sessionId, '1');
+                    } catch (e) {}
+                },
+                // Distinct from dismissTamPrompt(): closing the modal only stops it
+                // popping up again, it does not mean the patient actually went to
+                // answer the evaluation. Only this method — wired to the "Answer
+                // Evaluation Form" link — marks the evaluation itself as handled,
+                // which is what the dashboard's TAM card checks (shared key format,
+                // see patientDashboard() in patient/dashboard.blade.php).
+                markTamEvaluationHandled() {
+                    this.showTamPrompt = false;
+
+                    try {
+                        localStorage.setItem('tam_prompt_dismissed_' + this.sessionId, '1');
+                        localStorage.setItem('tam_evaluation_handled_' + this.sessionId, '1');
+                    } catch (e) {}
                 },
                 markOffline() {
                     const csrfToken = $('meta[name="csrf-token"]').attr('content');
@@ -1050,6 +1165,7 @@
                         success: (data) => {
                             const previousCount = this.messages.length;
                             this.messages = data.messages || [];
+                            this.consultationStatus = data.consultation_status || this.consultationStatus;
 
                             if (scroll || this.messages.length !== previousCount) {
                                 this.$nextTick(() => this.scrollToBottom());
