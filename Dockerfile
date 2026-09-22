@@ -98,7 +98,16 @@ FROM php:8.2-apache AS runtime
 # for image processing, and neither PDF export view
 # (resources/views/exports/*.blade.php) contains an image, a font-face or a
 # background-image.
+#
+# mod_php is not thread-safe and requires the prefork MPM. Recent Debian
+# apache2 packages enable mpm_event by default alongside it, which Apache
+# refuses to start with ("AH00534: More than one MPM loaded") — this is a
+# known issue with the official php:*-apache images, not application-specific.
+# Disabling mpm_event and enabling mpm_prefork explicitly makes the choice
+# stable across base-image rebuilds instead of depending on Debian's default.
 RUN docker-php-ext-install pdo_mysql \
+    && a2dismod mpm_event 2>/dev/null || true \
+    && a2enmod mpm_prefork \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 
