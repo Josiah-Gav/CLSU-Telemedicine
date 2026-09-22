@@ -66,13 +66,23 @@ php artisan view:cache   || echo "warning: view:cache failed; views will compile
 # confusing failure if a future view did use it.
 php artisan storage:link >/dev/null 2>&1 || true
 
-# Diagnostic only, temporary: the build-time check (Dockerfile's
-# `apache2ctl -M`) shows a clean single-MPM image, yet the container still
-# crashes on "AH00534: More than one MPM loaded" at this exact point in
-# deploy logs. That's a contradiction if the runtime filesystem matches what
-# was built. Printing the live state here, in the same container, right
-# before the crash, tells us whether it actually does.
-echo "--- mods-enabled MPM diagnostic ---"
+# Confirmed by a live diagnostic dump: the Dockerfile's RUN step deletes
+# mpm_event's and mpm_worker's mods-enabled symlinks and apache2ctl -M in
+# Build Logs shows a clean single-MPM image, but the deployed container still
+# has mpm_event.load/.conf present (original base-image timestamps, not
+# recreated dynamically) and crashes Apache on start with "AH00534: More than
+# one MPM loaded". Nothing later in the Dockerfile touches Apache modules, so
+# this is a mismatch between what Railway's build verifies and what it ships
+# — not something this application can fix from inside the Dockerfile stage.
+# Enforcing it again here, in the exact container about to exec Apache,
+# removes the dependency on that build-time state surviving intact.
+rm -f /etc/apache2/mods-enabled/mpm_event.load \
+      /etc/apache2/mods-enabled/mpm_event.conf \
+      /etc/apache2/mods-enabled/mpm_worker.load \
+      /etc/apache2/mods-enabled/mpm_worker.conf
+a2enmod mpm_prefork >/dev/null 2>&1 || true
+
+echo "--- mods-enabled MPM state (after runtime enforcement) ---"
 ls -la /etc/apache2/mods-enabled/ | grep -i mpm || echo "(no mpm files found in mods-enabled)"
 apache2ctl -M 2>&1 || echo "apache2ctl -M exited non-zero"
 echo "--- end diagnostic ---"
