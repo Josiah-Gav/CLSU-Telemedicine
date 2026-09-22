@@ -9,6 +9,10 @@
         </div>
     @endif
 
+    <div class="mb-4 text-sm text-gray-500">
+        {{ __("Didn't receive the email? Please check your spam or junk folder.") }}
+    </div>
+
     <div class="mt-4 flex items-center justify-between">
         <form method="POST" action="{{ route('verification.send') }}">
             @csrf

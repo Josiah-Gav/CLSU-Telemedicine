@@ -14,6 +14,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/privacy-policy', function () {
+    return view('privacy-policy');
+})->name('privacy.policy');
+
 // --- EVERYTHING INSIDE THIS BLOCK REQUIRES LOGIN ---
 Route::middleware(['auth', 'verified'])->group(function () {
     

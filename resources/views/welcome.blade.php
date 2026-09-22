@@ -7,6 +7,8 @@
         <title>{{ config('app.name', 'CLSU Telemedicine') }} — CLSU Infirmary</title>
         <meta name="description" content="Request a consultation, message CLSU Infirmary medical staff, and manage follow-up care online.">
 
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
         <!-- Fonts (matches layouts/app.blade.php and layouts/guest.blade.php) -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />

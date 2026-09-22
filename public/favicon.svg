@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Shield silhouette, nodding to the CLSU seal shape -->
+  <path d="M32 3
+           L54 11
+           V29
+           C54 45 44 55 32 61
+           C20 55 10 45 10 29
+           V11
+           Z"
+        fill="#0B6E4F" stroke="#F5B301" stroke-width="3"/>
+
+  <!-- Medical cross for the telemedicine identity -->
+  <path d="M27 18 H37 V27 H46 V37 H37 V46 H27 V37 H18 V27 H27 Z"
+        fill="#F5B301"/>
+</svg>
