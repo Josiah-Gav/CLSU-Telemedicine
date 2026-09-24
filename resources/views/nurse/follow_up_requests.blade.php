@@ -392,9 +392,9 @@
                 x-transition:leave-end="opacity-0 scale-95"
                 class="flex w-[80vw] h-[80vh] sm:h-[40vw] max-h-[90vh] max-w-[72rem] min-h-[22rem] min-w-[18rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5"
             >
-                <div class="flex items-start justify-between gap-3 border-b border-gray-200 bg-gradient-to-r from-brand-green-soft/60 via-white to-white px-4 py-3 sm:px-5 sm:py-4">
+                <div class="flex items-start justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
                     <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand-green text-white">
+                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand-green-deep text-white">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l1.5 1.5 3-3.75M9 5.25H7.5A2.25 2.25 0 005.25 7.5v11.25A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V7.5A2.25 2.25 0 0016.5 5.25H15M9 5.25v1.5A1.5 1.5 0 0010.5 8.25h3A1.5 1.5 0 0015 6.75v-1.5m-6 0h6" />
                             </svg>
@@ -439,87 +439,126 @@
 
                     <div class="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:grid-cols-3">
                         <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Request Status') }}</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Request Status') }}</p>
                             <p class="mt-1.5 inline-flex items-center rounded-full px-2 py-1 text-sm font-semibold" :class="requestStatusBadgeClass(selectedDetails?.details?.request_status)" x-text="selectedDetails?.details?.request_status ? selectedDetails.details.request_status.charAt(0).toUpperCase() + selectedDetails.details.request_status.slice(1) : '{{ __('N/A') }}'"></p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Priority Level') }}</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Priority Level') }}</p>
                             <p class="mt-1.5 inline-flex items-center rounded-full px-2 py-1 text-sm font-semibold" :class="priorityBadgeClass(selectedDetails?.details?.priority_level)" x-text="selectedDetails?.details?.priority_level ? selectedDetails.details.priority_level.charAt(0).toUpperCase() + selectedDetails.details.priority_level.slice(1) : '{{ __('Not Set') }}'"></p>
                         </div>
                         <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Assigned Physician') }}</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Assigned Physician') }}</p>
                             <p class="mt-1.5 text-sm font-medium text-gray-900" x-text="selectedDetails?.details?.assigned_physician_name || '{{ __('Unassigned') }}'"></p>
                         </div>
                     </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Symptoms') }}</p>
-                        <template x-if="selectedDetails?.details?.symptoms_desc">
-                            <ul class="mt-2 space-y-2 text-sm text-gray-900" x-html="formatSymptoms(selectedDetails?.details?.symptoms_desc)"></ul>
-                        </template>
-                        <p class="mt-2 text-sm text-gray-500" x-show="!selectedDetails?.details?.symptoms_desc">{{ __('No symptom details provided.') }}</p>
-                    </div>
+                    {{-- Symptoms through Follow-up Reason are all facets of
+                         the same record, not unrelated content — grouped
+                         into one panel instead of six identical boxes
+                         stacked with equal weight. --}}
+                    <div class="overflow-hidden rounded-xl border border-gray-200 divide-y divide-gray-100">
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l1.5 1.5 3-3.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Symptoms') }}</p>
+                            </div>
+                            <template x-if="selectedDetails?.details?.symptoms_desc">
+                                <ul class="mt-2 space-y-2 text-sm text-gray-900" x-html="formatSymptoms(selectedDetails?.details?.symptoms_desc)"></ul>
+                            </template>
+                            <p class="mt-2 text-sm text-gray-500" x-show="!selectedDetails?.details?.symptoms_desc">{{ __('No symptom details provided.') }}</p>
+                        </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Reason for online consultation') }}</p>
-                        <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.online_reason ?? '{{ __('N/A') }}'"></p>
-                    </div>
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Reason for online consultation') }}</p>
+                            </div>
+                            <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.online_reason ?? '{{ __('N/A') }}'"></p>
+                        </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Additional Information') }}</p>
-                        <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.additional_information || '{{ __('No additional information provided.') }}'"></p>
-                    </div>
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Additional Information') }}</p>
+                            </div>
+                            <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.additional_information || '{{ __('No additional information provided.') }}'"></p>
+                        </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Attachments') }}</p>
-                        <template x-if="selectedDetails?.details?.file_attachments && selectedDetails.details.file_attachments.length">
-                            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                <template x-for="file in selectedDetails.details.file_attachments" :key="file">
-                                    <button
-                                        type="button"
-                                        @click="openAttachmentPreview(file)"
-                                        class="group relative h-20 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 sm:h-24"
-                                    >
-                                        <span class="sr-only" x-text="file.split('/').pop()"></span>
-                                        <img
-                                            :src="file"
-                                            :alt="file.split('/').pop()"
-                                            x-on:error="$el.style.display = 'none'; $el.nextElementSibling.style.display = 'flex';"
-                                            class="h-full w-full object-cover transition group-hover:scale-105"
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Attachments') }}</p>
+                            </div>
+                            <template x-if="selectedDetails?.details?.file_attachments && selectedDetails.details.file_attachments.length">
+                                <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <template x-for="file in selectedDetails.details.file_attachments" :key="file">
+                                        <button
+                                            type="button"
+                                            @click="openAttachmentPreview(file)"
+                                            class="group relative h-20 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm transition hover:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 sm:h-24"
                                         >
-                                        <div class="h-full w-full items-center justify-center p-1 text-center text-[10px] text-gray-400" style="display: none;">{{ __('Image unavailable') }}</div>
-                                    </button>
-                                </template>
-                            </div>
-                        </template>
-                        <p class="mt-2 text-sm text-gray-500" x-show="!selectedDetails?.details?.file_attachments || !selectedDetails.details.file_attachments.length">{{ __('No attachments.') }}</p>
-                    </div>
+                                            <span class="sr-only" x-text="file.split('/').pop()"></span>
+                                            <img
+                                                :src="file"
+                                                :alt="file.split('/').pop()"
+                                                x-on:error="$el.style.display = 'none'; $el.nextElementSibling.style.display = 'flex';"
+                                                class="h-full w-full object-cover transition group-hover:scale-105"
+                                            >
+                                            <div class="h-full w-full items-center justify-center p-1 text-center text-[10px] text-gray-400" style="display: none;">{{ __('Image unavailable') }}</div>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                            <p class="mt-2 text-sm text-gray-500" x-show="!selectedDetails?.details?.file_attachments || !selectedDetails.details.file_attachments.length">{{ __('No attachments.') }}</p>
+                        </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Clinical Documentation') }}</p>
-                        <dl class="mt-2 space-y-3">
-                            <div>
-                                <dt class="text-xs font-semibold text-gray-600">{{ __('Diagnosis') }}</dt>
-                                <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.diagnosis || '{{ __('Not documented.') }}'"></dd>
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l1.5 1.5 3-3.75M9 5.25H7.5A2.25 2.25 0 005.25 7.5v11.25A2.25 2.25 0 007.5 21h9a2.25 2.25 0 002.25-2.25V7.5A2.25 2.25 0 0016.5 5.25H15M9 5.25v1.5A1.5 1.5 0 0010.5 8.25h3A1.5 1.5 0 0015 6.75v-1.5m-6 0h6" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Clinical Documentation') }}</p>
                             </div>
-                            <div>
-                                <dt class="text-xs font-semibold text-gray-600">{{ __('Assessment') }}</dt>
-                                <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.assessment || '{{ __('Not documented.') }}'"></dd>
-                            </div>
-                            <div>
-                                <dt class="text-xs font-semibold text-gray-600">{{ __('Plan') }}</dt>
-                                <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.plan || '{{ __('Not documented.') }}'"></dd>
-                            </div>
-                            <div>
-                                <dt class="text-xs font-semibold text-gray-600">{{ __('Recommendations') }}</dt>
-                                <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.recommendations || '{{ __('Not documented.') }}'"></dd>
-                            </div>
-                        </dl>
-                    </div>
+                            <dl class="mt-2 space-y-3">
+                                <div>
+                                    <dt class="text-xs font-semibold text-gray-600">{{ __('Diagnosis') }}</dt>
+                                    <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.diagnosis || '{{ __('Not documented.') }}'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-gray-600">{{ __('Assessment') }}</dt>
+                                    <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.assessment || '{{ __('Not documented.') }}'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-gray-600">{{ __('Plan') }}</dt>
+                                    <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.plan || '{{ __('Not documented.') }}'"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-gray-600">{{ __('Recommendations') }}</dt>
+                                    <dd class="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.details?.recommendations || '{{ __('Not documented.') }}'"></dd>
+                                </div>
+                            </dl>
+                        </div>
 
-                    <div class="rounded-xl border border-gray-200 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">{{ __('Follow-up Reason') }}</p>
-                        <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.reason ?? '{{ __('N/A') }}'"></p>
+                        <div class="p-3">
+                            <div class="flex items-center gap-1.5">
+                                <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                                    <polyline points="17 1 21 5 17 9" />
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                                    <polyline points="7 23 3 19 7 15" />
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                                </svg>
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('Follow-up Reason') }}</p>
+                            </div>
+                            <p class="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700" x-text="selectedDetails?.reason ?? '{{ __('N/A') }}'"></p>
+                        </div>
                     </div>
                 </div>
 

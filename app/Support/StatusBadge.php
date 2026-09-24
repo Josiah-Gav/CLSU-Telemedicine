@@ -145,6 +145,39 @@ final class StatusBadge
     }
 
     /**
+     * A solid-fill background + icon pair for consultation-details.blade.php's
+     * status hero panel (color + icon + the patientMeaning() sentence, never
+     * color alone). Deliberately separate from PATIENT_STATUS_CLASSES above
+     * rather than replacing it: dashboard.blade.php's status card still uses
+     * the small pill and isn't part of this panel treatment. Icons are reused
+     * from ICONS rather than adding new paths.
+     */
+    private const PATIENT_PANEL = [
+        'pending' => ['bg_class' => 'bg-amber-700', 'icon' => 'clock'],
+        'assigned' => ['bg_class' => 'bg-amber-700', 'icon' => 'clock'],
+        'scheduled' => ['bg_class' => 'bg-brand-green-deep', 'icon' => 'calendar'],
+        'active' => ['bg_class' => 'bg-brand-green-deep', 'icon' => 'signal'],
+        'completed' => ['bg_class' => 'bg-brand-green-deep', 'icon' => 'check-circle'],
+        'rejected' => ['bg_class' => 'bg-red-700', 'icon' => 'x-circle'],
+        'cancelled' => ['bg_class' => 'bg-red-700', 'icon' => 'minus-circle'],
+    ];
+
+    private const PATIENT_PANEL_DEFAULT = ['bg_class' => 'bg-slate-700', 'icon' => 'clipboard-check'];
+
+    /**
+     * @return array{bg_class: string, icon_path: string}
+     */
+    public static function patientPanel(?string $status): array
+    {
+        $config = self::PATIENT_PANEL[$status] ?? self::PATIENT_PANEL_DEFAULT;
+
+        return [
+            'bg_class' => $config['bg_class'],
+            'icon_path' => self::ICONS[$config['icon']],
+        ];
+    }
+
+    /**
      * @return array{label: string, classes: string, icon_path: string|null}|null
      */
     public static function status(?string $status): ?array

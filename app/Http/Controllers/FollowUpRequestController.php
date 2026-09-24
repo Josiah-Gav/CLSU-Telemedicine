@@ -2,21 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Models\Consultation;
 use App\Models\ConsultationSession;
 use App\Models\FollowUpRequest;
-use App\Enums\NotificationType;
-use App\Services\NotificationService;
 use App\Services\ConsultationOwnershipService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class FollowUpRequestController extends Controller
 {
-    public function __construct(private readonly ConsultationOwnershipService $ownershipService)
-    {
-    }
+    public function __construct(private readonly ConsultationOwnershipService $ownershipService) {}
 
     public function index()
     {
@@ -56,16 +54,24 @@ class FollowUpRequestController extends Controller
 
         $session->loadMissing('request');
 
-        if (!$session->request || (int) $session->request->patient_id !== (int) $patient->user_id) {
+        if (! $session->request || (int) $session->request->patient_id !== (int) $patient->user_id) {
             abort(403, 'Unauthorized access.');
         }
 
-        if ($session->consultation_status !== 'completed' || !$session->completed_at) {
+        if ($session->consultation_status !== 'completed' || ! $session->completed_at) {
             return back()->withErrors(['reason' => 'Follow-up can only be requested for completed consultations.']);
         }
 
         if ($session->completed_at->lt(now()->subDays(7))) {
             return back()->withErrors(['reason' => 'Follow-up requests are only allowed within 7 days of completion.']);
+        }
+
+        // Patient-wide: an unresolved follow-up anywhere (not just on this
+        // session) blocks a new one. Checked before the narrower per-session
+        // checks below, which stay in place as a defense against re-asking on
+        // the exact same source consultation.
+        if (FollowUpRequest::hasInFlightForPatient((int) $patient->user_id)) {
+            return back()->withErrors(['reason' => 'You already have a follow-up request in progress.']);
         }
 
         $hasActiveFollowUpRequest = FollowUpRequest::query()

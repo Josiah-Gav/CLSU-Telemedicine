@@ -17,7 +17,7 @@
     ];
 @endphp
 
-<div class="rounded-xl border border-brand-border bg-white px-4 py-3" x-data="{ preset: '{{ $dateRange->preset }}' }">
+<div x-data="{ preset: '{{ $dateRange->preset }}' }">
     <form method="GET" action="{{ $action }}" class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <label for="range" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Showing</label>
 

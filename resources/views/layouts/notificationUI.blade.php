@@ -46,7 +46,7 @@
         <!-- Panel Header -->
         <div class="flex items-center justify-between border-b border-brand-border px-5 py-4">
             <div>
-                <p class="text-xs font-bold uppercase tracking-[0.22em] text-brand-green">Notifications</p>
+                <p class="text-xs font-bold uppercase tracking-wide text-brand-green">Notifications</p>
                 <p class="mt-1 text-sm font-semibold text-slate-900">Recent updates</p>
             </div>
             <button 

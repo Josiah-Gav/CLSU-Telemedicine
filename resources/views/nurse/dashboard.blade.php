@@ -10,10 +10,10 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
 
-            <div class="overflow-hidden rounded-3xl border border-brand-border bg-gradient-to-r from-brand-green-soft via-white to-brand-gold-soft shadow-sm">
-                <div class="p-6 text-brand-green-deep sm:p-8">
-                    <p class="text-xs font-bold uppercase tracking-[0.22em] text-brand-green">Nurse Portal</p>
-                    <h2 class="mt-2 text-2xl font-bold text-slate-900">
+            <div class="overflow-hidden rounded-3xl bg-brand-green-deep shadow-sm">
+                <div class="p-6 sm:p-8">
+                    <p class="text-xs font-bold uppercase tracking-wide text-white/70">Nurse Portal</p>
+                    <h2 class="mt-2 text-2xl font-bold text-white">
                         {{ __('Hello Nurse ' . Auth::user()->first_name) }}
                     </h2>
                 </div>
@@ -36,6 +36,7 @@
                         label="Unclaimed pending requests"
                         :value="$analytics['operational']['unclaimed_pending']"
                         :tone="$analytics['operational']['unclaimed_high_priority'] > 0 ? 'critical' : 'neutral'"
+                        icon="inbox"
                         :href="route('nurse.consultation_inbox', ['nurse' => $nurse->user_id])"
                         aria-label="{{ $analytics['operational']['unclaimed_pending'] }} unclaimed pending requests"
                     />
@@ -43,12 +44,14 @@
                         label="High-priority, unclaimed"
                         :value="$analytics['operational']['unclaimed_high_priority']"
                         :tone="$analytics['operational']['unclaimed_high_priority'] > 0 ? 'critical' : 'neutral'"
+                        icon="alert"
                         :href="route('nurse.consultation_inbox', ['nurse' => $nurse->user_id])"
                         aria-label="{{ $analytics['operational']['unclaimed_high_priority'] }} high priority unclaimed requests"
                     />
                     <x-dash.stat
                         label="Follow-ups awaiting triage"
                         :value="$analytics['operational']['follow_ups_awaiting_triage']"
+                        icon="repeat"
                         :href="route('nurse.follow_up_requests', ['nurse' => $nurse->user_id])"
                         aria-label="{{ $analytics['operational']['follow_ups_awaiting_triage'] }} follow-up requests awaiting triage"
                     />
@@ -83,6 +86,7 @@
                     <x-dash.stat
                         label="My open cases"
                         :value="$analytics['operational']['my_open_cases']['total']"
+                        icon="folder"
                         :href="route('nurse.consultation_inbox', ['nurse' => $nurse->user_id])"
                         aria-label="{{ $analytics['operational']['my_open_cases']['total'] }} of my cases are open"
                     >
@@ -96,13 +100,17 @@
                         label="My active consultations"
                         :value="$analytics['operational']['my_active']"
                         :tone="$analytics['operational']['my_active'] > 0 ? 'active' : 'neutral'"
+                        icon="pulse"
                         aria-label="{{ $analytics['operational']['my_active'] }} of my consultations are active"
                     />
                 </div>
             </section>
 
             {{-- ================= BAND 3 — FILTER BOUNDARY ================= --}}
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            {{-- Quiet chrome, not another card: a hairline under the toolbar
+                 is what marks it as controls rather than content, so it
+                 doesn't compete with the KPI/chart cards below it. --}}
+            <div class="flex flex-col gap-3 border-b border-brand-border pb-6 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex-1">
                     <x-dash.filter-bar
                         :date-range="$dateRange"
@@ -123,17 +131,23 @@
                 title="My Analytics — Selected Period"
                 description="Requests in your caseload, scoped to the date range above."
             >
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-dash.stat
-                        label="My reviewed requests"
-                        :value="$analytics['period']['my_reviewed_requests']"
-                        supporting="Requests you triaged, by submission date"
-                    />
-                    <x-dash.stat
-                        label="My Completed — Selected Period"
-                        :value="$analytics['period']['my_completed']"
-                        supporting="Not a real-time workload figure — scoped to the filter above"
-                    />
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="h-[13px] w-[13px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">This period</span>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-dash.stat
+                            label="My reviewed requests"
+                            :value="$analytics['period']['my_reviewed_requests']"
+                            supporting="Requests you triaged, by submission date"
+                        />
+                        <x-dash.stat
+                            label="My Completed — Selected Period"
+                            :value="$analytics['period']['my_completed']"
+                            supporting="Not a real-time workload figure — scoped to the filter above"
+                        />
+                    </div>
                 </div>
 
                 @php
@@ -146,7 +160,9 @@
                     <x-dash.chart
                         chart-id="nurse-volume-chart"
                         type="line"
+                        variant="hero"
                         title="Requests in my caseload, by submission date"
+                        description="The headline trend for this period"
                         :labels="$volume['labels']"
                         :datasets="$volume['datasets']"
                         summary="Line chart of requests in my caseload by submission date for the selected period"
@@ -172,34 +188,45 @@
                     also gets its own row, so neither is stretched to match
                     a sibling with a different natural height.
                 --}}
+                {{-- Grouped into one panel (divide-y for the rule between
+                     rows) instead of standing as two separate cards — both
+                     are facets of the same "selected period" caseload. --}}
                 @php
                     $statusChart = $analytics['charts']['status_distribution'];
                     $statusLabelsForDisplay = array_map('ucfirst', $statusChart['labels']);
-                @endphp
-                <x-dash.chart
-                    chart-id="nurse-status-chart"
-                    type="hbar-status"
-                    title="Status distribution"
-                    :labels="$statusLabelsForDisplay"
-                    :datasets="[['label' => 'Requests', 'data' => $statusChart['datasets'][0]['data']]]"
-                    summary="Horizontal bar chart of my caseload's requests by status for the selected period"
-                    empty-message="No requests in my caseload for this period."
-                    height="h-56"
-                />
-
-                @php
                     $priorityChart = $analytics['charts']['priority_distribution'];
                 @endphp
-                <x-dash.chart
-                    chart-id="nurse-priority-chart"
-                    type="splitbar-priority"
-                    title="Priority mix"
-                    :labels="$priorityChart['labels']"
-                    :datasets="$priorityChart['datasets']"
-                    summary="Proportion of my caseload's requests that are High versus Normal priority"
-                    empty-message="No requests in my caseload for this period."
-                    height="h-32"
-                />
+                <div class="overflow-hidden rounded-xl border border-brand-border bg-white divide-y divide-brand-border">
+                    <div class="px-4 py-3">
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Breakdown — Selected Period</p>
+                    </div>
+
+                    <x-dash.chart
+                        bare
+                        chart-id="nurse-status-chart"
+                        type="hbar-status"
+                        title="Status distribution"
+                        :labels="$statusLabelsForDisplay"
+                        :datasets="[['label' => 'Requests', 'data' => $statusChart['datasets'][0]['data']]]"
+                        summary="Horizontal bar chart of my caseload's requests by status for the selected period"
+                        empty-message="No requests in my caseload for this period."
+                        height="h-56"
+                    />
+
+                    <div class="max-w-md">
+                        <x-dash.chart
+                            bare
+                            chart-id="nurse-priority-chart"
+                            type="splitbar-priority"
+                            title="Priority mix"
+                            :labels="$priorityChart['labels']"
+                            :datasets="$priorityChart['datasets']"
+                            summary="Proportion of my caseload's requests that are High versus Normal priority"
+                            empty-message="No requests in my caseload for this period."
+                            height="h-32"
+                        />
+                    </div>
+                </div>
             </x-dash.section>
 
         </div>

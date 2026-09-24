@@ -468,7 +468,7 @@
                 <div x-show="activeTab === 'details'" x-cloak class="bg-brand-muted px-3 py-4 sm:px-6 sm:py-5">
                     <div class="grid gap-4 lg:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Consultation Summary</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Consultation Summary</h4>
                             <dl class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Patient</dt>
@@ -498,13 +498,13 @@
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Reason for Online Consultation</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reason for Online Consultation</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-700">{{ $consultationRequest->online_reason ?? 'No reason provided.' }}</p>
                         </div>
                     </div>
 
                     <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                        <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Symptoms</h4>
+                        <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Symptoms</h4>
                         <div class="mt-3 text-sm text-slate-700">
                             @if(is_array($consultationRequest->symptoms_desc) && count($consultationRequest->symptoms_desc) > 0)
                                 <ul class="grid gap-3 sm:grid-cols-2">
@@ -529,7 +529,7 @@
                     </div>
 
                     <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                        <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Attachments</h4>
+                        <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Attachments</h4>
                         @if(!empty($consultationRequest->file_attachments))
                             <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach($consultationRequest->file_attachments as $attachment)
@@ -565,7 +565,7 @@
 
                     <div class="mt-4 grid gap-4 lg:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Vitals &amp; Identifiers</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Vitals &amp; Identifiers</h4>
                             <dl class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Blood Type</dt>
@@ -587,7 +587,7 @@
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Emergency Contact</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emergency Contact</h4>
                             <dl class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <dt class="text-xs font-medium text-slate-500">Name</dt>
@@ -607,34 +607,34 @@
 
                     <div class="mt-4 grid gap-4 lg:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Known Allergies</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Known Allergies</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Chronic Illnesses / Conditions</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Chronic Illnesses / Conditions</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Current Medications</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current Medications</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Past Injuries / Surgeries</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Past Injuries / Surgeries</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Immunization History</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Immunization History</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Family Medical History</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Family Medical History</h4>
                             <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
                         </div>
                     </div>
 
                     <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                         <div class="flex items-center justify-between gap-3">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">CHIS Sync Status</h4>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">CHIS Sync Status</h4>
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
                                 <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
                                 Not connected
@@ -648,7 +648,7 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div class="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Clinical Documentation</h4>
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Clinical Documentation</h4>
                                 <p class="mt-1 text-base font-semibold text-slate-900 sm:text-lg">Assessment, plan, recommendations, diagnosis, and prescription</p>
                             </div>
                             <div class="flex flex-col items-start gap-2 sm:flex-shrink-0 sm:items-end">
@@ -787,11 +787,11 @@
                         @else
                             <div class="mt-5 grid gap-4 lg:grid-cols-2">
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Diagnosis</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Diagnosis</p>
                                     <p class="mt-2 text-sm text-slate-700" x-text="clinical.diagnosis || 'No diagnosis added yet.'"></p>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Prescription</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Prescription</p>
                                     <template x-if="clinical.prescription.download_url">
                                         <div class="mt-2 space-y-2">
                                             <p class="break-words text-sm font-medium text-slate-800" x-text="clinical.prescription.file_name"></p>
@@ -808,15 +808,15 @@
                                     </template>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Assessment</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Assessment</p>
                                     <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700" x-text="clinical.assessment || 'No assessment recorded yet.'"></p>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Plan</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Plan</p>
                                     <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700" x-text="clinical.plan || 'No plan recorded yet.'"></p>
                                 </div>
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Recommendations</p>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Recommendations</p>
                                     <p class="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700" x-text="clinical.recommendations || 'No recommendations recorded yet.'"></p>
                                 </div>
                             </div>

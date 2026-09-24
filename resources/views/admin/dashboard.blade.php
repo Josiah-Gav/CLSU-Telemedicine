@@ -10,10 +10,10 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
 
-            <div class="overflow-hidden rounded-3xl border border-brand-border bg-gradient-to-r from-brand-green-soft via-white to-brand-gold-soft shadow-sm">
-                <div class="p-6 text-brand-green-deep sm:p-8">
-                    <p class="text-xs font-bold uppercase tracking-[0.22em] text-brand-green">Administrator</p>
-                    <h2 class="mt-2 text-2xl font-bold text-slate-900">
+            <div class="overflow-hidden rounded-3xl bg-brand-green-deep shadow-sm">
+                <div class="p-6 sm:p-8">
+                    <p class="text-xs font-bold uppercase tracking-wide text-white/70">Administrator</p>
+                    <h2 class="mt-2 text-2xl font-bold text-white">
                         {{ __('Hello Admin ' . Auth::user()->first_name) }}
                     </h2>
                 </div>
@@ -107,6 +107,7 @@
                     <x-dash.stat
                         label="In flight now"
                         :value="$inFlight"
+                        icon="pulse"
                         aria-label="{{ $inFlight }} requests currently in flight"
                         supporting="Current state — not affected by the date filter above"
                     >

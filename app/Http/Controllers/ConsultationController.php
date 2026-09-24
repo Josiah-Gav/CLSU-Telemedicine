@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Consultation;
-use App\Models\SymptomLog; // Double-check that your SymptomLog model exists
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
-use App\Models\FollowUpRequest;
 use App\Enums\NotificationType;
-use App\Services\NotificationService;
+use App\Models\Consultation;
+use App\Models\FollowUpRequest; // Double-check that your SymptomLog model exists
+use App\Models\SymptomLog;
+use App\Models\User;
 use App\Services\ConsultationOwnershipService;
-use App\Services\PhysicianAvailabilityService;
-use App\Services\MedicalFileStorage;
 use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
+use App\Services\MedicalFileStorage;
+use App\Services\NotificationService;
+use App\Services\PhysicianAvailabilityService;
 use App\Support\CsvDownload;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class ConsultationController extends Controller
 {
@@ -26,8 +26,7 @@ class ConsultationController extends Controller
         private readonly ConsultationOwnershipService $ownershipService,
         private readonly PhysicianAvailabilityService $availabilityService,
         private readonly MedicalFileStorage $medicalFiles,
-    ) {
-    }
+    ) {}
 
     /**
      * Guard the two nurse-triage actions below (approve/reject).
@@ -58,6 +57,7 @@ class ConsultationController extends Controller
     {
         // Fetch consultations for the authenticated user
         $consultations = Consultation::where('patient_id', auth()->id())->get();
+
         return view('consultations.index', compact('consultations'));
     }
 
@@ -211,6 +211,10 @@ class ConsultationController extends Controller
             return redirect()->route('dashboard')->with('status', 'You already have an active consultation request.');
         }
 
+        if (FollowUpRequest::hasInFlightForPatient((int) auth()->id())) {
+            return redirect()->route('dashboard')->with('status', 'You already have a follow-up request in progress.');
+        }
+
         // Server-rendered so the page never flashes "Available" before
         // correcting itself. isServiceAvailable() is the same single source of
         // truth store() enforces — this view datum is purely informational and
@@ -240,6 +244,16 @@ class ConsultationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'You may only have one active consultation request at a time.',
+            ], 422);
+        }
+
+        // 1a. A patient with an unresolved follow-up — their own ask not yet
+        // decided, or the consultation it already produced not yet concluded
+        // — may not open an unrelated new request while it's still moving.
+        if (FollowUpRequest::hasInFlightForPatient((int) auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have a follow-up request in progress.',
             ], 422);
         }
 
@@ -274,14 +288,14 @@ class ConsultationController extends Controller
         $validated = $request->validate([
             'concern_category' => 'required|string|max:100',
             'symptoms_payload' => 'required|string',
-            'online_reason'    => 'required|string|max:1000',
+            'online_reason' => 'required|string|max:1000',
             'additional_notes' => 'nullable|string|max:1000',
-            'attachments.*'    => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB Limit
+            'attachments.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB Limit
         ]);
 
         // 3. Decode alpine symptom list tracking payload
         $symptomsData = json_decode($validated['symptoms_payload'], true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($symptomsData) || count($symptomsData) === 0) {
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($symptomsData) || count($symptomsData) === 0) {
             return response()->json(['success' => false, 'message' => 'Please provide at least one symptom.'], 422);
         }
 
@@ -299,7 +313,7 @@ class ConsultationController extends Controller
         // exactly these two places; keep both in sync if it ever changes.
         foreach ($symptomsData as $symptom) {
             $severity = is_array($symptom) ? ($symptom['severity'] ?? null) : null;
-            if (!is_numeric($severity) || !in_array((int) $severity, [1, 2, 3, 4], true)) {
+            if (! is_numeric($severity) || ! in_array((int) $severity, [1, 2, 3, 4], true)) {
                 return response()->json(['success' => false, 'message' => 'Please select a severity for every symptom.'], 422);
             }
         }
@@ -319,7 +333,7 @@ class ConsultationController extends Controller
             $time = is_array($symptom) ? ($symptom['time'] ?? null) : null;
 
             try {
-                $onset = \Carbon\Carbon::parse($date . ' ' . ($time ?: '00:00'));
+                $onset = Carbon::parse($date.' '.($time ?: '00:00'));
             } catch (\Exception $e) {
                 return response()->json(['success' => false, 'message' => 'One of the symptom onset dates is invalid.'], 422);
             }
@@ -345,7 +359,7 @@ class ConsultationController extends Controller
                 $uploadedFileReferences[] = $this->medicalFiles->store(
                     $file,
                     'telemed_consultations',
-                    'consultation-attachments/' . auth()->id()
+                    'consultation-attachments/'.auth()->id()
                 );
             }
         }
@@ -353,16 +367,16 @@ class ConsultationController extends Controller
         try {
             // 4. Record details using your modified database column structure
             $consultation = Consultation::create([
-                'patient_id'              => auth()->id(),
-                'assigned_physician_id'   => null,
-                'assigned_nurse_id'       => null,
-                'concern_category'        => $validated['concern_category'],
-                'symptoms_desc'           => $symptomsData,
-                'online_reason'           => $validated['online_reason'] ?? null,
-                'additional_information'  => $validated['additional_notes'] ?? null,
+                'patient_id' => auth()->id(),
+                'assigned_physician_id' => null,
+                'assigned_nurse_id' => null,
+                'concern_category' => $validated['concern_category'],
+                'symptoms_desc' => $symptomsData,
+                'online_reason' => $validated['online_reason'] ?? null,
+                'additional_information' => $validated['additional_notes'] ?? null,
                 // Stored references, not URLs — see MedicalFileStorage.
-                'file_attachments'        => !empty($uploadedFileReferences) ? $uploadedFileReferences : null,
-                'request_status'          => 'pending',
+                'file_attachments' => ! empty($uploadedFileReferences) ? $uploadedFileReferences : null,
+                'request_status' => 'pending',
             ]);
 
             NotificationService::sendToRole(
@@ -379,11 +393,12 @@ class ConsultationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Consultation request created and backed up to cloud successfully.',
-                'data'    => $consultation
+                'data' => $consultation,
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Consultation submission failed: ' . $e->getMessage());
+            Log::error('Consultation submission failed: '.$e->getMessage());
+
             return response()->json(['success' => false, 'message' => 'Server error encountered.'], 500);
         }
     }
@@ -400,8 +415,7 @@ class ConsultationController extends Controller
         return view('patient.consultation-details', compact('consultation'));
     }
 
-
-    function rejectionConsultation(Request $request, Consultation $consultation)
+    public function rejectionConsultation(Request $request, Consultation $consultation)
     {
         $this->authorizeNurse();
 
@@ -427,7 +441,7 @@ class ConsultationController extends Controller
             $consultation->patient_id,
             NotificationType::CONSULTATION_REVIEWED,
             'Consultation Request Rejected',
-            'Your consultation request was rejected. Reason: ' . $request->input('rejection_reason'),
+            'Your consultation request was rejected. Reason: '.$request->input('rejection_reason'),
             [
                 'consultation_id' => $consultation->request_id,
                 'request_id' => $consultation->request_id,
@@ -438,7 +452,7 @@ class ConsultationController extends Controller
         return response()->json(['success' => true, 'message' => 'Consultation request rejected successfully.']);
     }
 
-    function approveConsultation(Request $request, Consultation $consultation)
+    public function approveConsultation(Request $request, Consultation $consultation)
     {
         $this->authorizeNurse();
 
@@ -490,7 +504,7 @@ class ConsultationController extends Controller
         return response()->json(['success' => true, 'message' => 'Consultation request approved successfully.']);
     }
 
-    function cancelConsultation(Request $request, Consultation $consultation)
+    public function cancelConsultation(Request $request, Consultation $consultation)
     {
         // Ensure the consultation belongs to the authenticated user
         if ($consultation->patient_id !== auth()->id()) {

@@ -1,6 +1,6 @@
 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
     <header>
-        <h4 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Change Password</h4>
+        <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Change Password</h4>
         <p class="mt-1 text-sm text-slate-500">{{ __('Use a long, random password to keep your account secure.') }}</p>
     </header>
 

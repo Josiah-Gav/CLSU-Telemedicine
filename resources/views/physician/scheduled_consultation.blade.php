@@ -427,7 +427,7 @@
                     :class="activeMainTab === 'availability' ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-100'"
                     class="inline-flex items-center rounded-lg px-4 py-2 text-sm font-semibold transition"
                 >
-                    {{ __('Schedule Availability') }}
+                    {{ __('Schedule Slots') }}
                 </button>
             </div>
 
@@ -656,7 +656,7 @@
             <div x-show="activeMainTab === 'availability'" x-cloak class="space-y-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
-                        <h3 class="text-lg font-semibold text-slate-900">{{ __('Create Schedule Availability') }}</h3>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ __('Create Schedule Slots') }}</h3>
                         <p class="mt-1 text-sm text-slate-500">{{ __('Generate appointment slots using one date, working hours, duration, and an optional break.') }}</p>
 
                         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -30,6 +30,36 @@ class FollowUpRequest extends Model
         'decided_at' => 'datetime',
     ];
 
+    /** The two status values still awaiting a nurse/physician decision. */
+    public const IN_FLIGHT_STATUSES = ['pending', 'forwarded'];
+
+    /**
+     * True if this patient has an unresolved follow-up anywhere — either
+     * their own follow-up ask not yet decided, or the Consultation it
+     * already produced (type='follow_up') not yet concluded. A patient in
+     * either state may not open a second consultation or follow-up request
+     * (ConsultationController::create()/store(),
+     * DashboardController::newconsultation(),
+     * FollowUpRequestController::store()) until it resolves.
+     */
+    public static function hasInFlightForPatient(int $patientId): bool
+    {
+        $hasOpenRequest = static::query()
+            ->where('patient_id', $patientId)
+            ->whereIn('status', self::IN_FLIGHT_STATUSES)
+            ->exists();
+
+        if ($hasOpenRequest) {
+            return true;
+        }
+
+        return Consultation::query()
+            ->where('patient_id', $patientId)
+            ->where('type', 'follow_up')
+            ->whereIn('request_status', Consultation::IN_FLIGHT_STATUSES)
+            ->exists();
+    }
+
     public function consultation(): BelongsTo
     {
         return $this->belongsTo(ConsultationSession::class, 'consultation_id', 'id');

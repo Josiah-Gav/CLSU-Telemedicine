@@ -9,6 +9,8 @@
     'footnote' => null,
     'emptyMessage' => 'No data for this period.',
     'height' => 'h-64',
+    'variant' => 'default', // default | hero — hero gets a tinted header and a bigger radius, for the one headline chart on a page
+    'bare' => false, // true: no outer card chrome — for stacking inside a divide-y grouped panel instead of standing alone
 ])
 
 {{--
@@ -43,14 +45,28 @@
     // independent layer — the security boundary is output encoding at
     // both the JSON and HTML layers, not client-side filtering.
     $chartPayloadJson = \Illuminate\Support\Js::encode(['labels' => $labels, 'datasets' => $datasets]);
+
+    $outerClasses = match (true) {
+        $bare => '',
+        $variant === 'hero' => 'rounded-3xl border border-brand-border bg-white overflow-hidden',
+        default => 'rounded-xl border border-brand-border bg-white',
+    };
+    $headerClasses = $variant === 'hero'
+        ? 'flex items-center gap-2.5 bg-brand-green-soft px-6 py-4'
+        : 'flex flex-col gap-1 border-b border-brand-border px-4 py-3 sm:flex-row sm:items-start sm:justify-between';
+    $titleClasses = $variant === 'hero' ? 'text-sm font-bold text-brand-green-deep' : 'text-sm font-semibold text-slate-900';
+    $descriptionClasses = $variant === 'hero' ? 'mt-0.5 text-xs text-brand-green-deep/70' : 'mt-0.5 text-xs text-slate-500';
 @endphp
 
-<div {{ $attributes->merge(['class' => 'rounded-xl border border-brand-border bg-white']) }}>
-    <div class="flex flex-col gap-1 border-b border-brand-border px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+<div {{ $attributes->merge(['class' => $outerClasses]) }}>
+    <div class="{{ $headerClasses }}">
+        @if ($variant === 'hero')
+            <svg class="h-[18px] w-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="#0a4d2d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        @endif
         <div>
-            <h3 class="text-sm font-semibold text-slate-900">{{ $title }}</h3>
+            <h3 class="{{ $titleClasses }}">{{ $title }}</h3>
             @if ($description)
-                <p class="mt-0.5 text-xs text-slate-500">{{ $description }}</p>
+                <p class="{{ $descriptionClasses }}">{{ $description }}</p>
             @endif
         </div>
         @isset($action)
@@ -58,7 +74,7 @@
         @endisset
     </div>
 
-    <div class="p-4" data-chart-wrapper>
+    <div class="{{ $variant === 'hero' ? 'p-6' : 'p-4' }}" data-chart-wrapper>
         @if ($isEmpty)
             <x-dash.empty :message="$emptyMessage" />
         @else

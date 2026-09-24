@@ -226,6 +226,10 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('status', 'You already have an active consultation request.');
         }
 
+        if (FollowUpRequest::hasInFlightForPatient((int) auth()->id())) {
+            return redirect()->route('dashboard')->with('status', 'You already have a follow-up request in progress.');
+        }
+
         // Server-rendered so the page never flashes "Available" before
         // correcting itself. isServiceAvailable() is the same single source of
         // truth ConsultationController::store() enforces — this view datum is

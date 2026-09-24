@@ -211,10 +211,10 @@
 
     <div class="py-12" x-data="patientDashboard(window.patientConsultation, window.physicianFollowUp, '{{ route('dashboard.active_consultation') }}', '{{ route('consultations.messaging.unread_counts') }}', window.tamEvaluationSessionId)" x-init="init()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="overflow-hidden rounded-3xl border border-brand-border bg-gradient-to-r from-brand-green-soft via-white to-brand-gold-soft shadow-sm">
-                <div class="p-6 text-brand-green-deep sm:p-8">
-                    <p class="text-xs font-bold uppercase tracking-[0.22em] text-brand-green">Welcome</p>
-                    <h2 class="mt-2 text-2xl font-bold text-slate-900">
+            <div class="overflow-hidden rounded-3xl bg-brand-green-deep shadow-sm">
+                <div class="p-6 sm:p-8">
+                    <p class="text-xs font-bold uppercase tracking-wide text-white/70">Welcome</p>
+                    <h2 class="mt-2 text-2xl font-bold text-white">
                         {{ __("Hello $patientInfo->first_name!") }}
                     </h2>
                 </div>
@@ -421,15 +421,15 @@
                 <span class="mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full {{ $intakeAvailable ? 'bg-brand-green' : 'bg-amber-500' }}"></span>
                 <div>
                     <p class="text-sm font-semibold {{ $intakeAvailable ? 'text-brand-green-deep' : 'text-amber-800' }}">
-                        {{ $intakeAvailable ? __('Consultations Available') : __('Consultations Currently Unavailable') }}
+                        {{ $intakeAvailable ? __('Consultations Available') : __('Consultations Currently Closed') }}
                     </p>
                     <p class="mt-0.5 text-xs font-semibold {{ $intakeAvailable ? 'text-brand-green-deep/80' : 'text-amber-700' }}">
                         @if ($intakeAvailable)
                             {{ __('You can submit a new consultation request right now.') }}
                         @elseif ($nextScheduledWindow)
-                            {{ __('New consultation requests are temporarily unavailable. Next scheduled intake: :day, :time.', ['day' => $nextScheduledWindow['day_name'], 'time' => $nextScheduledWindow['time_label']]) }}
+                            {{ __('No Physician is available at this time. Next scheduled intake: :day, :time.', ['day' => $nextScheduledWindow['day_name'], 'time' => $nextScheduledWindow['time_label']]) }}
                         @else
-                            {{ __('New consultation requests are temporarily unavailable. Please try again later.') }}
+                            {{ __('No Physician is available at this time.') }}
                         @endif
                     </p>
                 </div>
@@ -442,28 +442,75 @@
                  skip one they normally keep. Moved to the bottom of the page
                  (Phase 2 IA): secondary/reference information, not the
                  patient's own current situation. --}}
-            <div class="mt-6 rounded-3xl border border-gray-200 bg-white shadow-sm">
+            <div class="mt-6 rounded-3xl border border-brand-border bg-white shadow-sm">
                 <div class="p-6 sm:p-8">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ __('This Week\'s Consultation Hours') }}</h3>
+                    <div class="flex items-center gap-2.5">
+                        <svg class="h-[18px] w-[18px] text-brand-green-deep" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ __('This Week\'s Consultation Hours') }}</h3>
+                    </div>
 
-                    <div class="mt-5 divide-y divide-gray-100">
+                    {{-- Today gets the same full-panel emphasis as a status
+                         card elsewhere in the app — a solid band, not just a
+                         pill next to the date — so it reads before the eye
+                         has to scan seven near-identical rows for it. Every
+                         other row gets a small open/closed icon instead of
+                         relying on the reader to parse "Closed" vs a time
+                         range at a glance. --}}
+                    <div class="mt-5 flex flex-col">
                         @foreach ($weeklySchedule as $day)
-                            <div class="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                                <p class="text-sm font-semibold {{ $day['is_today'] ? 'text-brand-green-deep' : 'text-slate-700' }}">
-                                    {{ $day['day_name'] }}
-                                    <span class="font-normal text-slate-400">({{ $day['date_label'] }})</span>
-                                    @if ($day['is_today'])
-                                        <span class="ml-1 rounded-full bg-brand-green-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-green-deep">{{ __('Today') }}</span>
-                                    @endif
-                                </p>
-                                <p class="text-sm text-slate-600">
-                                    @if (count($day['windows']))
-                                        {{ implode(', ', $day['windows']) }}
-                                    @else
-                                        <span class="text-slate-400">{{ __('Closed') }}</span>
-                                    @endif
-                                </p>
-                            </div>
+                            @php $isOpen = count($day['windows']) > 0; @endphp
+                            @if ($day['is_today'])
+                                <div class="my-1 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-green-deep px-4 py-3.5">
+                                    <div class="flex flex-wrap items-center gap-2.5">
+                                        <span class="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-lg bg-white/20">
+                                            <svg class="h-[13px] w-[13px] text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true">
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <polyline points="12 6 12 12 16 14"></polyline>
+                                            </svg>
+                                        </span>
+                                        <p class="text-sm font-bold text-white">
+                                            {{ $day['day_name'] }}
+                                            <span class="font-normal text-white/70">({{ $day['date_label'] }})</span>
+                                        </p>
+                                        <span class="rounded-md bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-brand-green-deep">{{ __('Today') }}</span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-white">
+                                        {{ $isOpen ? implode(', ', $day['windows']) : __('Closed') }}
+                                    </p>
+                                </div>
+                            @else
+                                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-1 py-3 last:border-b-0">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-lg {{ $isOpen ? 'bg-brand-green-soft' : 'bg-slate-100' }}">
+                                            @if ($isOpen)
+                                                <svg class="h-[13px] w-[13px] text-brand-green" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                                </svg>
+                                            @else
+                                                <svg class="h-[13px] w-[13px] text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="9" y1="12" x2="15" y2="12"></line>
+                                                </svg>
+                                            @endif
+                                        </span>
+                                        <p class="text-sm font-semibold text-slate-700">
+                                            {{ $day['day_name'] }}
+                                            <span class="font-normal text-slate-400">({{ $day['date_label'] }})</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-sm text-slate-600">
+                                        @if ($isOpen)
+                                            {{ implode(', ', $day['windows']) }}
+                                        @else
+                                            <span class="text-slate-400">{{ __('Closed') }}</span>
+                                        @endif
+                                    </p>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
