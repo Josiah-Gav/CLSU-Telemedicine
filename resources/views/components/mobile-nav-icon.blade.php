@@ -1,4 +1,4 @@
-@props(['href', 'active' => false, 'path', 'label', 'notificationBadge' => false])
+@props(['href', 'active' => false, 'path', 'label', 'notificationBadge' => false, 'filled' => false, 'viewBox' => '0 0 24 24'])
 
 {{--
     Icon-only mobile bottom-nav item. No visible label, so the <a>'s
@@ -30,9 +30,15 @@
     @if ($active) aria-current="page" @endif
     class="flex min-h-11 flex-1 items-center justify-center rounded-md py-2 {{ $notificationBadge ? 'relative' : '' }} {{ $active ? 'bg-clsu-green text-white' : 'text-gray-600' }}"
 >
-    <svg class="h-6 w-6 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $path }}" />
-    </svg>
+    @if ($filled)
+        <svg class="h-6 w-6" fill="currentColor" viewBox="{{ $viewBox }}" aria-hidden="true">
+            <path d="{{ $path }}" />
+        </svg>
+    @else
+        <svg class="h-6 w-6 stroke-current" fill="none" stroke="currentColor" viewBox="{{ $viewBox }}" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $path }}" />
+        </svg>
+    @endif
     @if ($notificationBadge)
         <span
             x-show="$store.notifications.unreadCount > 0"

@@ -71,7 +71,9 @@
                     </x-nav-link>
 
                     <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.index')">
-                        <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 014 4V7h1.5a2.5 2.5 0 012.5 2.5v11a1 1 0 01-1 1H4a1 1 0 01-1-1v-11a2.5 2.5 0 012.5-2.5H8V8.354a4 4 0 014-4z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
+                            <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+                        </svg>
                         <span x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in-out duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" x-cloak class="whitespace-nowrap">{{ __('User Management') }}</span>
                     </x-nav-link>
                 @else
@@ -339,7 +341,7 @@
             'history' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
             'active' => 'M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z',
             'scheduled' => 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5',
-            'users' => 'M12 4.354a4 4 0 014 4V7h1.5a2.5 2.5 0 012.5 2.5v11a1 1 0 01-1 1H4a1 1 0 01-1-1v-11a2.5 2.5 0 012.5-2.5H8V8.354a4 4 0 014-4z',
+            'users' => 'M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
             'new' => 'M12 4v16m8-8H4',
         ];
 
@@ -373,7 +375,7 @@
                 <x-mobile-nav-icon :href="route('physician.consultation_history', ['physician' => Auth::user()])" :active="request()->routeIs('physician.consultation_history')" :path="$navIcon['history']" label="Consultation History" />
             @elseif(Auth::check() && Auth::user()->role === 'admin')
                 <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
-                <x-mobile-nav-icon :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" :path="$navIcon['users']" label="User Management" />
+                <x-mobile-nav-icon :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')" :path="$navIcon['users']" :filled="true" view-box="0 0 16 16" label="User Management" />
             @else
                 <x-mobile-nav-icon :href="route('dashboard')" :active="request()->routeIs('dashboard')" :path="$navIcon['dashboard']" label="Dashboard" :notification-badge="true" />
                 <x-mobile-nav-icon :href="route('newconsultation')" :active="request()->routeIs('newconsultation')" :path="$navIcon['new']" label="New Consultation" />

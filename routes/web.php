@@ -55,6 +55,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'index'])
         ->name('admin.users.index');
+    // Polled by the search bar/filters on admin.users.index, same fetch()-on-
+    // keystroke pattern as nurse.consultation_inbox.refresh: returns JSON,
+    // never HTML, so the table re-renders client-side without a full reload.
+    Route::get('/admin/users/search', [\App\Http\Controllers\Admin\UserManagementController::class, 'search'])
+        ->name('admin.users.search');
     Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserManagementController::class, 'create'])
         ->name('admin.users.create');
     Route::post('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'store'])

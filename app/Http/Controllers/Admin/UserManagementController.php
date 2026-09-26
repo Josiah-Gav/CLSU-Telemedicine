@@ -48,6 +48,53 @@ class UserManagementController extends Controller
     }
 
     /**
+     * JSON search/filter endpoint backing the search bar and role/status
+     * filters on the index page. Shares the exact query the initial page
+     * load would produce (same filters, same order) so typing and clearing
+     * the search box can never disagree with a fresh page load.
+     */
+    public function search(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $query = User::query()->orderBy('created_at', 'desc');
+
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('contact_num', 'like', "%{$search}%")
+                    ->orWhere('clsu_id', 'like', "%{$search}%");
+            });
+        }
+
+        if (in_array($role = $request->query('role'), ['patient', 'nurse', 'physician', 'admin'], true)) {
+            $query->where('role', $role);
+        }
+
+        if (in_array($status = $request->query('status'), ['active', 'inactive', 'suspended'], true)) {
+            $query->where('account_status', $status);
+        }
+
+        $users = $query->get();
+        $invitations = self::invitationStates($users);
+
+        return response()->json([
+            'users' => $users->map(fn (User $user) => [
+                'user_id' => $user->user_id,
+                'name' => trim("{$user->first_name} {$user->last_name}"),
+                'email' => $user->email,
+                'role' => $user->role,
+                'account_status' => $user->account_status,
+                'invitation' => $invitations[$user->user_id] ?? null,
+                'edit_url' => route('admin.users.edit', $user),
+                'resend_invitation_url' => route('admin.users.resend_invitation', $user),
+            ])->values(),
+        ]);
+    }
+
+    /**
      * Derive each account's invitation state for the listing.
      *
      * Read from the user record and staff_invitation_tokens.created_at, never
