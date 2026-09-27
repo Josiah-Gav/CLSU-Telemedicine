@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\NotificationType;
 use App\Http\Requests\GenerateScheduleSlotsRequest;
 use App\Http\Requests\StorePhysicianScheduleRequest;
 use App\Http\Requests\StoreScheduleSlotsRequest;
@@ -13,32 +14,30 @@ use App\Models\PhysicianAvailabilitySession;
 use App\Models\PhysicianSchedule;
 use App\Models\ScheduleSlot;
 use App\Models\User;
-use Carbon\CarbonImmutable;
-use Carbon\CarbonInterface;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
-use Illuminate\Validation\ValidationException;
-use App\Enums\NotificationType;
 use App\Notifications\ConsultationScheduled;
 use App\Notifications\FollowUpScheduled;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 use App\Services\ConsultationOwnershipService;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Export\ConsultationHistoryQuery;
 use App\Services\Export\ConsultationHistoryRows;
 use App\Services\Export\DashboardExportRows;
+use App\Services\MedicalFileStorage;
 use App\Services\NotificationService;
 use App\Services\PhysicianAvailabilityService;
-use App\Services\MedicalFileStorage;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
 use App\Support\StatusBadge;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Throwable;
 
 class PhysicianController extends Controller
 {
@@ -309,7 +308,7 @@ class PhysicianController extends Controller
         }
 
         if ($info['was_taken_over']) {
-            $info['takeover_message'] = 'Already claimed by ' . $assignedPhysicianName . '.';
+            $info['takeover_message'] = 'Already claimed by '.$assignedPhysicianName.'.';
 
             return $info;
         }
@@ -322,7 +321,7 @@ class PhysicianController extends Controller
             && in_array($slot->status, ['booked', 'missed'], true);
 
         if (! $isClaimableShape) {
-            $info['takeover_message'] = 'Assigned to ' . $assignedPhysicianName . '.';
+            $info['takeover_message'] = 'Assigned to '.$assignedPhysicianName.'.';
 
             return $info;
         }
@@ -331,9 +330,9 @@ class PhysicianController extends Controller
         $now = CarbonImmutable::now();
 
         if ($now->lessThan($eligibleAt)) {
-            $info['takeover_message'] = 'Assigned to ' . $assignedPhysicianName
-                . '. Not yet available for takeover — claimable from '
-                . $eligibleAt->format('M d, Y h:i A') . '.';
+            $info['takeover_message'] = 'Assigned to '.$assignedPhysicianName
+                .'. Not yet available for takeover — claimable from '
+                .$eligibleAt->format('M d, Y h:i A').'.';
 
             return $info;
         }
@@ -343,25 +342,25 @@ class PhysicianController extends Controller
         $info['takeover_available'] = true;
         $info['waiting_minutes'] = (int) $scheduledStart->diffInMinutes($now);
         $info['takeover_message'] = $assignedPhysicianName
-            . ' has not started this consultation. You can claim it.';
+            .' has not started this consultation. You can claim it.';
 
         return $info;
     }
 
     private function physicianDisplayName(?User $physician): string
     {
-        return trim(optional($physician)->first_name . ' ' . optional($physician)->last_name) ?: 'Unassigned';
+        return trim(optional($physician)->first_name.' '.optional($physician)->last_name) ?: 'Unassigned';
     }
 
     private function getConsultationInboxData(): array
     {
         $assignedConsultations = Consultation::with([
-                'patient',
-                'nurse',
-                'physician',
-                'consultationSession.slot',
-                'consultationSession.originalPhysician',
-            ])
+            'patient',
+            'nurse',
+            'physician',
+            'consultationSession.slot',
+            'consultationSession.originalPhysician',
+        ])
             ->whereIn('request_status', ['reviewed', 'assigned', 'scheduled'])
             ->orderByDesc('submitted_at')
             ->get();
@@ -387,9 +386,9 @@ class PhysicianController extends Controller
 
             return $takeover + [
                 'request_id' => $consultation->request_id,
-                'patient_name' => trim(optional($consultation->patient)->first_name . ' ' . optional($consultation->patient)->last_name) ?: 'Unknown Patient',
+                'patient_name' => trim(optional($consultation->patient)->first_name.' '.optional($consultation->patient)->last_name) ?: 'Unknown Patient',
                 'patient_is_online' => $this->isUserOnline($consultation->patient),
-                'assigned_nurse_name' => trim(optional($consultation->nurse)->first_name . ' ' . optional($consultation->nurse)->last_name) ?: 'Unassigned',
+                'assigned_nurse_name' => trim(optional($consultation->nurse)->first_name.' '.optional($consultation->nurse)->last_name) ?: 'Unassigned',
                 'concern_category' => $consultation->concern_category,
                 'submitted_at' => $consultation->submitted_at ? $consultation->submitted_at->format('M. j, Y g:i A') : null,
                 'request_status' => $consultation->request_status,
@@ -451,7 +450,7 @@ class PhysicianController extends Controller
     {
         $this->authorizePhysician($physician);
 
-        if (!in_array($consultation->request_status, ['reviewed', 'assigned', 'scheduled'], true)) {
+        if (! in_array($consultation->request_status, ['reviewed', 'assigned', 'scheduled'], true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'This consultation cannot be scheduled.',
@@ -468,7 +467,7 @@ class PhysicianController extends Controller
             ->orderBy('start_time')
             ->get()
             ->filter(function (ScheduleSlot $slot) {
-                return !$this->isScheduleSlotInPast($slot);
+                return ! $this->isScheduleSlotInPast($slot);
             })
             ->map(function (ScheduleSlot $slot) {
                 $start = CarbonImmutable::createFromFormat('H:i:s', $slot->start_time);
@@ -479,7 +478,7 @@ class PhysicianController extends Controller
                     'slot_date' => $slot->slot_date?->format('Y-m-d') ?? $slot->slot_date,
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
-                    'label' => $start->format('g:i A') . ' - ' . $end->format('g:i A'),
+                    'label' => $start->format('g:i A').' - '.$end->format('g:i A'),
                 ];
             })
             ->values()
@@ -531,7 +530,7 @@ class PhysicianController extends Controller
             $rescheduled ? NotificationType::CONSULTATION_RESCHEDULED : NotificationType::CONSULTATION_SCHEDULED,
             $rescheduled ? 'Consultation Rescheduled' : 'Consultation Scheduled',
             ($rescheduled ? 'Your consultation was rescheduled to ' : 'Your consultation is scheduled for ')
-                . optional($slot?->slot_date)->format('M d, Y') . ' at ' . $slot?->start_time . '.',
+                .optional($slot?->slot_date)->format('M d, Y').' at '.$slot?->start_time.'.',
             [
                 'consultation_id' => $consultation->request_id,
                 'request_id' => $consultation->request_id,
@@ -581,7 +580,7 @@ class PhysicianController extends Controller
             $consultation->patient_id,
             NotificationType::CONSULTATION_REVIEWED,
             'Consultation Rejected',
-            'Your consultation request was rejected by the physician. Reason: ' . $validated['rejection_reason'],
+            'Your consultation request was rejected by the physician. Reason: '.$validated['rejection_reason'],
             [
                 'consultation_id' => $consultation->request_id,
                 'request_id' => $consultation->request_id,
@@ -646,7 +645,7 @@ class PhysicianController extends Controller
                 $followUpRequest->patient_id,
                 NotificationType::FOLLOW_UP_REJECTED,
                 'Follow-up Request Rejected',
-                'Your follow-up request was rejected. Reason: ' . ($validated['decision_notes'] ?? 'No reason provided.'),
+                'Your follow-up request was rejected. Reason: '.($validated['decision_notes'] ?? 'No reason provided.'),
                 [
                     'follow_up_request_id' => $followUpRequest->id,
                     'consultation_id' => $followUpRequest->consultation_id,
@@ -674,7 +673,7 @@ class PhysicianController extends Controller
                 NotificationType::FOLLOW_UP_SCHEDULED,
                 'Follow-up Scheduled',
                 'Your follow-up consultation is scheduled for '
-                    . optional($newSession->slot->slot_date)->format('M d, Y') . ' at ' . $newSession->slot->start_time . '.',
+                    .optional($newSession->slot->slot_date)->format('M d, Y').' at '.$newSession->slot->start_time.'.',
                 [
                     'follow_up_request_id' => $followUpRequest->id,
                     'consultation_id' => $newSession->request_id,
@@ -736,7 +735,7 @@ class PhysicianController extends Controller
             ->orderBy('start_time')
             ->get()
             ->filter(function (ScheduleSlot $slot) {
-                return !$this->isScheduleSlotInPast($slot);
+                return ! $this->isScheduleSlotInPast($slot);
             })
             ->map(function (ScheduleSlot $slot) {
                 $start = CarbonImmutable::createFromFormat('H:i:s', $slot->start_time);
@@ -747,7 +746,7 @@ class PhysicianController extends Controller
                     'slot_date' => $slot->slot_date?->format('Y-m-d') ?? $slot->slot_date,
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
-                    'label' => $start->format('g:i A') . ' - ' . $end->format('g:i A'),
+                    'label' => $start->format('g:i A').' - '.$end->format('g:i A'),
                 ];
             })
             ->values()
@@ -776,7 +775,7 @@ class PhysicianController extends Controller
             ->where('request_id', $session->request_id)
             ->first();
 
-        if (!$consultation || $consultation->request_status !== 'completed') {
+        if (! $consultation || $consultation->request_status !== 'completed') {
             return response()->json([
                 'success' => false,
                 'message' => 'Follow-up can only be scheduled from a completed consultation.',
@@ -793,7 +792,7 @@ class PhysicianController extends Controller
             ->orderBy('start_time')
             ->get()
             ->filter(function (ScheduleSlot $slot) {
-                return !$this->isScheduleSlotInPast($slot);
+                return ! $this->isScheduleSlotInPast($slot);
             })
             ->map(function (ScheduleSlot $slot) {
                 $start = CarbonImmutable::createFromFormat('H:i:s', $slot->start_time);
@@ -804,7 +803,7 @@ class PhysicianController extends Controller
                     'slot_date' => $slot->slot_date?->format('Y-m-d') ?? $slot->slot_date,
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
-                    'label' => $start->format('g:i A') . ' - ' . $end->format('g:i A'),
+                    'label' => $start->format('g:i A').' - '.$end->format('g:i A'),
                 ];
             })
             ->values()
@@ -898,7 +897,7 @@ class PhysicianController extends Controller
                     NotificationType::FOLLOW_UP_SCHEDULED,
                     'Follow-up Scheduled',
                     'Your follow-up consultation is scheduled for '
-                        . optional($newSession->slot->slot_date)->format('M d, Y') . ' at ' . $newSession->slot->start_time . '.',
+                        .optional($newSession->slot->slot_date)->format('M d, Y').' at '.$newSession->slot->start_time.'.',
                     [
                         'consultation_id' => $followUpConsultation->request_id,
                         'request_id' => $followUpConsultation->request_id,
@@ -1165,13 +1164,13 @@ class PhysicianController extends Controller
                 $start = CarbonImmutable::createFromFormat('H:i:s', $slot->start_time);
                 $end = CarbonImmutable::createFromFormat('H:i:s', $slot->end_time);
                 $scheduledDate = $slotDate;
-                $scheduledTimeLabel = $start->format('g:i A') . ' - ' . $end->format('g:i A');
-                $scheduledAtIso = CarbonImmutable::parse($slotDate . ' ' . $slot->start_time)->toIso8601String();
+                $scheduledTimeLabel = $start->format('g:i A').' - '.$end->format('g:i A');
+                $scheduledAtIso = CarbonImmutable::parse($slotDate.' '.$slot->start_time)->toIso8601String();
             }
 
             return [
                 'request_id' => $consultation->request_id,
-                'patient_name' => trim(optional($consultation->patient)->first_name . ' ' . optional($consultation->patient)->last_name) ?: 'Unknown Patient',
+                'patient_name' => trim(optional($consultation->patient)->first_name.' '.optional($consultation->patient)->last_name) ?: 'Unknown Patient',
                 'patient_is_online' => $this->isUserOnline($consultation->patient),
                 'concern_category' => $consultation->concern_category,
                 'priority_level' => $consultation->priority_level,
@@ -1201,7 +1200,7 @@ class PhysicianController extends Controller
         $dayEnd = $this->combineDateAndTime($slotDate, $validated['end_time']);
 
         $breakRange = null;
-        if (!empty($validated['break_start_time']) && !empty($validated['break_end_time'])) {
+        if (! empty($validated['break_start_time']) && ! empty($validated['break_end_time'])) {
             $breakStart = $this->combineDateAndTime($slotDate, $validated['break_start_time']);
             $breakEnd = $this->combineDateAndTime($slotDate, $validated['break_end_time']);
 
@@ -1239,16 +1238,19 @@ class PhysicianController extends Controller
 
             if ($slotStart->lessThanOrEqualTo($now)) {
                 $skippedByPast++;
+
                 continue;
             }
 
             if ($this->overlapsRange($slotStart, $slotEnd, $breakRange)) {
                 $skippedByBreak++;
+
                 continue;
             }
 
             if ($this->overlapsExistingSlots($slotStart, $slotEnd, $existingSlots)) {
                 $skippedByConflict++;
+
                 continue;
             }
 
@@ -1256,7 +1258,7 @@ class PhysicianController extends Controller
                 'slot_date' => $slotDate->toDateString(),
                 'start_time' => $slotStart->format('H:i:s'),
                 'end_time' => $slotEnd->format('H:i:s'),
-                'label' => $slotStart->format('g:i A') . ' - ' . $slotEnd->format('g:i A'),
+                'label' => $slotStart->format('g:i A').' - '.$slotEnd->format('g:i A'),
                 'selected' => true,
             ];
         }
@@ -1308,11 +1310,13 @@ class PhysicianController extends Controller
 
             if ($slotStart->lessThanOrEqualTo($now)) {
                 $skippedByPast++;
+
                 continue;
             }
 
             if ($this->overlapsExistingSlots($slotStart, $slotEnd, $existingSlots)) {
                 $skippedByConflict++;
+
                 continue;
             }
 
@@ -1333,7 +1337,7 @@ class PhysicianController extends Controller
             ]);
         }
 
-        if (!empty($toInsert)) {
+        if (! empty($toInsert)) {
             ScheduleSlot::insert($toInsert);
         }
 
@@ -1534,7 +1538,7 @@ class PhysicianController extends Controller
             ->where('physician_id', $physician->user_id)
             ->find($schedule);
 
-        if (!$scheduleModel) {
+        if (! $scheduleModel) {
             abort(404);
         }
 
@@ -1573,7 +1577,7 @@ class PhysicianController extends Controller
             ->where('id', $schedule)
             ->delete();
 
-        if (!$deleted) {
+        if (! $deleted) {
             abort(404);
         }
 
@@ -1730,7 +1734,7 @@ class PhysicianController extends Controller
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
                     'status' => $slot->status,
-                    'label' => $startTime->format('g:i A') . ' - ' . $endTime->format('g:i A'),
+                    'label' => $startTime->format('g:i A').' - '.$endTime->format('g:i A'),
                     'messaging_url' => ($slot->status === 'completed' && $completedSession)
                         ? route('consultations.messaging.show', $completedSession)
                         : null,
@@ -1785,12 +1789,12 @@ class PhysicianController extends Controller
         foreach ($scheduledSessions as $session) {
             $slot = $session->slot;
 
-            if (!$slot || $slot->status !== 'booked') {
+            if (! $slot || $slot->status !== 'booked') {
                 continue;
             }
 
             $slotDate = $slot->slot_date?->format('Y-m-d') ?? (string) $slot->slot_date;
-            $slotEndsAt = CarbonImmutable::parse($slotDate . ' ' . $slot->end_time);
+            $slotEndsAt = CarbonImmutable::parse($slotDate.' '.$slot->end_time);
 
             if ($now->lessThanOrEqualTo($slotEndsAt)) {
                 continue;
@@ -1864,12 +1868,12 @@ class PhysicianController extends Controller
     private function serializeScheduledSlot(?ConsultationSession $session): ?array
     {
         $slot = $session?->slot;
-        if (!$slot) {
+        if (! $slot) {
             return null;
         }
 
         $slotDate = $slot->slot_date?->format('Y-m-d') ?? (string) $slot->slot_date;
-        $slotDateTime = CarbonImmutable::parse($slotDate . ' ' . $slot->start_time);
+        $slotDateTime = CarbonImmutable::parse($slotDate.' '.$slot->start_time);
         $start = CarbonImmutable::createFromFormat('H:i:s', $slot->start_time);
         $end = CarbonImmutable::createFromFormat('H:i:s', $slot->end_time);
 
@@ -1881,14 +1885,14 @@ class PhysicianController extends Controller
             'slot_date' => $slot->slot_date?->format('M. j, Y') ?? $slotDate,
             'start_time' => $slot->start_time,
             'end_time' => $slot->end_time,
-            'label' => $start->format('g:i A') . ' - ' . $end->format('g:i A'),
+            'label' => $start->format('g:i A').' - '.$end->format('g:i A'),
             'starts_at_iso' => $slotDateTime->toIso8601String(),
         ];
     }
 
     private function resolveCanStart(string $requestStatus, ?ConsultationSession $session): array
     {
-        if (!in_array($requestStatus, ['reviewed', 'assigned', 'scheduled'], true)) {
+        if (! in_array($requestStatus, ['reviewed', 'assigned', 'scheduled'], true)) {
             return [
                 'can_start' => false,
                 'can_start_message' => 'Only reviewed, assigned, or scheduled consultations can be started.',
@@ -1903,7 +1907,7 @@ class PhysicianController extends Controller
         }
 
         $slot = $session?->slot;
-        if (!$slot || !in_array($slot->status, ['booked', 'missed'], true)) {
+        if (! $slot || ! in_array($slot->status, ['booked', 'missed'], true)) {
             $message = 'Assigned slot is missing or not booked.';
 
             if ($slot && $slot->status === 'completed') {
@@ -1929,8 +1933,8 @@ class PhysicianController extends Controller
     private function buildCanStartInfoFromSlot(ScheduleSlot $slot): array
     {
         $slotDate = $slot->slot_date?->format('Y-m-d') ?? (string) $slot->slot_date;
-        $slotStart = CarbonImmutable::parse($slotDate . ' ' . $slot->start_time);
-        $slotEnd = CarbonImmutable::parse($slotDate . ' ' . $slot->end_time);
+        $slotStart = CarbonImmutable::parse($slotDate.' '.$slot->start_time);
+        $slotEnd = CarbonImmutable::parse($slotDate.' '.$slot->end_time);
         $canStartAt = $slotStart->subMinutes(15);
         $now = CarbonImmutable::now();
 
@@ -1950,7 +1954,7 @@ class PhysicianController extends Controller
 
         return [
             'can_start' => false,
-            'can_start_message' => 'Start will be available at ' . $canStartAt->format('M d, Y h:i A') . '.',
+            'can_start_message' => 'Start will be available at '.$canStartAt->format('M d, Y h:i A').'.',
         ];
     }
 
@@ -1961,14 +1965,14 @@ class PhysicianController extends Controller
             ->lockForUpdate()
             ->first();
 
-        if (!$lockedSourceSession) {
+        if (! $lockedSourceSession) {
             throw new \RuntimeException('Source consultation was not found.');
         }
 
         $sourceSession = $lockedSourceSession;
         $sourceSession->loadMissing('request');
 
-        if (!$sourceSession->request) {
+        if (! $sourceSession->request) {
             throw new \RuntimeException('Source consultation request was not found.');
         }
 
@@ -1977,7 +1981,7 @@ class PhysicianController extends Controller
             ->lockForUpdate()
             ->first();
 
-        if (!$lockedSourceRequest) {
+        if (! $lockedSourceRequest) {
             throw new \RuntimeException('Source consultation request was not found.');
         }
 
@@ -2023,7 +2027,7 @@ class PhysicianController extends Controller
         ];
 
         if ($mode === 'scheduled') {
-            if (!$slotId) {
+            if (! $slotId) {
                 throw new \RuntimeException('A schedule slot is required when approving a scheduled follow-up.');
             }
 
@@ -2033,7 +2037,7 @@ class PhysicianController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$slot || $slot->status !== 'available') {
+            if (! $slot || $slot->status !== 'available') {
                 throw new \RuntimeException('Selected slot is no longer available.');
             }
 
@@ -2053,7 +2057,7 @@ class PhysicianController extends Controller
     private function isScheduleSlotInPast(ScheduleSlot $slot): bool
     {
         $slotDate = $slot->slot_date?->format('Y-m-d') ?? (string) $slot->slot_date;
-        $slotStart = CarbonImmutable::parse($slotDate . ' ' . $slot->start_time);
+        $slotStart = CarbonImmutable::parse($slotDate.' '.$slot->start_time);
 
         return CarbonImmutable::now()->greaterThanOrEqualTo($slotStart);
     }

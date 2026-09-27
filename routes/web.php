@@ -1,13 +1,17 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\ConsultationMessageController;
 use App\Http\Controllers\ConsultationVideoController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FollowUpRequestController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NurseController;
+use App\Http\Controllers\PhysicianController;
 use App\Http\Controllers\PresenceController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,7 +24,7 @@ Route::get('/privacy-policy', function () {
 
 // --- EVERYTHING INSIDE THIS BLOCK REQUIRES LOGIN ---
 Route::middleware(['auth', 'verified'])->group(function () {
-    
+
     // Presence heartbeat
     Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat'])
         ->name('presence.heartbeat');
@@ -53,25 +57,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/consultations/history/export', [ConsultationController::class, 'historyExport'])
         ->name('consultations.history.export');
 
-    Route::get('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'index'])
+    Route::get('/admin/users', [UserManagementController::class, 'index'])
         ->name('admin.users.index');
     // Polled by the search bar/filters on admin.users.index, same fetch()-on-
     // keystroke pattern as nurse.consultation_inbox.refresh: returns JSON,
     // never HTML, so the table re-renders client-side without a full reload.
-    Route::get('/admin/users/search', [\App\Http\Controllers\Admin\UserManagementController::class, 'search'])
+    Route::get('/admin/users/search', [UserManagementController::class, 'search'])
         ->name('admin.users.search');
-    Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserManagementController::class, 'create'])
+    Route::get('/admin/users/create', [UserManagementController::class, 'create'])
         ->name('admin.users.create');
-    Route::post('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'store'])
+    Route::post('/admin/users', [UserManagementController::class, 'store'])
         ->name('admin.users.store');
-    Route::get('/admin/users/{user}/edit', [\App\Http\Controllers\Admin\UserManagementController::class, 'edit'])
+    Route::get('/admin/users/{user}/edit', [UserManagementController::class, 'edit'])
         ->name('admin.users.edit');
-    Route::put('/admin/users/{user}', [\App\Http\Controllers\Admin\UserManagementController::class, 'update'])
+    Route::put('/admin/users/{user}', [UserManagementController::class, 'update'])
         ->name('admin.users.update');
     // Admin-only invitation recovery. Throttled to match the other authenticated
     // POST endpoints in this file: generous enough to invite a batch of staff in
     // one sitting, tight enough to bound mailbox spam if the session is misused.
-    Route::post('/admin/users/{user}/resend-invitation', [\App\Http\Controllers\Admin\UserManagementController::class, 'resendInvitation'])
+    Route::post('/admin/users/{user}/resend-invitation', [UserManagementController::class, 'resendInvitation'])
         ->middleware('throttle:30,1')
         ->name('admin.users.resend_invitation');
 
@@ -88,87 +92,87 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Nurse-specific navigation pages
     Route::prefix('nurses/{nurse}')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\NurseController::class, 'dashboard'])
+        Route::get('/dashboard', [NurseController::class, 'dashboard'])
             ->name('nurse.dashboard');
-        Route::get('/dashboard/export', [\App\Http\Controllers\NurseController::class, 'dashboardExport'])
+        Route::get('/dashboard/export', [NurseController::class, 'dashboardExport'])
             ->name('nurse.dashboard.export');
 
-        Route::get('/consultation-inbox', [\App\Http\Controllers\NurseController::class, 'consultationInbox'])
+        Route::get('/consultation-inbox', [NurseController::class, 'consultationInbox'])
             ->name('nurse.consultation_inbox');
-        Route::get('/consultation-inbox/refresh', [\App\Http\Controllers\NurseController::class, 'consultationInboxRefresh'])
+        Route::get('/consultation-inbox/refresh', [NurseController::class, 'consultationInboxRefresh'])
             ->name('nurse.consultation_inbox.refresh');
 
-        Route::get('/follow-up-requests', [\App\Http\Controllers\NurseController::class, 'followUpRequests'])
+        Route::get('/follow-up-requests', [NurseController::class, 'followUpRequests'])
             ->name('nurse.follow_up_requests');
-        Route::post('/follow-up-requests/{followUpRequest}/forward', [\App\Http\Controllers\NurseController::class, 'forwardFollowUpRequest'])
+        Route::post('/follow-up-requests/{followUpRequest}/forward', [NurseController::class, 'forwardFollowUpRequest'])
             ->name('nurse.follow_up_requests.forward');
-        Route::post('/follow-up-requests/{followUpRequest}/reject', [\App\Http\Controllers\NurseController::class, 'rejectFollowUpRequest'])
+        Route::post('/follow-up-requests/{followUpRequest}/reject', [NurseController::class, 'rejectFollowUpRequest'])
             ->name('nurse.follow_up_requests.reject');
 
-        Route::get('/consultation-history', [\App\Http\Controllers\NurseController::class, 'consultationHistory'])
+        Route::get('/consultation-history', [NurseController::class, 'consultationHistory'])
             ->name('nurse.consultation_history');
-        Route::get('/consultation-history/export', [\App\Http\Controllers\NurseController::class, 'consultationHistoryExport'])
+        Route::get('/consultation-history/export', [NurseController::class, 'consultationHistoryExport'])
             ->name('nurse.consultation_history.export');
     });
 
-    //Physician-specific navigation pages
+    // Physician-specific navigation pages
     Route::prefix('physicians/{physician}')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\PhysicianController::class, 'dashboard'])
+        Route::get('/dashboard', [PhysicianController::class, 'dashboard'])
             ->name('physician.dashboard');
-        Route::get('/dashboard/export', [\App\Http\Controllers\PhysicianController::class, 'dashboardExport'])
+        Route::get('/dashboard/export', [PhysicianController::class, 'dashboardExport'])
             ->name('physician.dashboard.export');
-        Route::get('/consultation-inbox', [\App\Http\Controllers\PhysicianController::class, 'consultationInbox'])
+        Route::get('/consultation-inbox', [PhysicianController::class, 'consultationInbox'])
             ->name('physician.consultation_inbox');
-        Route::get('/consultation-inbox/refresh', [\App\Http\Controllers\PhysicianController::class, 'consultationInboxRefresh'])
+        Route::get('/consultation-inbox/refresh', [PhysicianController::class, 'consultationInboxRefresh'])
             ->name('physician.consultation_inbox.refresh');
-        Route::post('/consultations/{consultation}/approve-reviewed', [\App\Http\Controllers\PhysicianController::class, 'approveReviewedConsultation'])
+        Route::post('/consultations/{consultation}/approve-reviewed', [PhysicianController::class, 'approveReviewedConsultation'])
             ->name('physician.consultations.approve_reviewed');
-        Route::post('/consultations/{consultation}/reject-reviewed', [\App\Http\Controllers\PhysicianController::class, 'rejectReviewedConsultation'])
+        Route::post('/consultations/{consultation}/reject-reviewed', [PhysicianController::class, 'rejectReviewedConsultation'])
             ->name('physician.consultations.reject_reviewed');
-        Route::post('/consultations/{consultation}/start', [\App\Http\Controllers\PhysicianController::class, 'startConsultation'])
+        Route::post('/consultations/{consultation}/start', [PhysicianController::class, 'startConsultation'])
             ->name('physician.consultations.start');
-        Route::post('/consultations/{consultation}/take-over', [\App\Http\Controllers\PhysicianController::class, 'takeOverConsultation'])
+        Route::post('/consultations/{consultation}/take-over', [PhysicianController::class, 'takeOverConsultation'])
             ->name('physician.consultations.take_over');
-        Route::get('/consultations/{consultation}/available-slots', [\App\Http\Controllers\PhysicianController::class, 'availableScheduleSlotsForConsultation'])
+        Route::get('/consultations/{consultation}/available-slots', [PhysicianController::class, 'availableScheduleSlotsForConsultation'])
             ->name('physician.consultations.available_slots');
-        Route::post('/consultations/{consultation}/schedule', [\App\Http\Controllers\PhysicianController::class, 'scheduleConsultation'])
+        Route::post('/consultations/{consultation}/schedule', [PhysicianController::class, 'scheduleConsultation'])
             ->name('physician.consultations.schedule');
-        Route::get('/follow-up-requests', [\App\Http\Controllers\PhysicianController::class, 'followUpRequests'])
+        Route::get('/follow-up-requests', [PhysicianController::class, 'followUpRequests'])
             ->name('physician.follow_up_requests');
-        Route::get('/follow-up-requests/{followUpRequest}/available-slots', [\App\Http\Controllers\PhysicianController::class, 'availableSlotsForFollowUpRequest'])
+        Route::get('/follow-up-requests/{followUpRequest}/available-slots', [PhysicianController::class, 'availableSlotsForFollowUpRequest'])
             ->name('physician.follow_up_requests.available_slots');
-        Route::get('/consultation-sessions/{session}/follow-up/available-slots', [\App\Http\Controllers\PhysicianController::class, 'availableSlotsForPhysicianFollowUp'])
+        Route::get('/consultation-sessions/{session}/follow-up/available-slots', [PhysicianController::class, 'availableSlotsForPhysicianFollowUp'])
             ->name('physician.follow_up.available_slots');
-        Route::post('/follow-up-requests/{followUpRequest}/decide', [\App\Http\Controllers\PhysicianController::class, 'decideFollowUpRequest'])
+        Route::post('/follow-up-requests/{followUpRequest}/decide', [PhysicianController::class, 'decideFollowUpRequest'])
             ->name('physician.follow_up_requests.decide');
-        Route::post('/consultation-sessions/{session}/follow-up', [\App\Http\Controllers\PhysicianController::class, 'createPhysicianFollowUp'])
+        Route::post('/consultation-sessions/{session}/follow-up', [PhysicianController::class, 'createPhysicianFollowUp'])
             ->name('physician.follow_up.create');
-        Route::get('/consultation-history', [\App\Http\Controllers\PhysicianController::class, 'consultationHistory'])
+        Route::get('/consultation-history', [PhysicianController::class, 'consultationHistory'])
             ->name('physician.consultation_history');
-        Route::get('/consultation-history/export', [\App\Http\Controllers\PhysicianController::class, 'consultationHistoryExport'])
+        Route::get('/consultation-history/export', [PhysicianController::class, 'consultationHistoryExport'])
             ->name('physician.consultation_history.export');
-        Route::get('/active_consultation', [\App\Http\Controllers\PhysicianController::class, 'activeConsultations'])
+        Route::get('/active_consultation', [PhysicianController::class, 'activeConsultations'])
             ->name('physician.active_consultation');
-        Route::get('/scheduled_consultation', [\App\Http\Controllers\PhysicianController::class, 'scheduledConsultations'])
+        Route::get('/scheduled_consultation', [PhysicianController::class, 'scheduledConsultations'])
             ->name('physician.scheduled_consultation');
-        Route::get('/scheduled_consultation/slots', [\App\Http\Controllers\PhysicianController::class, 'scheduledConsultationSlots'])
+        Route::get('/scheduled_consultation/slots', [PhysicianController::class, 'scheduledConsultationSlots'])
             ->name('physician.scheduled_consultation.slots');
-        Route::post('/scheduled_consultation/generate', [\App\Http\Controllers\PhysicianController::class, 'generateScheduleSlots'])
+        Route::post('/scheduled_consultation/generate', [PhysicianController::class, 'generateScheduleSlots'])
             ->name('physician.scheduled_consultation.generate');
-        Route::post('/scheduled_consultation/save', [\App\Http\Controllers\PhysicianController::class, 'saveScheduleSlots'])
+        Route::post('/scheduled_consultation/save', [PhysicianController::class, 'saveScheduleSlots'])
             ->name('physician.scheduled_consultation.save');
 
         // Consultation Intake — the physician's recurring intake-hours
         // management page. Deliberately not named/routed anywhere near
         // "scheduled_consultation" above, which manages schedule_slots
         // (concrete appointment inventory), a different concept.
-        Route::get('/consultation-intake', [\App\Http\Controllers\PhysicianController::class, 'consultationIntake'])
+        Route::get('/consultation-intake', [PhysicianController::class, 'consultationIntake'])
             ->name('physician.consultation_intake');
-        Route::post('/consultation-intake/schedules', [\App\Http\Controllers\PhysicianController::class, 'storePhysicianSchedule'])
+        Route::post('/consultation-intake/schedules', [PhysicianController::class, 'storePhysicianSchedule'])
             ->name('physician.consultation_intake.schedules.store');
-        Route::put('/consultation-intake/schedules/{schedule}', [\App\Http\Controllers\PhysicianController::class, 'updatePhysicianSchedule'])
+        Route::put('/consultation-intake/schedules/{schedule}', [PhysicianController::class, 'updatePhysicianSchedule'])
             ->name('physician.consultation_intake.schedules.update');
-        Route::delete('/consultation-intake/schedules/{schedule}', [\App\Http\Controllers\PhysicianController::class, 'destroyPhysicianSchedule'])
+        Route::delete('/consultation-intake/schedules/{schedule}', [PhysicianController::class, 'destroyPhysicianSchedule'])
             ->name('physician.consultation_intake.schedules.destroy');
 
         // Live intake controls. The {physician} parameter is only there for
@@ -176,26 +180,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // acted on is always the authenticated user's, never the one named in
         // the URL. Deliberately CSRF-protected like every other AJAX endpoint
         // in this file, including the heartbeat.
-        Route::post('/consultation-intake/open', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeOpen'])
+        Route::post('/consultation-intake/open', [PhysicianController::class, 'consultationIntakeOpen'])
             ->name('physician.consultation_intake.open');
-        Route::post('/consultation-intake/close', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeClose'])
+        Route::post('/consultation-intake/close', [PhysicianController::class, 'consultationIntakeClose'])
             ->name('physician.consultation_intake.close');
-        Route::post('/consultation-intake/heartbeat', [\App\Http\Controllers\PhysicianController::class, 'consultationIntakeHeartbeat'])
+        Route::post('/consultation-intake/heartbeat', [PhysicianController::class, 'consultationIntakeHeartbeat'])
             ->name('physician.consultation_intake.heartbeat');
     });
 
     // Attachment download for consultations (nurse/physician access validated in controller)
-    Route::get('/consultations/{consultation}/attachments/{file}', [\App\Http\Controllers\AttachmentController::class, 'show'])
+    Route::get('/consultations/{consultation}/attachments/{file}', [AttachmentController::class, 'show'])
         ->name('consultation.attachment');
 
     Route::post('/consultations/{consultation}/reject', [ConsultationController::class, 'rejectionConsultation'])
-    ->name('consultations.reject');
+        ->name('consultations.reject');
 
     Route::post('/consultations/{consultation}/approve', [ConsultationController::class, 'approveConsultation'])
-    ->name('consultations.approve');
+        ->name('consultations.approve');
 
     Route::post('/consultations/{consultation}/cancel', [ConsultationController::class, 'cancelConsultation'])
-    ->name('consultations.cancel');
+        ->name('consultations.cancel');
 
     Route::get('/consultation-sessions/{session}/messaging', [ConsultationMessageController::class, 'show'])
         ->name('consultations.messaging.show');
