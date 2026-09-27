@@ -149,9 +149,10 @@ it('emails the patient when a consultation is completed', function () {
         'physician_id' => $physician->user_id,
         'slot_id' => null,
         'consultation_status' => 'active',
-        'assessment' => 'Assessment in progress.',
-        'plan' => 'Plan to be documented during consultation.',
-        'recommendations' => 'Recommendations to follow after evaluation.',
+        'diagnosis' => 'Tension headache.',
+        'assessment' => 'Patient reports mild, intermittent headache.',
+        'plan' => 'Rest and hydration, review in one week.',
+        'recommendations' => 'Avoid screen time for 24 hours.',
         'assigned_at' => now()->subMinutes(20),
         'started_at' => now()->subMinutes(15),
     ]);

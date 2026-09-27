@@ -766,22 +766,28 @@
                                         placeholder="Provide physician recommendations"></textarea>
                                 </div>
 
-                                <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end">
-                                    <button
-                                        type="button"
-                                        @click="completeConsultation"
-                                        :disabled="isCompletingConsultation"
-                                        class="inline-flex items-center justify-center rounded-lg border border-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-60">
-                                        <span x-show="!isCompletingConsultation">Complete consultation</span>
-                                        <span x-show="isCompletingConsultation">Completing...</span>
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        :disabled="isSavingClinical"
-                                        class="inline-flex items-center justify-center rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-green-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 disabled:opacity-60">
-                                        <span x-show="!isSavingClinical">Save clinical details</span>
-                                        <span x-show="isSavingClinical">Saving...</span>
-                                    </button>
+                                <div class="flex flex-col items-end gap-2 border-t border-slate-100 pt-4">
+                                    <template x-if="!clinicalComplete">
+                                        <p class="text-xs font-medium text-amber-700" x-text="'Fill in ' + missingClinicalFields.join(', ') + ' to complete the consultation.'"></p>
+                                    </template>
+                                    <div class="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                                        <button
+                                            type="button"
+                                            @click="completeConsultation"
+                                            :disabled="isCompletingConsultation || !clinicalComplete"
+                                            class="inline-flex items-center justify-center rounded-lg border border-emerald-600 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                                            <span x-show="!isCompletingConsultation">Complete consultation</span>
+                                            <span x-show="isCompletingConsultation">Completing...</span>
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            :disabled="isSavingClinical"
+                                            class="inline-flex items-center justify-center rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-green-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 disabled:opacity-60">
+                                            <span x-show="!isSavingClinical">Save clinical details</span>
+                                            <span x-show="isSavingClinical">Saving...</span>
+                                        </button>
+                                    </div>
+                                </div>
                                 </div>
                             </form>
                         @else
@@ -1042,6 +1048,13 @@
                         file_size: @js($session->prescription_file_size),
                         download_url: @js($session->prescription_file_path ? route('consultations.messaging.prescription.download', $session) : null),
                     }
+                },
+                get missingClinicalFields() {
+                    const labels = { diagnosis: 'Diagnosis', assessment: 'Assessment', plan: 'Plan', recommendations: 'Recommendations' };
+                    return Object.keys(labels).filter((field) => !(this.clinical[field] || '').trim()).map((field) => labels[field]);
+                },
+                get clinicalComplete() {
+                    return this.missingClinicalFields.length === 0;
                 },
                 currentUserId: {{ (int) auth()->user()->user_id }},
                 sessionId: {{ (int) $session->id }},
@@ -1607,7 +1620,7 @@
                         formData.append('prescription', this.selectedPrescriptionFile);
                     }
 
-                    $.ajax({
+                    return $.ajax({
                         url: this.clinicalUpdateUrl,
                         method: 'POST',
                         data: formData,
@@ -1649,7 +1662,7 @@
                     });
                 },
                 completeConsultation() {
-                    if (this.isCompletingConsultation || this.consultationStatus !== 'active') return;
+                    if (this.isCompletingConsultation || this.consultationStatus !== 'active' || !this.clinicalComplete) return;
 
                     Swal.fire({
                         title: 'Complete consultation?',
@@ -1667,36 +1680,50 @@
                         this.isCompletingConsultation = true;
                         const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
-                        $.ajax({
-                            url: this.completeUrl,
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': csrfToken,
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            success: (data) => {
-                                this.consultationStatus = data.session_status || 'completed';
-                                this.consultationCompletedAt = data.completed_at || null;
-                                this.saveMessage = data.message || 'Consultation completed successfully.';
-
-                                // The consultation is no longer active: stale video UI state
-                                // must not survive the transition, even briefly before reload.
-                                this.videoActive = false;
-                                if (this.inVideoCall) {
-                                    this.leaveVideoCall();
-                                }
-
-                                this.handleDraftBlur();
-                                this.activeTab = 'assessment';
-                                window.location.reload();
-                            },
-                            error: (xhr) => {
-                                const message = xhr.responseJSON?.message || 'Unable to complete the consultation.';
-                                Swal.fire('Completion failed', message, 'error');
-                            },
-                            complete: () => {
+                        // The four fields are only in Alpine state until saved, so
+                        // persist them before completing or they're lost the moment
+                        // completion locks the form as read-only.
+                        $.when(this.saveClinicalDetails()).then((saveData) => {
+                            if (!saveData || !saveData.success) {
                                 this.isCompletingConsultation = false;
+                                return;
                             }
+
+                            $.ajax({
+                                url: this.completeUrl,
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                success: (data) => {
+                                    this.consultationStatus = data.session_status || 'completed';
+                                    this.consultationCompletedAt = data.completed_at || null;
+                                    this.saveMessage = data.message || 'Consultation completed successfully.';
+
+                                    // The consultation is no longer active: stale video UI state
+                                    // must not survive the transition, even briefly before reload.
+                                    this.videoActive = false;
+                                    if (this.inVideoCall) {
+                                        this.leaveVideoCall();
+                                    }
+
+                                    this.handleDraftBlur();
+                                    this.activeTab = 'assessment';
+                                    window.location.reload();
+                                },
+                                error: (xhr) => {
+                                    const message = xhr.responseJSON?.message || 'Unable to complete the consultation.';
+                                    Swal.fire('Completion failed', message, 'error');
+                                },
+                                complete: () => {
+                                    this.isCompletingConsultation = false;
+                                }
+                            });
+                        }, () => {
+                            // saveClinicalDetails' own error handler already showed a
+                            // Swal; just stop the completing spinner here.
+                            this.isCompletingConsultation = false;
                         });
                     });
                 },

@@ -304,6 +304,23 @@ class ConsultationMessageController extends Controller
 
         abort_if($session->consultation_status !== 'active', Response::HTTP_UNPROCESSABLE_ENTITY, 'Only active consultations can be completed.');
 
+        // hasMeaningful*() (not a raw blank check) also rejects the old
+        // "pending"/"to be documented" boilerplate that used to be written
+        // as the default value on session creation, so legacy rows that
+        // were never actually documented don't slip past this gate.
+        $missingLabels = collect([
+            'Diagnosis' => $session->hasDiagnosis(),
+            'Assessment' => $session->hasMeaningfulAssessment(),
+            'Plan' => $session->hasMeaningfulPlan(),
+            'Recommendations' => $session->hasMeaningfulRecommendations(),
+        ])->reject(fn (bool $present) => $present)->keys();
+
+        abort_if(
+            $missingLabels->isNotEmpty(),
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+            'Fill in '.$missingLabels->join(', ').' before completing the consultation.'
+        );
+
         $consultationRequest = $session->request;
         abort_unless($consultationRequest, 404);
 

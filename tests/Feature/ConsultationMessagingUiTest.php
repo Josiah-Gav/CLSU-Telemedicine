@@ -338,6 +338,14 @@ it('does not show the TAM evaluation prompt to a patient while the consultation 
 it('carries the session consultation_status through the existing message poll endpoint', function () {
     ['patient' => $patient, 'physician' => $physician, 'session' => $session] = messagingUiScenario('active');
 
+    // Completion now requires the clinical fields to be filled in first.
+    $session->update([
+        'diagnosis' => 'Tension headache.',
+        'assessment' => 'Documented assessment.',
+        'plan' => 'Documented plan.',
+        'recommendations' => 'Documented recommendations.',
+    ]);
+
     // Before completion, the poll endpoint the patient's page already hits
     // every 3s reports 'active'.
     $before = $this->actingAs($patient)

@@ -42,9 +42,10 @@ function makeCompletionScenario(array $sessionOverrides = [], array $requestOver
         'request_id' => $consultationRequest->request_id,
         'physician_id' => $physician->user_id,
         'consultation_status' => 'active',
-        'assessment' => 'Initial assessment pending.',
-        'plan' => 'Plan to be documented during consultation.',
-        'recommendations' => 'Recommendations to follow after evaluation.',
+        'diagnosis' => 'Tension headache.',
+        'assessment' => 'Patient reports mild, intermittent headache.',
+        'plan' => 'Rest and hydration, review in one week.',
+        'recommendations' => 'Avoid screen time for 24 hours.',
         'assigned_at' => now(),
         'started_at' => now(),
     ], $sessionOverrides));
@@ -59,6 +60,17 @@ function startVideoRoomFor(ConsultationSession $session, string $roomName): Cons
         'room_name' => $roomName,
     ]);
 }
+
+it('refuses to complete a consultation with a blank required clinical field', function () {
+    ['physician' => $physician, 'session' => $session] = makeCompletionScenario(['diagnosis' => '']);
+
+    $this->actingAs($physician)
+        ->postJson(route('consultations.messaging.complete', $session))
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Fill in Diagnosis before completing the consultation.');
+
+    expect($session->fresh()->consultation_status)->toBe('active');
+});
 
 it('closes the active video session when the consultation is completed', function () {
     ['physician' => $physician, 'session' => $session] = makeCompletionScenario();
