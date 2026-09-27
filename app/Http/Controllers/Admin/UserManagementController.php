@@ -154,7 +154,7 @@ class UserManagementController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150', 'unique:users,email'],
             'role' => ['required', 'in:patient,nurse,physician,admin'],
-            'clsu_id' => ['nullable', 'string', 'max:50'],
+            'clsu_id' => ['required', 'string', 'max:50'],
             'department' => ['nullable', 'string', 'max:100'],
             'contact_num' => ['nullable', 'string', 'max:20'],
             'staff_position' => ['nullable', 'string', 'max:100'],

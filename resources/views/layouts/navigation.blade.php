@@ -171,6 +171,15 @@
                             url = '{{ url('physicians') }}' + '/' + id + '/consultation-inbox';
                         }
                         break;
+                    case 'consultation_reviewed':
+                        // Rejected requests are terminal, so they live in history;
+                        // an approved one is still in progress on its details page.
+                        if (role === 'patient' && d.rejected) {
+                            url = '{{ route('consultations.history', ['status' => 'rejected']) }}';
+                        } else if (role === 'patient' && d.request_id) {
+                            url = '{{ url('consultations') }}' + '/' + d.request_id;
+                        }
+                        break;
                     case 'consultation_submitted':
                         url = '{{ url('nurses') }}' + '/' + id + '/consultation-inbox';
                         break;

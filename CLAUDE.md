@@ -12,13 +12,19 @@ This is a Laravel 12 telemedicine application ("Telemed"). It manages the full l
 - Run everything (server + queue listener + log tailer + vite) concurrently: `composer run dev`
 - Serve only: `php artisan serve`
 - Frontend build: `npm run build`; dev/watch: `npm run dev`
-- Run all tests: `composer test` (clears config cache, then `php artisan test`), or directly: `php artisan test` / `vendor/bin/pest`
+- Run all tests: `composer test` (clears config cache, then `php artisan test`) — **prefer this over running `php artisan test` / `vendor/bin/pest` directly**; see the config-cache gotcha below for why.
 - Run a single test file: `vendor/bin/pest tests/Feature/FollowUpRequestTest.php`
 - Run a single test by name: `vendor/bin/pest --filter="test description or Pest it() name"`
 - Lint/format PHP: `vendor/bin/pint` (Laravel Pint; run `vendor/bin/pint --dirty` to format only changed files)
 - Tinker/REPL: `php artisan tinker`
-- Migrate: `php artisan migrate`. **Local dev and production both run MySQL/MariaDB** (`DB_CONNECTION=mysql`, database `telemed` under XAMPP) — the `database/database.sqlite` file is a leftover and is not the dev database. Feature tests use an in-memory SQLite DB (`phpunit.xml`) via Pest's `RefreshDatabase` (`tests/Pest.php` applies it only `->in('Feature')`), so they never touch the dev database. This split matters: tests and dev run different engines, so driver-specific behaviour can pass in tests and differ in dev (see the two gotchas below).
+- Migrate: `php artisan migrate`. **Local dev and production both run MySQL/MariaDB** (`DB_CONNECTION=mysql`, database `telemed` under XAMPP) — the `database/database.sqlite` file is a leftover and is not the dev database. Feature tests use an in-memory SQLite DB (`phpunit.xml`) via Pest's `RefreshDatabase` (`tests/Pest.php` applies it only `->in('Feature')`), so they never touch the dev database **as long as no config cache is present — see the gotcha below, this has caused real data loss.** This split matters: tests and dev run different engines, so driver-specific behaviour can pass in tests and differ in dev (see the gotchas below).
 - Cron-driven housekeeping: `php artisan consultations:mark-missed-slots` (registered in `routes/console.php` to run `everyMinute`) — flips booked `schedule_slots` to `missed` once their end time passes without the consultation starting. This only actually fires if something invokes the Laravel scheduler periodically (`schedule:run` via OS cron, or `schedule:work` locally) — registering the command alone does not make it run.
+
+### Gotcha: a stale config cache makes tests wipe the real dev database
+
+`phpunit.xml`'s `<env name="DB_CONNECTION" value="sqlite">` / `DB_DATABASE=:memory:` only takes effect while Laravel resolves config from `.env` at boot. If `bootstrap/cache/config.php` exists (created by `php artisan config:cache` or `php artisan optimize`, run any time, by anyone, against the real `.env`), Laravel skips `.env`/`phpunit.xml` env resolution entirely and serves the *cached* values instead — which point at `mysql`/`telemed`. Pest's `RefreshDatabase` trait then runs its initial `migrate:fresh` against whatever connection `config('database.default')` resolves to: with a stale cache present, that is the real dev database, not the in-memory test one. This is not hypothetical — it is exactly how the dev database got wiped once already (someone ran `php artisan optimize`, then a later `vendor/bin/pest`/`php artisan test` run silently dropped and recreated every table in `telemed`).
+
+`composer test` is safe because its script runs `php artisan config:clear` immediately before `php artisan test`. Running `vendor/bin/pest` or `php artisan test` **directly** is not safe by default — it skips that clear. Always run `php artisan config:clear` first (or use `composer test`) before running tests directly, especially after anyone has run `config:cache`/`optimize`, and treat `bootstrap/cache/config.php` existing during local dev as a red flag worth clearing.
 
 ### Gotcha: SQLite enum migrations are no-ops
 

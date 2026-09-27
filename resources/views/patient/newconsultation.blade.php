@@ -707,6 +707,18 @@
                                         <p class="mt-1 text-sm text-slate-700 italic" x-text="otherSymptom"></p>
                                     </div>
                                 </div>
+
+                                <div role="note" class="mt-6 flex items-start gap-3 rounded-2xl border border-brand-gold bg-brand-gold-soft p-4">
+                                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-900">Please note</p>
+                                        <p class="mt-1 text-sm text-slate-700">The CLSU Infirmary reserves the right to decline requests that are not suitable for telemedicine consultation, such as emergencies or concerns that require an in-person examination. If your request is declined, you will be notified along with the reason.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

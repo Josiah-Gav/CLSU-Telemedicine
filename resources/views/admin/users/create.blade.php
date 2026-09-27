@@ -24,44 +24,44 @@
 
                         <div class="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">First name</label>
-                                <input type="text" name="first_name" value="{{ old('first_name') }}" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">First name <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
+                                <input type="text" name="first_name" value="{{ old('first_name') }}" placeholder="e.g. Maria" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Last name</label>
-                                <input type="text" name="last_name" value="{{ old('last_name') }}" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Last name <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
+                                <input type="text" name="last_name" value="{{ old('last_name') }}" placeholder="e.g. Santos" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Email</label>
-                                <input type="email" name="email" value="{{ old('email') }}" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
+                                <input type="email" name="email" value="{{ old('email') }}" placeholder="e.g. maria.santos@clsu.edu.ph" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                 <p class="mt-1 text-xs text-gray-500">The activation invitation will be addressed to this email.</p>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Role</label>
+                                <label class="block text-sm font-medium text-gray-700">Role <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
                                 <select name="role" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                     <option value="nurse" {{ old('role') === 'nurse' ? 'selected' : '' }}>Nurse</option>
                                     <option value="physician" {{ old('role') === 'physician' ? 'selected' : '' }}>Physician</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">CLSU ID</label>
-                                <input type="text" name="clsu_id" value="{{ old('clsu_id') }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">CLSU ID <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
+                                <input type="text" name="clsu_id" value="{{ old('clsu_id') }}" placeholder="Staff employee ID number" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Department</label>
-                                <input type="text" name="department" value="{{ old('department') }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <input type="text" name="department" value="{{ old('department') }}" placeholder="e.g. University Infirmary" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Contact Number</label>
-                                <input type="text" name="contact_num" value="{{ old('contact_num') }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <input type="text" name="contact_num" value="{{ old('contact_num') }}" placeholder="e.g. 09171234567" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Staff Position</label>
-                                <input type="text" name="staff_position" value="{{ old('staff_position') }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <input type="text" name="staff_position" value="{{ old('staff_position') }}" placeholder="e.g. Nurse II, Medical Officer" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Specialization</label>
-                                <input type="text" name="specialization" value="{{ old('specialization') }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <input type="text" name="specialization" value="{{ old('specialization') }}" placeholder="e.g. Internal Medicine, Pediatrics" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                 <p class="mt-1 text-xs text-gray-500">Usually only relevant for physicians.</p>
                             </div>
                             <div>

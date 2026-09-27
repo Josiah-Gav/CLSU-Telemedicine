@@ -88,27 +88,27 @@
         <!-- Name -->
         <div>
             <x-input-label for="first_name" :value="__('First Name')" />
-            <x-text-input id="first_name" class="block mt-1 w-full" type="text" name="first_name" :value="old('first_name')" required autofocus autocomplete="given-name" />
+            <x-text-input id="first_name" class="block mt-1 w-full" type="text" name="first_name" :value="old('first_name')" placeholder="e.g. Juan" required autofocus autocomplete="given-name" />
             <x-input-error :messages="$errors->get('first_name')" class="mt-2" />
         </div>
 
         <div class="mt-4">
             <x-input-label for="last_name" :value="__('Last Name')" />
-            <x-text-input id="last_name" class="block mt-1 w-full" type="text" name="last_name" :value="old('last_name')" required autocomplete="family-name" />
+            <x-text-input id="last_name" class="block mt-1 w-full" type="text" name="last_name" :value="old('last_name')" placeholder="e.g. Dela Cruz" required autocomplete="family-name" />
             <x-input-error :messages="$errors->get('last_name')" class="mt-2" />
         </div>
 
         <!-- CLSU ID -->
         <div class="mt-4">
             <x-input-label for="clsu_id" :value="__('CLSU ID')" />
-            <x-text-input id="clsu_id" class="block mt-1 w-full" type="text" name="clsu_id" :value="old('clsu_id')" required autocomplete="off" />
+            <x-text-input id="clsu_id" class="block mt-1 w-full" type="text" name="clsu_id" :value="old('clsu_id')" placeholder="Your student or employee ID number" required autocomplete="off" />
             <x-input-error :messages="$errors->get('clsu_id')" class="mt-2" />
         </div>
 
         <!-- Email Address -->
         <div class="mt-4">
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
+            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" placeholder="e.g. juan.delacruz@clsu2.edu.ph" required autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
@@ -119,6 +119,7 @@
             <x-text-input id="password" class="block mt-1 w-full"
                             type="password"
                             name="password"
+                            placeholder="At least 8 characters"
                             required autocomplete="new-password" />
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
@@ -130,7 +131,7 @@
 
             <x-text-input id="password_confirmation" class="block mt-1 w-full"
                             type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
+                            name="password_confirmation" placeholder="Re-enter your password" required autocomplete="new-password" />
 
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
