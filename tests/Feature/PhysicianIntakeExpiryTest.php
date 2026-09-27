@@ -78,7 +78,8 @@ it('expires a single stale open session', function () {
 
     expect($session->status)->toBe('expired')
         ->and($session->ended_at)->not->toBeNull()
-        ->and($session->ended_at->format('H:i:s'))->toBe('09:05:00');
+        ->and($session->ended_at->format('H:i:s'))->toBe('09:05:00')
+        ->and($session->end_reason)->toBe('stale_expiry');
 });
 
 it('expires every stale session in one run', function () {

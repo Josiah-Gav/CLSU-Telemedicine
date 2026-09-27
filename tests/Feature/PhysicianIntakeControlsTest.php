@@ -184,7 +184,8 @@ it('lets a physician close their own intake', function () {
 
     expect($session->status)->toBe('closed')
         ->and($session->ended_at)->not->toBeNull()
-        ->and($session->ended_at->format('H:i:s'))->toBe('11:00:00');
+        ->and($session->ended_at->format('H:i:s'))->toBe('11:00:00')
+        ->and($session->end_reason)->toBe('manual_close');
 });
 
 it('treats closing with no open session as harmless', function () {
@@ -447,10 +448,12 @@ it('never recomputes an open session\'s mode after the recurring schedule change
         ->assertOk()
         ->assertJsonPath('intake.mode', 'scheduled');
 
-    // Move the window away and step past its old end. The stored mode is
-    // authoritative and must survive both.
+    // Move the window away and step past its old end — but not past the
+    // planned-end grace period, after which the session closes on its own
+    // (PhysicianIntakePlannedEndTest). The stored mode is authoritative and
+    // must survive both.
     $window->update(['start_time' => '13:00:00', 'end_time' => '17:00:00']);
-    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 12:30:00'));
+    $this->travelTo(CarbonImmutable::parse(INTAKE_CONTROLS_MONDAY.' 12:10:00'));
 
     $intake = $this->actingAs($physician)
         ->get(intakeControlRoute('physician.consultation_intake', $physician))
@@ -501,7 +504,8 @@ it('closes an open intake session when the physician logs out', function () {
     $session = $session->fresh();
 
     expect($session->status)->toBe('closed')
-        ->and($session->ended_at)->not->toBeNull();
+        ->and($session->ended_at)->not->toBeNull()
+        ->and($session->end_reason)->toBe('logout');
 });
 
 it('creates no intake session when a physician without one logs out', function () {

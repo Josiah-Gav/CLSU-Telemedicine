@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\PhysicianAvailabilitySession;
 use App\Services\PhysicianAvailabilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,7 +56,7 @@ class AuthenticatedSessionController extends Controller
         // they did before. An active consultation stays active; this feature
         // introduces no consultation timeout.
         if ($user && $user->role === 'physician') {
-            $this->availabilityService->close($user);
+            $this->availabilityService->close($user, PhysicianAvailabilitySession::END_LOGOUT);
         }
 
         Auth::guard('web')->logout();

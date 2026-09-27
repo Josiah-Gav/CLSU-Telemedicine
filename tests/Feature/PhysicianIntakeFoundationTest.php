@@ -265,13 +265,15 @@ it('refuses a schedule or session for a physician who does not exist', function 
 
 it('exposes the intake configuration with its documented defaults', function () {
     expect(config('consultations.intake.queue_limit'))->toBe(20)
-        ->and(config('consultations.intake.stale_after_seconds'))->toBe(120);
+        ->and(config('consultations.intake.stale_after_seconds'))->toBe(120)
+        ->and(config('consultations.intake.schedule_end_grace_minutes'))->toBe(15)
+        ->and(config('consultations.intake.max_overtime_minutes'))->toBe(120);
 });
 
 it('exposes only the intake configuration keys', function () {
     expect(array_keys(config('consultations')))->toBe(['intake'])
         ->and(array_keys(config('consultations.intake')))
-        ->toBe(['queue_limit', 'stale_after_seconds']);
+        ->toBe(['queue_limit', 'stale_after_seconds', 'schedule_end_grace_minutes', 'max_overtime_minutes']);
 });
 
 it('reads the intake configuration through config so it can be overridden', function () {

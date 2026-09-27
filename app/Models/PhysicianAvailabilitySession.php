@@ -36,6 +36,33 @@ class PhysicianAvailabilitySession extends Model
 {
     use HasFactory;
 
+    /*
+     * Every value end_reason may hold. A plain string column validated here
+     * rather than an enum, so adding a reason never needs an ALTER (see the
+     * SQLite enum gotcha in CLAUDE.md). Null means still open, or a row from
+     * before the column existed.
+     */
+    public const END_MANUAL_CLOSE = 'manual_close';
+
+    public const END_LOGOUT = 'logout';
+
+    public const END_STALE_EXPIRY = 'stale_expiry';
+
+    public const END_CONTINUED_AS_OVERTIME = 'continued_as_overtime';
+
+    public const END_SCHEDULE_ENDED = 'schedule_ended';
+
+    public const END_OVERTIME_LIMIT_REACHED = 'overtime_limit_reached';
+
+    public const END_REASONS = [
+        self::END_MANUAL_CLOSE,
+        self::END_LOGOUT,
+        self::END_STALE_EXPIRY,
+        self::END_CONTINUED_AS_OVERTIME,
+        self::END_SCHEDULE_ENDED,
+        self::END_OVERTIME_LIMIT_REACHED,
+    ];
+
     protected $fillable = [
         'physician_id',
         'started_at',
@@ -43,12 +70,17 @@ class PhysicianAvailabilitySession extends Model
         'ended_at',
         'status',
         'mode',
+        'planned_end_at',
+        'end_reason',
+        'end_warning_sent_at',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'ended_at' => 'datetime',
+        'planned_end_at' => 'datetime',
+        'end_warning_sent_at' => 'datetime',
     ];
 
     public function physician(): BelongsTo

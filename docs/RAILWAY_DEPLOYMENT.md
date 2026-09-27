@@ -129,7 +129,7 @@ HTTP request handling and would be duplicated by every replica.
 | Task | Frequency | Consequence if it never runs |
 |---|---|---|
 | `consultations:mark-missed-slots` | every minute | Booked slots never become `missed`, which blocks physician takeover and blocks restarting a lapsed consultation. **This is the one that breaks workflow** — a TAM respondent who misses their slot has no path forward, and no error is shown anywhere. |
-| `consultations:expire-intake-sessions` | every minute | Stored intake status goes stale. The availability gate itself is unaffected — `PhysicianAvailabilityService` already treats a stale open session as unavailable when it reads one. |
+| `consultations:expire-intake-sessions` | every minute | Three steps, in order: closes intake sessions past their planned end + grace (`schedule_ended` / `overtime_limit_reached`), expires sessions whose heartbeat went stale, then sends the end-of-hours warning notification once per session. If it never runs, the availability gate, the heartbeat and the intake card still stop intake at planned end + grace and on a stale heartbeat, because `PhysicianAvailabilityService` applies both at read time. What is lost: **no end-of-hours warning notification is ever sent** (the on-page banner still appears, since it comes from the heartbeat); the auto-closed notification is sent only if the physician's own heartbeat or intake action records the close; and stored statuses lag behind reality. |
 | `consultations:send-reminders` | every 15 minutes | Patients receive no reminder email before a booked consultation. De-duplication is `schedule_slots.reminder_sent_at`, not the run cadence. |
 | `auth:clear-resets staff_invitations` | daily | Expired staff invitation tokens accumulate. They are already refused; this is hygiene. The broker name is required — omitting it would target `password_reset_tokens` instead. |
 
@@ -269,13 +269,15 @@ patient cannot complete a first login and no staff account can be provisioned.
 
 ### Consultation intake
 
-Both exist in `config/consultations.php`; both are optional, non-secret
+All four exist in `config/consultations.php`; all are optional, non-secret
 operational limits.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `CONSULTATION_QUEUE_LIMIT` | `20` | Maximum consultation requests sitting at `request_status = 'pending'` before new requests are refused with HTTP 503. A **concurrency** gate on the nurse review queue, counted globally — not a cumulative cap. A request that reaches `reviewed` frees a slot immediately. |
 | `CONSULTATION_INTAKE_STALE_AFTER` | `120` | Seconds a physician's open intake session may go without a heartbeat before it stops keeping consultations open |
+| `CONSULTATION_INTAKE_SCHEDULE_END_GRACE` | `15` | Minutes an intake session stays open past its planned end (the end of the scheduled window, or the overtime cap) before it closes automatically. The physician is warned at the planned end and can continue as overtime or close intake. |
+| `CONSULTATION_INTAKE_MAX_OVERTIME` | `120` | Planned length in minutes of an overtime intake session — one opened outside every scheduled window, or continued past a planned end |
 
 There is deliberately **no total-consultation limit, no Jitsi room cap, no
 participant cap and no MAU counting** in this deployment. JaaS usage and cost
@@ -411,6 +413,37 @@ automatic:
 php artisan migrate --force      # only when migrations changed
 php artisan queue:restart        # or let the worker service cycle
 ```
+
+### Release note: planned intake end (`2026_09_27_120000_add_planned_end_to_physician_availability_sessions_table`)
+
+This release adds `planned_end_at`, `end_reason` and `end_warning_sent_at` to
+`physician_availability_sessions`, and the new code queries them on far more
+than the intake controls. Until the migration has run, **these return HTTP 500
+whether or not anyone has intake open**:
+
+- **every page a physician loads** — `layouts/app.blade.php` calls
+  `currentSessionFor()` on each one;
+- the **patient dashboard** and the **new-consultation page**, and patient
+  consultation submission — all call `isServiceAvailable()`;
+- opening, closing and continuing intake, and **physician logout**;
+- every run of `consultations:expire-intake-sessions` on the scheduler.
+
+**Recommended:** on the **web** service only, set Railway's *Pre-deploy
+Command* (service Settings → Deploy) to:
+
+```
+php artisan migrate --force
+```
+
+Railway runs it once, against the new image, before that version takes
+traffic, so there is no broken window. Set it in the web service's settings,
+**not** in `railway.json` — that file is shared with the scheduler and worker
+services, and each of them would run the migration too.
+
+**Fallback** (if the pre-deploy command is not set): deploy outside clinic
+hours, then immediately run `php artisan migrate --force` on the web service.
+The pages above are broken from the moment the new version goes live until
+that command finishes.
 
 ## Not required
 

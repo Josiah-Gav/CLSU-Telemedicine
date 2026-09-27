@@ -174,6 +174,10 @@
                     case 'consultation_submitted':
                         url = '{{ url('nurses') }}' + '/' + id + '/consultation-inbox';
                         break;
+                    case 'intake_end_warning':
+                    case 'intake_auto_closed':
+                        url = '{{ url('physicians') }}' + '/' + id + '/consultation-intake';
+                        break;
                     case 'consultation_assigned':
                     case 'high_priority_consultation':
                         url = '{{ url('physicians') }}' + '/' + id + '/consultation-inbox';

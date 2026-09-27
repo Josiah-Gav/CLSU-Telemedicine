@@ -184,6 +184,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('physician.consultation_intake.open');
         Route::post('/consultation-intake/close', [PhysicianController::class, 'consultationIntakeClose'])
             ->name('physician.consultation_intake.close');
+        Route::post('/consultation-intake/continue', [PhysicianController::class, 'consultationIntakeContinue'])
+            ->name('physician.consultation_intake.continue');
         Route::post('/consultation-intake/heartbeat', [PhysicianController::class, 'consultationIntakeHeartbeat'])
             ->name('physician.consultation_intake.heartbeat');
     });

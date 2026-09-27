@@ -1362,7 +1362,7 @@ class PhysicianController extends Controller
     | inventory for one calendar date. This section manages
     | physician_schedules, a weekly recurring pattern used only to label a
     | future PhysicianAvailabilityService::open() session as 'scheduled' or
-    | 'overtime' — see that service's evaluateMode(). Nothing here creates,
+    | 'overtime' — see that service's evaluateModeAndPlannedEnd(). Nothing here creates,
     | closes, or otherwise touches an availability session, a consultation,
     | or a schedule slot. Phase 4 adds the Start/Stop Accepting Consultations
     | controls; this page only manages the recurring hours those controls
@@ -1439,6 +1439,43 @@ class PhysicianController extends Controller
             'success' => true,
             'message' => 'You are no longer accepting new consultation requests.',
             'intake' => $this->serializeIntakeState($physician, null),
+        ]);
+    }
+
+    public function consultationIntakeContinue(User $physician): JsonResponse
+    {
+        $this->authorizePhysician($physician);
+
+        $session = $this->availabilityService->continueAsOvertime($this->authenticatedPhysician());
+
+        // Nothing open to continue — never opened, closed, or already past its
+        // grace period. Reopening is a separate, deliberate action.
+        if (! $session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Intake is no longer open. Open intake again to accept new requests.',
+                'intake' => $this->serializeIntakeState($physician, null),
+            ], 422);
+        }
+
+        // Before the planned end the service changes nothing. A success, not
+        // an error, because a double-click or a second tab lands here too.
+        if (! $session->wasRecentlyCreated) {
+            return response()->json([
+                'success' => true,
+                'continued' => false,
+                'message' => $session->planned_end_at
+                    ? 'Your intake is open. You\'ll be asked to confirm at '.$session->planned_end_at->format('g:i A').'.'
+                    : 'Your intake is open.',
+                'intake' => $this->serializeIntakeState($physician, $session),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'continued' => true,
+            'message' => 'You are continuing in overtime intake until '.$session->planned_end_at->format('g:i A').'.',
+            'intake' => $this->serializeIntakeState($physician, $session),
         ]);
     }
 
@@ -1598,7 +1635,7 @@ class PhysicianController extends Controller
      *
      * Inactive windows never participate in overlap detection — on either
      * side of the comparison — mirroring PhysicianAvailabilityService::
-     * evaluateMode(), which never classifies against an inactive row. An
+     * evaluateModeAndPlannedEnd(), which never classifies against an inactive row. An
      * inactive window may therefore sit underneath an active one without
      * blocking it; reactivating it later re-runs this same check.
      */

@@ -84,6 +84,12 @@
 
                     <!-- Page Content -->
                     <main class="pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0">
+                        @auth
+                            @if (Auth::user()->role === 'physician')
+                                <x-physician.intake-end-banner />
+                            @endif
+                        @endauth
+
                         {{ $slot }}
                     </main>
                 </div>
@@ -104,9 +110,17 @@
             // start the beat but can never create or reopen a session.
             $intakeHeartbeatUrl = null;
             $intakeIsOpen = false;
+            $intakeActionUrls = ['open_url' => null, 'close_url' => null, 'continue_url' => null];
 
             if (Auth::user()->role === 'physician') {
                 $intakeHeartbeatUrl = route('physician.consultation_intake.heartbeat', ['physician' => Auth::id()]);
+                // For the planned-end banner's buttons (components/physician/
+                // intake-end-banner.blade.php). All three are CSRF-protected.
+                $intakeActionUrls = [
+                    'open_url' => route('physician.consultation_intake.open', ['physician' => Auth::id()]),
+                    'close_url' => route('physician.consultation_intake.close', ['physician' => Auth::id()]),
+                    'continue_url' => route('physician.consultation_intake.continue', ['physician' => Auth::id()]),
+                ];
                 $intakeIsOpen = app(\App\Services\PhysicianAvailabilityService::class)
                     ->currentSessionFor(Auth::user()) !== null;
             }
@@ -119,6 +133,12 @@
             window.telemedIntakeHeartbeat = {
                 url: @json($intakeHeartbeatUrl),
                 open: @json($intakeIsOpen),
+                open_url: @json($intakeActionUrls['open_url']),
+                close_url: @json($intakeActionUrls['close_url']),
+                continue_url: @json($intakeActionUrls['continue_url']),
+                // The most recent heartbeat response, for listeners that
+                // start after the first beat has already landed.
+                last: null,
             };
         </script>
         <script>
@@ -172,6 +192,8 @@
                             if (!data.open) {
                                 intake.open = false;
                             }
+
+                            intake.last = data;
 
                             // Lets the Consultation Intake page keep its status
                             // card current without owning a second timer.

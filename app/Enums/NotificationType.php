@@ -38,6 +38,10 @@ enum NotificationType: string
     case PHYSICIAN_REQUEST = 'physician_request';
     case SYSTEM_ALERT = 'system_alert';
 
+    // Physician consultation intake
+    case INTAKE_END_WARNING = 'intake_end_warning';
+    case INTAKE_AUTO_CLOSED = 'intake_auto_closed';
+
     /**
      * Determine whether the given value is a valid notification type.
      */

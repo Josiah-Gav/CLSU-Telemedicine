@@ -46,7 +46,7 @@
             class="mt-5 flex flex-wrap items-center justify-between gap-5 rounded-2xl p-5"
             :class="{
                 'bg-brand-green-deep': intake.state === 'open',
-                'bg-slate-700': intake.state === 'closed',
+                'bg-slate-700': intake.state === 'closed' || intake.state === 'auto_closed',
                 'bg-amber-700': intake.state === 'expired',
             }"
         >
@@ -54,13 +54,14 @@
                 <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
                     <svg x-show="intake.state === 'open'" x-cloak class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     <svg x-show="intake.state === 'closed'" x-cloak class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+                    <svg x-show="intake.state === 'auto_closed'" x-cloak class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     <svg x-show="intake.state === 'expired'" x-cloak class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                 </div>
                 <div>
                     <p class="text-base font-bold text-white" x-text="intake.status_label"></p>
 
                     <p class="mt-1 text-xs text-white/80" x-show="intake.state === 'open'" x-cloak>
-                        <span class="font-semibold" x-text="intake.mode_label"></span>
+                        <span class="font-semibold" x-text="intake.until_label || intake.mode_label"></span>
                         <span> · </span>
                         <span>{{ __('Started') }} <span x-text="intake.started_at"></span></span>
                     </p>
@@ -68,6 +69,8 @@
                     <p class="mt-1 text-xs text-white/80" x-show="intake.state === 'expired'" x-cloak>
                         {{ __('Your intake session expired because the connection was lost. Open intake again when you are ready to accept new requests.') }}
                     </p>
+
+                    <p class="mt-1 text-xs text-white/80" x-show="intake.state === 'auto_closed'" x-cloak x-text="intake.message"></p>
 
                     <p class="mt-1 text-xs text-white/80" x-show="intake.state === 'closed'" x-cloak>
                         {{ __('New consultation requests are not being accepted right now.') }}
@@ -83,7 +86,7 @@
                     :disabled="intakeBusy"
                     class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold transition disabled:opacity-60"
                     :class="{
-                        'text-slate-700': intake.state === 'closed',
+                        'text-slate-700': intake.state === 'closed' || intake.state === 'auto_closed',
                         'text-amber-700': intake.state === 'expired',
                     }"
                 >

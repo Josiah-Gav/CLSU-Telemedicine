@@ -47,6 +47,25 @@ return [
         */
         'stale_after_seconds' => (int) env('CONSULTATION_INTAKE_STALE_AFTER', 120),
 
+        /*
+        | Minutes an intake session may stay open past its planned end before
+        | it closes automatically. The physician is warned at the planned end
+        | and can confirm they are still present (Continue as overtime) or
+        | close intake; this is how long they have to answer.
+        |
+        | Cast to int because it is passed to CarbonImmutable::addMinutes().
+        */
+        'schedule_end_grace_minutes' => (int) env('CONSULTATION_INTAKE_SCHEDULE_END_GRACE', 15),
+
+        /*
+        | Planned length of an overtime session — one opened outside every
+        | recurring window, or continued past a planned end. Without a cap an
+        | overtime session left open in a tab would accept requests forever.
+        |
+        | Cast to int for the same reason as schedule_end_grace_minutes.
+        */
+        'max_overtime_minutes' => (int) env('CONSULTATION_INTAKE_MAX_OVERTIME', 120),
+
     ],
 
 ];
