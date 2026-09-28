@@ -261,7 +261,7 @@
                     }
 
                     if (!response.ok) {
-                        // status carried on the Error so the catch handler
+                        // status carried on the Error so the failure handler
                         // below can recognize the intake-unavailable case
                         // without matching on message text.
                         const error = new Error(data.message || 'Request failed.');
@@ -271,37 +271,23 @@
 
                     return data;
                 })
+                // Success and failure handlers are the two arguments of one
+                // then() on purpose: a bug in the success handler must never
+                // reach the failure handler, which would tell the patient the
+                // submission failed after it was already saved (and invite a
+                // duplicate resubmission).
                 .then(data => {
-                // On success, advance to the submitted step and show a notification (or alert fallback)
-                if (data.success) {
-                        this.isSubmitting = false;
-                        this.currentStep = 5;
+                    this.isSubmitting = false;
 
-                    if ('Notification' in window) {
-                        if (Notification.permission === 'granted') {
-                            new Notification('Consultation Submitted', { body: 'Your consultation was submitted successfully.' });
-                        } else if (Notification.permission !== 'denied') {
-                            Notification.requestPermission().then(permission => {
-                                if (permission === 'granted') {
-                                    new Notification('Consultation Submitted', { body: 'Your consultation was submitted successfully.' });
-                                } else {
-                                    alert('Uploaded and Saved successfully!');
-                                }
-                            }).catch(() => {
-                                alert('Uploaded and Saved successfully!');
-                            });
-                        } else {
-                            alert('Uploaded and Saved successfully!');
-                        }
+                    if (data.success) {
+                        // Step 5 is the confirmation. No browser Notification:
+                        // mobile Chrome throws on `new Notification()` outside
+                        // a service worker, and the patient is on this page.
+                        this.currentStep = 5;
                     } else {
-                        alert('Uploaded and Saved successfully!');
-                    }
-                    } else {
-                        this.isSubmitting = false;
                         alert('Error: ' + (data.message || 'Unknown error'));
                     }
-                })
-                .catch(err => {
+                }, err => {
                     this.isSubmitting = false;
 
                     // The service was available when the page loaded but is
