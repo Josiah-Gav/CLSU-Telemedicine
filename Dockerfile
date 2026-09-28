@@ -138,6 +138,28 @@ RUN { \
         echo 'expose_php = Off'; \
     } > "$PHP_INI_DIR/conf.d/99-telemed.ini"
 
+# OPcache. The official php images ship it compiled but NOT enabled, so without
+# this every request re-parses and re-compiles the whole framework. Kept in its
+# own layer so the pdo_mysql/MPM layer above is untouched.
+#
+# validate_timestamps stays ON (checked every 2s): a container's code never
+# changes after build, so turning it off would gain little, while leaving it on
+# means a view compiled on demand (if view:cache failed in the entrypoint) can
+# never be served stale. enable_cli is left at its default (off), so the
+# scheduler and worker services behave exactly as before. No JIT, no preloading.
+#
+# The grep fails the build, in Build Logs, if the extension did not load.
+RUN docker-php-ext-install opcache \
+    && { \
+        echo 'opcache.enable = 1'; \
+        echo 'opcache.memory_consumption = 128'; \
+        echo 'opcache.interned_strings_buffer = 16'; \
+        echo 'opcache.max_accelerated_files = 20000'; \
+        echo 'opcache.validate_timestamps = 1'; \
+        echo 'opcache.revalidate_freq = 2'; \
+    } > "$PHP_INI_DIR/conf.d/98-opcache.ini" \
+    && php -m | grep -qi 'Zend OPcache'
+
 WORKDIR /var/www/html
 
 COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
