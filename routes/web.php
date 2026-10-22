@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\ChisAuditController;
+use App\Http\Controllers\Admin\ChisSyncController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\ChisProfileController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\ConsultationMessageController;
 use App\Http\Controllers\ConsultationVideoController;
@@ -78,6 +81,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/users/{user}/resend-invitation', [UserManagementController::class, 'resendInvitation'])
         ->middleware('throttle:30,1')
         ->name('admin.users.resend_invitation');
+
+    // CHIS encounter sync status + Retry (admin-only, checked in the controller).
+    Route::get('/admin/chis-sync', [ChisSyncController::class, 'index'])
+        ->name('admin.chis-sync.index');
+    Route::post('/admin/chis-sync/{session}/retry', [ChisSyncController::class, 'retry'])
+        ->middleware('throttle:30,1')
+        ->name('admin.chis-sync.retry');
+    // Append-only CHIS audit log (admin-only, read-only).
+    Route::get('/admin/chis-audit', [ChisAuditController::class, 'index'])
+        ->name('admin.chis-audit.index');
 
     // 2. Safe placement for your new consultation page
     Route::get('/newconsultation', [DashboardController::class, 'newconsultation'])
@@ -213,6 +226,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('consultations.messaging.read');
     Route::post('/consultation-sessions/{session}/clinical-details', [ConsultationMessageController::class, 'updateClinicalDetails'])
         ->name('consultations.messaging.clinical_details.update');
+    // Lazy-loaded CHIS medical profile for the assigned physician (never fetched during page render).
+    Route::get('/consultation-sessions/{session}/chis-profile', [ChisProfileController::class, 'show'])
+        ->middleware('throttle:30,1')
+        ->name('consultations.chis_profile.show');
     Route::post('/consultation-sessions/{session}/complete', [ConsultationMessageController::class, 'complete'])
         ->name('consultations.messaging.complete');
     Route::get('/consultation-sessions/unread-counts', [ConsultationMessageController::class, 'unreadCounts'])
@@ -237,6 +254,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('consultations.messaging.prescription.download');
     Route::get('/consultation-message-attachments/{attachment}/download', [ConsultationMessageController::class, 'downloadAttachment'])
         ->name('consultations.messaging.attachments.download');
+
+    // Patient consent to share records with CHIS (patient-only, checked in the controller).
+    Route::post('/profile/chis-consent', [ProfileController::class, 'giveChisConsent'])->name('profile.chis-consent.store');
+    Route::delete('/profile/chis-consent', [ProfileController::class, 'withdrawChisConsent'])->name('profile.chis-consent.destroy');
 
 }); // --- MIDDLEWARE GROUP ENDS HERE ---
 

@@ -198,6 +198,7 @@ test('patient creation still requires a password and still works', function () {
         'first_name' => 'Juan',
         'last_name' => 'Dela Cruz',
         'email' => 'juan@clsu.edu.ph',
+        'clsu_id' => '23-0101',
         'password' => 'patient-password-1',
         'password_confirmation' => 'patient-password-1',
         'role' => 'patient',
@@ -216,6 +217,7 @@ test('patient creation without a password is still rejected', function () {
         'first_name' => 'Juan',
         'last_name' => 'Dela Cruz',
         'email' => 'juan@clsu.edu.ph',
+        'clsu_id' => '23-0101',
         'role' => 'patient',
         'account_status' => 'active',
     ])->assertSessionHasErrors('password');
@@ -228,6 +230,7 @@ test('admin creation still works and stays verified and active', function () {
         'first_name' => 'Ada',
         'last_name' => 'Reyes',
         'email' => 'ada@clsu.edu.ph',
+        'clsu_id' => '26-000102',
         'password' => 'admin-password-1',
         'password_confirmation' => 'admin-password-1',
         'role' => 'admin',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\StaffAccountInvitation;
+use App\Rules\ClsuId;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -154,7 +155,7 @@ class UserManagementController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150', 'unique:users,email'],
             'role' => ['required', 'in:patient,nurse,physician,admin'],
-            'clsu_id' => ['required', 'string', 'max:50'],
+            'clsu_id' => ['required', ...ClsuId::rules()],
             'department' => ['nullable', 'string', 'max:100'],
             'contact_num' => ['nullable', 'string', 'max:20'],
             'staff_position' => ['nullable', 'string', 'max:100'],
@@ -170,7 +171,7 @@ class UserManagementController extends Controller
             $rules['account_status'] = ['required', 'in:active,inactive'];
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, ['clsu_id.unique' => ClsuId::TAKEN]);
 
         $payload = [
             'first_name' => $validated['first_name'],
@@ -351,6 +352,10 @@ class UserManagementController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150', 'unique:users,email,'.$user->getKey().','.$user->getKeyName()],
             'role' => ['required', 'in:patient,nurse,physician,admin'],
+            // Admin is the only path that can correct an existing CLSU ID
+            // (patients may only set theirs once). Nullable because older
+            // accounts have none; 'sometimes' so omitting it leaves it alone.
+            'clsu_id' => ['sometimes', 'nullable', ...ClsuId::rules($user)],
             'department' => ['nullable', 'string', 'max:100'],
             'staff_position' => ['nullable', 'string', 'max:100'],
             'specialization' => ['nullable', 'string', 'max:100'],
@@ -374,7 +379,7 @@ class UserManagementController extends Controller
             ? ['nullable', 'in:inactive']
             : ['required', 'in:active,suspended'];
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, ['clsu_id.unique' => ClsuId::TAKEN]);
 
         // An invited account holds a random password nobody knows, so flipping
         // it active would produce an account its owner still cannot sign in to

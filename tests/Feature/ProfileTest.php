@@ -74,3 +74,14 @@ test('account deletion route no longer exists', function () {
     $response->assertMethodNotAllowed();
     $this->assertNotNull($user->fresh());
 });
+
+test('profile names are capped at 100 characters, like registration', function () {
+    $user = User::factory()->create(['last_name' => 'Original']);
+
+    $this->actingAs($user)
+        ->patch('/profile', ['first_name' => str_repeat('a', 100), 'last_name' => str_repeat('b', 101)])
+        ->assertSessionHasErrors('last_name')
+        ->assertSessionDoesntHaveErrors('first_name');
+
+    expect($user->refresh()->last_name)->toBe('Original');
+});

@@ -67,11 +67,13 @@ test('admins can still list, create, and edit users', function () {
         'first_name' => 'New',
         'last_name' => 'Staffer',
         'email' => 'new.staffer@example.com',
+        'clsu_id' => '26-000105',
         'role' => 'nurse',
     ])->assertSessionHasNoErrors()->assertRedirect(route('admin.users.index'));
 
     $this->assertDatabaseHas('users', [
         'email' => 'new.staffer@example.com',
+        'clsu_id' => '26-000105',
         'role' => 'nurse',
         'account_status' => 'inactive',
         'email_verified_at' => null,

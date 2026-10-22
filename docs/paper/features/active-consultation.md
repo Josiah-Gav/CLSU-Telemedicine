@@ -61,6 +61,13 @@ dependency. `NotificationService::sendUnique()` for both notifications.
 **Completion does not go through `ConsultationOwnershipService`.** It holds its own
 transaction and locks inside `ConsultationMessageController::complete`.
 
+**CHIS hook (added 2026-10-22).** After that transaction has committed,
+`complete()` calls `ChisEncounterSync::queue($session)`, which either marks the
+session `skipped` (patient has no consent / no CLSU ID) or marks it `pending` and
+dispatches `SyncEncounterToChis`. It only queues: a CHIS outage cannot fail or slow
+completion, and the early "already completed" return above it does not queue again.
+See `chis-integration.md` §4C and §13.
+
 ## 8. Models
 
 `Consultation`, `ConsultationSession`, `ScheduleSlot`, `ConsultationVideoSession`.

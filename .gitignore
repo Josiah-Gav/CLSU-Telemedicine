@@ -31,3 +31,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 settings.local.json
+# Database dumps must never be committed: they contain patient data.
+*.sql

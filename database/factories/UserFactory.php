@@ -34,7 +34,10 @@ class UserFactory extends Factory
             'role' => 'patient',
             'account_status' => 'active',
             'online_status' => 'offline',
-            'clsu_id' => fake()->optional()->numerify('20#######'),
+            // Unique and in the staff YY-NNNNNN format (users.clsu_id is unique).
+            // The 90-99 range is used so it can never collide with test
+            // fixtures (20-…, 23-…, 26-…, 1996-…).
+            'clsu_id' => fake()->unique()->numerify('9#-######'),
             'user_type' => fake()->randomElement(['student', 'staff', 'faculty']),
             'department' => fake()->optional()->word(),
             'contact_num' => fake()->optional()->phoneNumber(),

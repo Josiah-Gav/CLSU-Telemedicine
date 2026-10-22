@@ -48,6 +48,10 @@ class ConsultationSession extends Model
         'taken_over_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        // CHIS sync columns are written only by ChisEncounterSync and
+        // SyncEncounterToChis (forceFill / query updates), never mass-assigned.
+        'chis_synced_at' => 'datetime',
+        'chis_attempts' => 'integer',
     ];
 
     public function request(): BelongsTo

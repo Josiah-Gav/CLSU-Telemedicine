@@ -1,0 +1,289 @@
+{
+  "info": {
+    "name": "Telemed - CHIS demo",
+    "description": "Trigger a CHIS sync from Telemed and see CHIS's acknowledgement. See docs/postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Telemed - list encounters",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{telemed_base_url}}/api/v1/encounters"
+        },
+        "description": "Sync status of completed consultations. Never patient names, CLSU IDs or clinical data.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{telemed_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('has data and meta', () => { pm.expect(body.data).to.be.an('array'); pm.expect(body.meta).to.have.property('total'); });",
+              "pm.test('no patient identity or clinical data', () => { const raw = pm.response.text(); ['first_name','last_name','clsu_id','diagnosis','assessment'].forEach(k => pm.expect(raw).to.not.include(k)); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Telemed - get encounter {{encounter_id}}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{telemed_base_url}}/api/v1/encounters/{{encounter_id}}"
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{telemed_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('is the requested encounter', () => pm.expect(String(d.telemed_encounter_id)).to.eql(String(pm.environment.get('encounter_id'))));",
+              "pm.test('has a sync status', () => pm.expect(d.chis_sync_status).to.be.oneOf(['pending','synced','failed','skipped']));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Telemed - sync encounter {{encounter_id}} to CHIS",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{telemed_base_url}}/api/v1/encounters/{{encounter_id}}/sync"
+        },
+        "description": "Sends the summary to CHIS synchronously and returns CHIS's acknowledgement. Saves chis_reference for the next request.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{telemed_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('synced', () => pm.expect(d.chis_sync_status).to.eql('synced'));",
+              "pm.test('CHIS acknowledged: 201 first delivery or 200 identical resend', () => pm.expect(d.chis_http_status).to.be.oneOf([200, 201]));",
+              "pm.test('has a CHIS reference', () => pm.expect(d.chis_reference).to.be.a('string').and.not.empty);",
+              "pm.collectionVariables.set('chis_reference', d.chis_reference);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. CHIS - get that encounter by {{chis_reference}}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{chis_base_url}}/api/v1/encounters/{{chis_reference}}"
+        },
+        "description": "Calls the CHIS simulator directly to show the payload as CHIS received it.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{chis_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('is the encounter Telemed just sent', () => pm.expect(d.chis_encounter_id).to.eql(pm.collectionVariables.get('chis_reference')));",
+              "pm.test('CHIS holds the payload as received', () => pm.expect(d).to.be.an('object'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Telemed - sync again (idempotent)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{telemed_base_url}}/api/v1/encounters/{{encounter_id}}/sync"
+        },
+        "description": "CHIS treats telemed_encounter_id as an idempotency key: an identical resend returns 200 with the same reference.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{telemed_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('same reference as before', () => pm.expect(d.chis_reference).to.eql(pm.collectionVariables.get('chis_reference')));",
+              "pm.test('CHIS answered 200 (identical resend), not 201', () => pm.expect(d.chis_http_status).to.eql(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Telemed - auth checks",
+      "item": [
+        {
+          "name": "6a. No token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{telemed_base_url}}/api/v1/encounters"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('UNAUTHENTICATED', () => pm.expect(pm.response.json().code).to.eql('UNAUTHENTICATED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6b. Read-only token on sync -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{telemed_base_url}}/api/v1/encounters/{{encounter_id}}/sync"
+            },
+            "description": "Needs telemed_read_token: a token created with only --ability=encounters:read.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{telemed_read_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));",
+                  "pm.test('FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "chis_reference",
+      "value": ""
+    }
+  ]
+}

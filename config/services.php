@@ -60,4 +60,16 @@ return [
         'jwt_ttl' => 1800,
     ],
 
+    /*
+    | CHIS (Comprehensive Health Information System) REST API — patient medical
+    | profiles and encounter push. See App\Services\ChisClient. Timeouts are
+    | in seconds; the client never retries on its own.
+    */
+    'chis' => [
+        'base_url' => env('CHIS_BASE_URL'),
+        'token' => env('CHIS_TOKEN'),
+        'timeout' => (int) env('CHIS_TIMEOUT', 5),
+        'connect_timeout' => (int) env('CHIS_CONNECT_TIMEOUT', 2),
+    ],
+
 ];

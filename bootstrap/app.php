@@ -1,15 +1,24 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\TrackUserPresence;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\EnsureAccountIsActive;
-use App\Http\Middleware\TrackUserPresence;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -62,4 +71,31 @@ return Application::configure(basePath: dirname(__DIR__))
         // input on any validation failure, persisting the live token in the
         // session. Joins the framework defaults rather than replacing them.
         $exceptions->dontFlash(['token']);
+
+        // /api/* always answers JSON in one shape ({message, code}); web pages
+        // keep their normal HTML error handling (returning null falls through).
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            [$status, $code, $message] = match (true) {
+                $e instanceof AuthenticationException => [401, 'UNAUTHENTICATED', 'Missing, invalid, revoked or expired API token.'],
+                $e instanceof AuthorizationException, $e instanceof AccessDeniedHttpException => [403, 'FORBIDDEN', 'This token is not allowed to do that.'],
+                $e instanceof ModelNotFoundException, $e instanceof NotFoundHttpException => [404, 'NOT_FOUND', 'Not found.'],
+                $e instanceof ValidationException => [422, 'VALIDATION_FAILED', 'The given data was invalid.'],
+                $e instanceof ThrottleRequestsException => [429, 'RATE_LIMITED', 'Too many requests.'],
+                $e instanceof HttpExceptionInterface && $e->getStatusCode() === 403 => [403, 'FORBIDDEN', 'This token is not allowed to do that.'],
+                $e instanceof HttpExceptionInterface && $e->getStatusCode() === 404 => [404, 'NOT_FOUND', 'Not found.'],
+                $e instanceof HttpExceptionInterface => [$e->getStatusCode(), 'HTTP_ERROR', 'The request could not be completed.'],
+                default => [500, 'SERVER_ERROR', 'An unexpected error occurred.'],
+            };
+
+            $body = ['message' => $message, 'code' => $code];
+            if ($e instanceof ValidationException) {
+                $body['errors'] = $e->errors();
+            }
+
+            return response()->json($body, $status, $e instanceof HttpExceptionInterface ? $e->getHeaders() : []);
+        });
     })->create();

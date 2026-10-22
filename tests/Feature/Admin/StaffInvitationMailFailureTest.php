@@ -29,6 +29,7 @@ function createStaffAccount(array $overrides = []): TestResponse
         'first_name' => 'Maria',
         'last_name' => 'Cruz',
         'email' => 'maria.cruz@clsu.edu.ph',
+        'clsu_id' => '26-000103',
         'role' => 'nurse',
     ], $overrides));
 }
@@ -152,6 +153,7 @@ test('patient creation is unaffected by the mail failure handling', function () 
         'first_name' => 'Juan',
         'last_name' => 'Dela Cruz',
         'email' => 'juan@clsu.edu.ph',
+        'clsu_id' => '23-0101',
         'password' => 'patient-password-1',
         'password_confirmation' => 'patient-password-1',
         'role' => 'patient',

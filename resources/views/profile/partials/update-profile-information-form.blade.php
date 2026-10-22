@@ -23,7 +23,15 @@
 
             <div>
                 <label for="clsu_id" class="block text-sm font-semibold text-slate-800">{{ __('CLSU ID') }}</label>
-                <input id="clsu_id" name="clsu_id" type="text" class="mt-2 w-full rounded-xl border-slate-300 text-sm focus:border-brand-green focus:ring-green-100" value="{{ old('clsu_id', $user->clsu_id) }}" autocomplete="off" />
+                @if ($user->clsu_id !== null)
+                    {{-- Write-once: no name attribute, and ProfileUpdateRequest
+                         excludes the field server-side once it is set. --}}
+                    <input id="clsu_id" type="text" class="mt-2 w-full rounded-xl border-slate-200 bg-slate-100 text-sm text-slate-600" value="{{ $user->clsu_id }}" readonly aria-describedby="clsu_id_note" />
+                    <p id="clsu_id_note" class="mt-1 text-xs text-slate-500">{{ __('Contact the clinic administrator to correct your CLSU ID.') }}</p>
+                @else
+                    <input id="clsu_id" name="clsu_id" type="text" class="mt-2 w-full rounded-xl border-slate-300 text-sm focus:border-brand-green focus:ring-green-100" value="{{ old('clsu_id') }}" placeholder="e.g. 23-0001" autocomplete="off" aria-describedby="clsu_id_note" />
+                    <p id="clsu_id_note" class="mt-1 text-xs text-slate-500">Include the dash: {{ \App\Rules\ClsuId::HINT }} {{ __('You can set this only once.') }}</p>
+                @endif
                 <x-input-error class="mt-2" :messages="$errors->get('clsu_id')" />
             </div>
 

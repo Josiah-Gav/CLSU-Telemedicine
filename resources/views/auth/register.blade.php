@@ -101,7 +101,8 @@
         <!-- CLSU ID -->
         <div class="mt-4">
             <x-input-label for="clsu_id" :value="__('CLSU ID')" />
-            <x-text-input id="clsu_id" class="block mt-1 w-full" type="text" name="clsu_id" :value="old('clsu_id')" placeholder="Your student or employee ID number" required autocomplete="off" />
+            <x-text-input id="clsu_id" class="block mt-1 w-full" type="text" name="clsu_id" :value="old('clsu_id')" placeholder="e.g. 23-0001" required autocomplete="off" />
+            <p class="mt-1 text-xs text-gray-500">Include the dash: {{ \App\Rules\ClsuId::HINT }}</p>
             <x-input-error :messages="$errors->get('clsu_id')" class="mt-2" />
         </div>
 
