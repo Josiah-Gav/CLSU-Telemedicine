@@ -9,7 +9,8 @@ use Carbon\CarbonInterface;
 /**
  * Builds the CHIS encounter payload (schema 1.0) for a completed consultation.
  *
- * Privacy (RA 10173): only what the patient consented to is included. Never
+ * Privacy (RA 10173): only the summary described in the patient privacy notice
+ * is included, under the lawful basis "medical treatment". Never
  * chat messages, attachments, the prescription file/path/URL, priority, the
  * nurse, email, phone, or the Telemed patient user id.
  *
@@ -47,7 +48,6 @@ class ChisEncounterPayload
 
         self::require($request && $patient, 'no_request_or_patient');
         self::require($physician !== null, 'no_physician');
-        self::require($patient->chis_consent_at !== null, 'no_consent');
         self::require($session->completed_at !== null, 'not_completed');
 
         $isFollowUp = $request->type === 'follow_up';
@@ -62,9 +62,10 @@ class ChisEncounterPayload
             'schema_version' => '1.0',
             'telemed_encounter_id' => $session->id,
             'telemed_request_id' => $request->request_id,
-            'consent' => [
-                'data_sharing_consented_at' => self::iso($patient->chis_consent_at),
-            ],
+            // Declared lawful basis (RA 10173 Sec. 13, medical treatment); the
+            // key stays, null, because absent contract values are null.
+            'lawful_basis' => 'medical_treatment',
+            'consent' => null,
             'patient' => [
                 'clsu_id' => self::text($patient->clsu_id),
                 'first_name' => self::text($patient->first_name),

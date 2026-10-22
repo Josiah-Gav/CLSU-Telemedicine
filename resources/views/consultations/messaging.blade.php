@@ -560,7 +560,6 @@
                             </div>
                             <div role="status" aria-live="polite" class="mt-3">
                                 <p x-show="chisLoading" class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">Loading the CHIS record&hellip;</p>
-                                <p x-show="!chisLoading && chis.state === 'no_consent'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">The patient has not consented to sharing with CHIS.</p>
                                 <p x-show="!chisLoading && chis.state === 'no_clsu_id'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">The patient has no CLSU ID on file, so no CHIS record can be looked up.</p>
                                 <p x-show="!chisLoading && chis.state === 'not_found'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">No CHIS record for CLSU ID <span class="font-mono" x-text="chis.clsuId"></span>.</p>
                                 <p x-show="!chisLoading && chis.state === 'identity_mismatch'" x-cloak class="rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">The CHIS record for this CLSU ID does not match this patient's name &mdash; not displayed. Ask an administrator to verify the CLSU ID.</p>
@@ -634,12 +633,8 @@
                             <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Your CHIS medical record</h4>
                             <p class="mt-3 text-sm text-slate-700">Your CHIS medical record is visible to your assigned physician only.</p>
                             <p class="mt-2 text-sm text-slate-600">
-                                @if(optional($consultationRequest->patient)->hasChisConsent())
-                                    Sharing with CHIS: <span class="font-semibold">on</span> (consent given {{ $consultationRequest->patient->chis_consent_at->timezone(config('app.timezone'))->format('F j, Y') }}).
-                                @else
-                                    Sharing with CHIS: <span class="font-semibold">off</span>. Your physician will not see a CHIS record.
-                                @endif
-                                <a href="{{ route('profile.edit') }}#chis-consent-heading" class="font-semibold text-brand-green hover:underline">Manage consent</a>
+                                Every view is logged, and a summary of this consultation is sent to CHIS when it is completed.
+                                <a href="{{ route('profile.edit') }}#chis-privacy-notice-heading" class="font-semibold text-brand-green hover:underline">How your records are shared with CHIS</a>
                             </p>
                         </div>
                     @endif

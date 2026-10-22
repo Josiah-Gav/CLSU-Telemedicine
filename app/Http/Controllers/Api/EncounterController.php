@@ -93,7 +93,7 @@ class EncounterController extends Controller
         $owner = $request->user();
 
         if ($session->chis_sync_status === 'skipped') {
-            // Consent is forward-only; skipped is final.
+            // Skipped is never re-sent from the API (chis:send-skipped handles no_consent rows).
             return response()->json([
                 'message' => 'This consultation was skipped and is never sent to CHIS.',
                 'code' => 'NOT_ELIGIBLE',

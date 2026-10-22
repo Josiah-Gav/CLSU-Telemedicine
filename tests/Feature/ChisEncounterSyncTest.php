@@ -23,17 +23,16 @@ beforeEach(function () {
 });
 
 /**
- * A request + session for a consenting patient with a CLSU ID. Completed by
+ * A request + session for a patient with a CLSU ID (no consent: it plays no part). Completed by
  * default; pass consultation_status => active (and completed_at => null) to
  * complete it through the real endpoint.
  */
-function chisScenario(array $session = [], array $request = [], array $patient = [], ?string $consent = '2026-10-01 09:00:00'): ConsultationSession
+function chisScenario(array $session = [], array $request = [], array $patient = []): ConsultationSession
 {
     $patientUser = User::factory()->create(array_merge([
         'role' => 'patient', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'clsu_id' => '23-0001',
         'email' => 'juan.patient@clsu.edu.ph', 'contact_num' => '09171234567',
     ], $patient));
-    $patientUser->forceFill(['chis_consent_at' => $consent])->save();
 
     $physician = User::factory()->create([
         'role' => 'physician', 'first_name' => 'Ana', 'last_name' => 'Reyes', 'specialization' => 'General Medicine',
@@ -65,9 +64,9 @@ function chisScenario(array $session = [], array $request = [], array $patient =
     ], $session));
 }
 
-function chisPending(array $session = [], array $request = [], array $patient = [], ?string $consent = '2026-10-01 09:00:00'): ConsultationSession
+function chisPending(array $session = [], array $request = [], array $patient = []): ConsultationSession
 {
-    $s = chisScenario($session, $request, $patient, $consent);
+    $s = chisScenario($session, $request, $patient);
     $s->forceFill(['chis_sync_status' => 'pending'])->save();
 
     return $s;
@@ -96,7 +95,8 @@ it('builds the exact contract payload for a general consultation', function () {
         'schema_version' => '1.0',
         'telemed_encounter_id' => $session->id,
         'telemed_request_id' => $request->request_id,
-        'consent' => ['data_sharing_consented_at' => '2026-10-01T09:00:00+08:00'],
+        'lawful_basis' => 'medical_treatment',
+        'consent' => null,
         'patient' => ['clsu_id' => '23-0001', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
         'physician' => ['telemed_user_id' => $session->physician_id, 'name' => 'Ana Reyes', 'specialization' => 'General Medicine'],
         'encounter' => [
@@ -189,9 +189,9 @@ function completeAsPhysician(ConsultationSession $session)
         ->postJson(route('consultations.messaging.complete', $session));
 }
 
-function activeChisScenario(array $patient = [], ?string $consent = '2026-10-01 09:00:00'): ConsultationSession
+function activeChisScenario(array $patient = []): ConsultationSession
 {
-    return chisScenario(['consultation_status' => 'active', 'completed_at' => null], ['request_status' => 'active'], $patient, $consent);
+    return chisScenario(['consultation_status' => 'active', 'completed_at' => null], ['request_status' => 'active'], $patient);
 }
 
 it('queues the sync once, after commit, for an eligible patient', function () {
@@ -216,19 +216,28 @@ it('never queues the same session twice', function () {
     Queue::assertPushed(SyncEncounterToChis::class, 1);
 });
 
-it('marks the session skipped, without queueing, when the patient is not eligible', function (array $patient, ?string $consent, string $reason) {
+it('marks the session skipped, without queueing, when the patient has no CLSU ID', function () {
     Queue::fake();
-    $session = activeChisScenario($patient, $consent);
+    $session = activeChisScenario(['clsu_id' => null]);
 
     completeAsPhysician($session)->assertOk();
 
     expect($session->refresh()->only(['chis_sync_status', 'chis_last_error']))
-        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => $reason]);
+        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_clsu_id']);
     Queue::assertNotPushed(SyncEncounterToChis::class);
-})->with([
-    'no consent' => [[], null, 'no_consent'],
-    'no clsu_id' => [['clsu_id' => null], '2026-10-01 09:00:00', 'no_clsu_id'],
-]);
+});
+
+it('syncs a patient who never gave consent, under the medical treatment basis', function () {
+    Http::fake(['chis.test/*' => chisReceiptResponse(201)]);
+    $session = activeChisScenario();
+    expect($session->request->patient->chis_consent_at)->toBeNull();
+
+    completeAsPhysician($session)->assertOk(); // sync queue: the job runs inline
+
+    expect($session->refresh()->only(['chis_sync_status', 'chis_reference']))
+        ->toBe(['chis_sync_status' => 'synced', 'chis_reference' => 'CHIS-ENC-000042']);
+    Http::assertSent(fn ($r) => $r['lawful_basis'] === 'medical_treatment' && array_key_exists('consent', $r->data()) && $r['consent'] === null);
+});
 
 it('still completes when CHIS is down, even with a synchronous queue', function () {
     Http::fake(['chis.test/*' => Http::response(['message' => 'down', 'code' => 'UNAVAILABLE'], 503)]);
@@ -282,14 +291,14 @@ it('keeps a transient failure pending, counts the attempt and rethrows for the q
     'timeout' => [fn () => fn () => throw new ConnectionException('cURL error 28: Operation timed out'), 'connection_failed'],
 ]);
 
-it('skips without any request when consent was withdrawn after completion', function () {
+it('skips without any request when the CLSU ID was removed after completion', function () {
     Http::fake();
-    $session = chisPending(consent: null);
+    $session = chisPending(patient: ['clsu_id' => null]);
 
     runChisJob($session);
 
     expect($session->refresh()->only(['chis_sync_status', 'chis_last_error']))
-        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_consent']);
+        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_clsu_id']);
     Http::assertNothingSent();
 });
 
@@ -397,21 +406,62 @@ it('chis:health --patient reports not found and errors', function () {
         ->expectsOutputToContain('Patient 23-0002: error ChisRequestException (HTTP 401, UNAUTHENTICATED)')->assertExitCode(1);
 });
 
-// --- consent is forward-only ---------------------------------------------------
+// --- chis:send-skipped ---------------------------------------------------------
 
-it('never re-sends a session skipped for no consent, even after the patient consents', function () {
+function skippedFor(string $error, array $patient): ConsultationSession
+{
+    $s = chisScenario(patient: $patient);
+    $s->forceFill(['chis_sync_status' => 'skipped', 'chis_last_error' => $error])->save();
+
+    return $s;
+}
+
+it('chis:send-skipped is a dry run that lists ids and changes nothing', function () {
     Queue::fake();
-    $session = chisScenario(consent: null);
-    ChisEncounterSync::queue($session);
-    expect($session->refresh()->chis_sync_status)->toBe('skipped');
+    $a = skippedFor('no_consent', ['clsu_id' => '23-0001', 'email' => 'a@clsu.edu.ph']);
+    $b = skippedFor('no_consent', ['clsu_id' => '23-0002', 'email' => 'b@clsu.edu.ph']);
 
-    $session->request->patient->forceFill(['chis_consent_at' => now()])->save();
-    ConsultationSession::whereKey($session->id)->update(['updated_at' => now()->subHour()]);
-    $this->artisan('chis:sync-pending')->assertExitCode(0);
+    $this->artisan('chis:send-skipped')
+        ->expectsOutputToContain('Found 2 consultation(s) skipped for no consent.')
+        ->expectsOutputToContain("Session ids: {$a->id}, {$b->id}")
+        ->expectsOutputToContain('Dry run: nothing changed')
+        ->doesntExpectOutputToContain('Dela Cruz')
+        ->assertExitCode(0);
 
-    expect($session->refresh()->only(['chis_sync_status', 'chis_last_error']))
-        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_consent']);
-    Queue::assertNotPushed(SyncEncounterToChis::class);
+    Queue::assertNothingPushed();
+    expect(ConsultationSession::whereIn('id', [$a->id, $b->id])->pluck('chis_sync_status')->unique()->all())->toBe(['skipped'])
+        ->and($a->refresh()->chis_last_error)->toBe('no_consent');
+});
+
+it('chis:send-skipped --confirm requeues only skipped/no_consent rows', function () {
+    Queue::fake();
+    $target = skippedFor('no_consent', ['clsu_id' => '23-0001', 'email' => 'a@clsu.edu.ph']);
+    $noClsu = skippedFor('no_clsu_id', ['clsu_id' => '23-0002', 'email' => 'b@clsu.edu.ph']);
+    $failed = chisScenario(patient: ['clsu_id' => '23-0003', 'email' => 'c@clsu.edu.ph']);
+    $failed->forceFill(['chis_sync_status' => 'failed', 'chis_last_error' => 'no_consent'])->save();
+    $synced = chisScenario(patient: ['clsu_id' => '23-0004', 'email' => 'd@clsu.edu.ph']);
+    $synced->forceFill(['chis_sync_status' => 'synced', 'chis_reference' => 'CHIS-1'])->save();
+
+    $this->artisan('chis:send-skipped', ['--confirm' => true])
+        ->expectsOutputToContain('Queued 1 CHIS sync(s).')
+        ->assertExitCode(0);
+
+    Queue::assertPushed(SyncEncounterToChis::class, 1);
+    Queue::assertPushed(SyncEncounterToChis::class, fn ($job) => $job->sessionId === $target->id);
+    expect($target->refresh()->only(['chis_sync_status', 'chis_last_error']))->toBe(['chis_sync_status' => 'pending', 'chis_last_error' => null])
+        ->and($noClsu->refresh()->only(['chis_sync_status', 'chis_last_error']))->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_clsu_id'])
+        ->and($failed->refresh()->chis_sync_status)->toBe('failed')
+        ->and($synced->refresh()->chis_sync_status)->toBe('synced');
+});
+
+it('a requeued no_consent session is then synced with the lawful basis', function () {
+    Http::fake(['chis.test/*' => chisReceiptResponse(201)]);
+    $session = skippedFor('no_consent', ['clsu_id' => '23-0001', 'email' => 'a@clsu.edu.ph']);
+
+    $this->artisan('chis:send-skipped', ['--confirm' => true])->assertExitCode(0); // sync queue: runs inline
+
+    expect($session->refresh()->chis_sync_status)->toBe('synced');
+    Http::assertSent(fn ($r) => $r['lawful_basis'] === 'medical_treatment');
 });
 
 // --- audit log -----------------------------------------------------------------
@@ -451,7 +501,7 @@ it('writes no audit row when no call is made', function (Closure $setup) {
     expect(ChisAuditLog::count())->toBe(0);
     Http::assertNothingSent();
 })->with([
-    'skipped (consent withdrawn)' => [fn () => chisPending(consent: null)],
+    'skipped (CLSU ID removed)' => [fn () => chisPending(patient: ['clsu_id' => null])],
     'invalid payload' => [fn () => chisPending(request: ['symptoms_desc' => [['name' => 'x', 'severity' => 'mild']]])],
     'already synced' => [fn () => tap(chisScenario(), fn ($s) => $s->forceFill(['chis_sync_status' => 'synced'])->save())],
 ]);

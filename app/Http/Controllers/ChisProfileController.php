@@ -17,8 +17,9 @@ use Illuminate\Support\Facades\Auth;
  * lazily (never during page render) so a slow or down CHIS cannot delay the
  * consultation page.
  *
- * Gates, in order: assigned physician only → patient consent → CLSU ID →
- * CHIS lookup (audited) → identity check. Nothing from CHIS is stored or
+ * Gates, in order: assigned physician only → CLSU ID → CHIS
+ * lookup (audited) → identity check. No patient consent gate: the lawful basis
+ * is medical treatment (RA 10173 Sec. 13). Nothing from CHIS is stored or
  * cached, and if the audit row cannot be written the profile is withheld:
  * no audit, no access.
  */
@@ -46,10 +47,6 @@ class ChisProfileController extends Controller
 
         $patient = $session->request?->patient;
         abort_unless($patient, 404);
-
-        if (! $patient->hasChisConsent()) {
-            return $this->state('no_consent');
-        }
 
         if (blank($patient->clsu_id)) {
             return $this->state('no_clsu_id');

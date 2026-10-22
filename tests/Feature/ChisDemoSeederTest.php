@@ -5,6 +5,7 @@ use App\Models\ConsultationSession;
 use App\Models\User;
 use Database\Seeders\ChisDemoSeeder;
 use Database\Seeders\QaTestUsersSeeder;
+use Illuminate\Support\Facades\Queue;
 
 function seedChisDemo(string $env = 'local'): void
 {
@@ -52,10 +53,14 @@ it('lets the seeded consultation be completed by the physician', function () {
     seedChisDemo();
     app()['env'] = 'testing';
     $session = ConsultationSession::sole();
+    Queue::fake();
 
     $this->actingAs(User::where('email', 'physician.test1@clsu.edu.ph')->first())
         ->postJson(route('consultations.messaging.complete', $session))
         ->assertOk();
 
-    expect($session->refresh()->consultation_status)->toBe('completed');
+    // The demo patient never consents; completion still queues the CHIS push.
+    expect($session->refresh()->consultation_status)->toBe('completed')
+        ->and($session->request->patient->chis_consent_at)->toBeNull()
+        ->and($session->chis_sync_status)->toBe('pending');
 });

@@ -726,6 +726,13 @@
                             </div>
                         </div>
 
+                        @if (auth()->user()?->role === 'patient')
+                            <p x-show="currentStep === 4" x-cloak class="text-center text-xs text-slate-500">
+                                A summary of this consultation will be recorded in CHIS, CLSU's Comprehensive Health Information System.
+                                <a href="{{ route('profile.edit') }}#chis-privacy-notice-heading" class="font-semibold text-brand-green hover:underline">How your records are shared</a>
+                            </p>
+                        @endif
+
                         <!-- FOOTER ACTION BUTTONS PANEL -->
                         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
     

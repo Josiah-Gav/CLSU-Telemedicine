@@ -71,7 +71,7 @@ it('shows admins the sync rows, counts and plain-language errors, but no clinica
         ->assertSee('ENC-2026-000777')
         ->assertSee('CHIS already holds different content for this consultation')
         ->assertSee('http_409:ENCOUNTER_CONFLICT')
-        ->assertSee('Patient has not consented')
+        ->assertSee('Skipped under the earlier consent rule')
         ->assertSee('some_new_code')
         ->assertSee('Maria Santos');
 
@@ -174,7 +174,7 @@ it('describes known error codes and leaves unknown ones raw', function (?string 
     expect(ChisEncounterSync::describeError($code))->toBe($text);
 })->with([
     [null, null],
-    ['no_consent', 'Patient has not consented'],
+    ['no_consent', 'Skipped under the earlier consent rule (see chis:send-skipped)'],
     ['no_clsu_id', 'Patient has no CLSU ID'],
     ['connection_failed', 'CHIS could not be reached'],
     ['http_409:ENCOUNTER_CONFLICT', 'CHIS already holds different content for this consultation'],

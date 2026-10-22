@@ -96,9 +96,9 @@ of it is a connection to CLSU's actual CHIS. See `features/chis-integration.md`.
 | Feature | User Role | Description | Implementation Evidence | Main Routes | Controllers | Services | Models / Tables | Tests | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | CLSU ID as patient identifier | Patient, Admin | One shared format rule, unique across all users; required at registration, set once on the profile, corrected only by an admin. | `App\Rules\ClsuId::PATTERN/HINT/TAKEN/rules`; `Auth\RegisteredUserController::store`; `ProfileUpdateRequest::rules` (`exclude` once set); `Admin\UserManagementController::store/update`; `2026_10_22_120000_add_unique_index_to_users_clsu_id.php` | `POST register`, `PATCH profile`, `POST /admin/users`, `PUT /admin/users/{user}` | `Auth\RegisteredUserController`, `ProfileController`, `Admin\UserManagementController` | — | `User` / `users.clsu_id` | `tests/Feature/ClsuIdTest.php` | Implemented |
-| CHIS data-sharing consent | Patient | Patient gives or withdraws consent; forward-only. | `ProfileController::giveChisConsent/withdrawChisConsent`; `User::hasChisConsent`; `users.chis_consent_at`; `resources/views/profile/partials/chis-consent.blade.php` | `POST|DELETE /profile/chis-consent` | `ProfileController` | — | `User` / `users` | `tests/Feature/ChisConsentTest.php` | Implemented |
+| CHIS privacy notice (lawful basis) | Patient | Patient reads what is sent to CHIS and why; no consent is asked (RA 10173 Sec. 13, medical treatment). | `resources/views/profile/partials/chis-privacy-notice.blade.php`; notice line in `patient/newconsultation.blade.php`; section 9 of `privacy-policy.blade.php`; `ChisEncounterPayload` (`lawful_basis`) | `GET /profile` | `ProfileController::edit` | `ChisEncounterSync::ineligibilityReason` | `consultations.chis_*`; `users.chis_consent_at` (historic, unread) | `tests/Feature/ChisPrivacyNoticeTest.php` | Implemented |
 | Encounter push to CHIS | Physician (completes), System | Completed consultation sessions are queued and sent to the simulated CHIS with statuses, retries, a sweeper, and idempotent resend. | `ConsultationMessageController::complete` → `ChisEncounterSync::queue` → `SyncEncounterToChis::handle`; `ChisEncounterPayload::build`; `ChisClient::pushEncounter`; `ChisSyncPending` (`chis:sync-pending`, scheduled `everyFifteenMinutes`) | Hook on `POST /consultation-sessions/{session}/complete` | `ConsultationMessageController` | `ChisEncounterSync`, `ChisEncounterPayload`, `ChisClient`, `SyncEncounterToChis` | `ConsultationSession` / `consultations.chis_*` | `tests/Feature/ChisEncounterSyncTest.php`, `ChisClientTest.php` | Implemented |
-| Physician view of the CHIS medical profile | Physician (assigned) | Lazy-loaded Patient-tab profile behind consent, an identity check, minimisation, and a fail-closed audit row. | `ChisProfileController::show`; `ChisIdentity::matches`; Alpine `loadChisProfile` in `resources/views/consultations/messaging.blade.php` | `GET /consultation-sessions/{session}/chis-profile` | `ChisProfileController` | `ChisClient`, `ChisIdentity` | `ChisAuditLog` / `chis_audit_logs` | `tests/Feature/ChisProfileTest.php` | Implemented |
+| Physician view of the CHIS medical profile | Physician (assigned) | Lazy-loaded Patient-tab profile behind a CLSU ID check, an identity check, minimisation, and a fail-closed audit row. | `ChisProfileController::show`; `ChisIdentity::matches`; Alpine `loadChisProfile` in `resources/views/consultations/messaging.blade.php` | `GET /consultation-sessions/{session}/chis-profile` | `ChisProfileController` | `ChisClient`, `ChisIdentity` | `ChisAuditLog` / `chis_audit_logs` | `tests/Feature/ChisProfileTest.php` | Implemented |
 | CHIS audit log | Admin | Append-only record that CHIS data was sent or viewed, by whom and when; never what. | `ChisAuditLog::record`; `Admin\ChisAuditController::index`; `2026_10_24_120000_create_chis_audit_logs_table.php` | `GET /admin/chis-audit` | `Admin\ChisAuditController` | — | `ChisAuditLog` / `chis_audit_logs` | `tests/Feature/Admin/ChisAuditLogTest.php` | Implemented |
 | Admin CHIS Sync page and Retry | Admin | Sync status per consultation session with filter, plain-language errors, and Retry for failed/pending. | `Admin\ChisSyncController::index/retry`; `ChisEncounterSync::describeError` | `GET /admin/chis-sync`, `POST /admin/chis-sync/{session}/retry` | `Admin\ChisSyncController` | `ChisClient` (health banner) | `ConsultationSession` / `consultations` | `tests/Feature/Admin/ChisSyncPageTest.php` | Implemented |
 | Telemed REST API and tokens | Admin | Sanctum bearer-token API to list, fetch, and synchronously trigger a CHIS sync; sync status only. | `Api\EncounterController::index/show/sync/authorizeToken`; `TelemedApiToken` (`telemed:api-token`); `routes/api.php`; `config/sanctum.php`; `bootstrap/app.php` JSON error rendering for `api/*`; `docs/postman/` | `GET /api/v1/encounters`, `GET /api/v1/encounters/{session}`, `POST /api/v1/encounters/{session}/sync` | `Api\EncounterController` | `SyncEncounterToChis` | `PersonalAccessToken` / `personal_access_tokens` | `tests/Feature/Api/EncounterApiTest.php`, `TelemedApiTokenCommandTest.php` | Implemented |
@@ -176,7 +176,7 @@ Final contents of `docs/paper/features/` — **23 files** (22 original + `chis-i
 | 20 | `dashboard-analytics.md` | Dashboard analytics |
 | 21 | `consultation-history-and-exports.md` | Consultation history and exports |
 | 22 | `concurrency-and-state-transitions.md` | Concurrency control for state transitions |
-| 23 | `chis-integration.md` | All eight rows of Table X.6: CLSU ID identifier, CHIS consent, encounter push, physician CHIS profile view, CHIS audit log, admin CHIS Sync/Audit pages, Telemed REST API and tokens, CHIS operations commands |
+| 23 | `chis-integration.md` | All eight rows of Table X.6: CLSU ID identifier, CHIS privacy notice / lawful basis, encounter push, physician CHIS profile view, CHIS audit log, admin CHIS Sync/Audit pages, Telemed REST API and tokens, CHIS operations commands |
 
 *(Superseded 2026-10-22.)* The original text here said no CHIS file would be
 created. `chis-integration.md` now exists; see **Decisions applied** #7.
@@ -278,7 +278,7 @@ These are all implemented and all absent from `CLAUDE.md`:
 | L-16 | **`updateClinicalDetails` is a full replace and can write null into `NOT NULL` columns.** Omitted fields are mapped to null, but `consultations.assessment`, `.plan`, and `.recommendations` are `NOT NULL` in the live MySQL schema (verified with `SHOW COLUMNS`). Unreachable through the UI, unguarded at the application layer, and completely untested. | `ConsultationMessageController::updateClinicalDetails`; live schema. |
 | L-17 | **`PhysicianController::activeConsultations` writes on a GET request.** It backfills a missing consultation session and may rewrite `physician_id` and `consultation_status` on an existing one, with no transaction, no lock, and no route through `ConsultationOwnershipService`. | `PhysicianController::activeConsultations`. |
 | L-14 | **`MarkMissedScheduleSlots` has no test at all**, unlike its sibling `ExpireStaleIntakeSessions` (19 cases). Related: when the scheduled command marks a slot missed, **no notification is sent** — only the page-triggered `syncMissedSlotsForPhysician` notifies, and it skips slots already marked `missed`. | `tests/` contains no file referencing the command; `MarkMissedScheduleSlots::handle` sends no notifications. |
-| L-10 | **External integration exists only against a simulated CHIS.** *(Rewritten 2026-10-22; the original read: no CHIS client, no external clinical integration of any kind.)* Telemed now has a CHIS client, consent, an encounter push, a physician profile view, an audit log and a token API (Table X.6), but only against `clsu-chis-simulation`, a team-built simulator of a team-defined contract. There is still no connection to CLSU's actual CHIS, no HL7/FHIR layer and no general EMR exchange. | `features/chis-integration.md` §2 and §18. |
+| L-10 | **External integration exists only against a simulated CHIS.** *(Rewritten 2026-10-22; the original read: no CHIS client, no external clinical integration of any kind.)* Telemed now has a CHIS client, a lawful-basis privacy notice, an encounter push, a physician profile view, an audit log and a token API (Table X.6), but only against `clsu-chis-simulation`, a team-built simulator of a team-defined contract. There is still no connection to CLSU's actual CHIS, no HL7/FHIR layer and no general EMR exchange. | `features/chis-integration.md` §2 and §18. |
 
 ### 8. Terminology conflicts
 
@@ -323,6 +323,17 @@ These are all implemented and all absent from `CLAUDE.md`:
    claim integration with CLSU's actual CHIS; the payload is not HL7 FHIR; the
    limitations list lives in `chis-integration.md` §18. Decision #1 is kept above
    in its original wording so the change is traceable.
+8. **CHIS lawful basis replaces patient consent (2026-10-22, phase 8).** CLSU MISO
+   and the panel verbally required that all completed consultation results be sent
+   to CHIS, so a consent patients could refuse would not be valid. Telemed now
+   sends every completed consultation under RA 10173 Sec. 13 (medical treatment;
+   Telemed and CHIS are both CLSU's), declares `lawful_basis: medical_treatment`
+   in the payload, and shows patients a privacy notice instead of a consent form.
+   The requirement is **verbal**; the author is confirming it by email with MISO
+   (cc adviser), asking whether the DPO should review it. The paper must not
+   claim written approval. `users.chis_consent_at` is kept as a historic column.
+   `features/chis-integration.md` (Lawful basis, §18) and `glossary.md` §15 are
+   updated accordingly.
 
 ---
 
@@ -355,7 +366,7 @@ CHIS rows and `features/chis-integration.md`: `app/Services/Chis*.php`,
 `app/Console/Commands/Chis*.php` and `TelemedApiToken.php`, the six CHIS-related
 migrations, `config/services.php`, `config/sanctum.php`, `routes/web.php`,
 `routes/api.php`, `routes/console.php`, `bootstrap/app.php`, the Patient-tab,
-profile-consent and admin CHIS views, and the ten CHIS test files listed in
+profile-privacy-notice and admin CHIS views, and the ten CHIS test files listed in
 `chis-integration.md` §16. Simulator behaviour is cited from the simulator repository
 (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`) only where `features/chis-integration.md` names a file there
 (`app/Http/Controllers/EncounterController.php`, `app/Support/CanonicalJson.php`,
