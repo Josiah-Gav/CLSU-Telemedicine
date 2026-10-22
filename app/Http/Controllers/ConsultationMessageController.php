@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\User;
 use App\Notifications\ConsultationCompleted;
+use App\Services\ChisEncounterSync;
 use App\Services\ConsultationVideoService;
 use App\Services\MedicalFileStorage;
 use App\Services\NotificationService;
@@ -363,6 +364,10 @@ class ConsultationMessageController extends Controller
 
         $session->refresh();
         $consultationRequest = $session->request;
+
+        // After the commit, never inside it: this only queues (or marks the
+        // session skipped), so a CHIS outage cannot fail or slow completion.
+        ChisEncounterSync::queue($session);
 
         if ($consultationRequest) {
             NotificationService::sendUnique(

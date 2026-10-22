@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * HTTP client for the CHIS REST API (config: services.chis).
+ * HTTP client for the CHIS (Comprehensive Health Information System) REST
+ * API (config: services.chis).
  *
  * Failures are split by the retry rule: timeouts, connection errors, 429 and
  * 5xx are transient (ChisUnavailableException); every other 4xx is permanent
@@ -81,7 +82,7 @@ class ChisClient
     {
         if (! $this->configured()) {
             // No request is sent at all.
-            throw new ChisUnavailableException("CHIS {$endpoint}: not configured (CHIS_BASE_URL and CHIS_TOKEN must both be set).");
+            throw new ChisUnavailableException("CHIS {$endpoint}: not configured (CHIS_BASE_URL and CHIS_TOKEN must both be set).", 'not_configured');
         }
 
         try {
@@ -90,7 +91,7 @@ class ChisClient
             // Not chained: its message contains the URL, which carries the CLSU ID.
             $this->logFailure($endpoint, null, ChisUnavailableException::class);
 
-            throw new ChisUnavailableException("CHIS {$endpoint}: connection failed or timed out.");
+            throw new ChisUnavailableException("CHIS {$endpoint}: connection failed or timed out.", 'connection_failed');
         }
 
         $status = $response->status();
@@ -98,7 +99,7 @@ class ChisClient
         if ($status === 429 || $status >= 500) {
             $this->logFailure($endpoint, $status, ChisUnavailableException::class);
 
-            throw new ChisUnavailableException("CHIS {$endpoint}: temporarily unavailable (HTTP {$status}).", $status);
+            throw new ChisUnavailableException("CHIS {$endpoint}: temporarily unavailable (HTTP {$status}).", "http_{$status}", $status);
         }
 
         return $response;
@@ -124,7 +125,7 @@ class ChisClient
         if (! is_array($data)) {
             $this->logFailure($endpoint, $response->status(), ChisUnavailableException::class);
 
-            throw new ChisUnavailableException("CHIS {$endpoint}: unreadable response body (HTTP {$response->status()}).", $response->status());
+            throw new ChisUnavailableException("CHIS {$endpoint}: unreadable response body (HTTP {$response->status()}).", 'invalid_response', $response->status());
         }
 
         return $data;

@@ -3,7 +3,7 @@
 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="chis-consent-heading">
     <header>
         <h4 id="chis-consent-heading" class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ __('Share records with CHIS') }}</h4>
-        <p class="mt-1 text-sm text-slate-500">{{ __('CHIS is the CLSU clinic health information system. Sharing is optional; Telemed works the same either way.') }}</p>
+        <p class="mt-1 text-sm text-slate-500">{{ __('CHIS is the CLSU Comprehensive Health Information System. Sharing is optional; Telemed works the same either way.') }}</p>
     </header>
 
     @if ($user->hasChisConsent())

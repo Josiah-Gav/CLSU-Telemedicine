@@ -61,7 +61,7 @@ return [
     ],
 
     /*
-    | CHIS (CLSU clinic health information system) REST API — patient medical
+    | CHIS (Comprehensive Health Information System) REST API — patient medical
     | profiles and encounter push. See App\Services\ChisClient. Timeouts are
     | in seconds; the client never retries on its own.
     */

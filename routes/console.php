@@ -28,6 +28,13 @@ Schedule::command('consultations:send-reminders')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 
+// Re-queue CHIS encounter syncs still pending 10+ minutes after their last
+// attempt, so an outage that outlasts the job's own retries is never given up
+// on. SyncEncounterToChis is ShouldBeUnique, so in-flight jobs are not doubled.
+Schedule::command('chis:sync-pending')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
 // Flush staff invitation tokens that have passed their 7-day expiry, so dead
 // credential material does not accumulate. Laravel's own command, named
 // explicitly so it targets the staff_invitations broker and never touches

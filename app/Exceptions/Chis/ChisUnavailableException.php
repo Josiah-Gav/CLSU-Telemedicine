@@ -14,8 +14,15 @@ use RuntimeException;
  */
 class ChisUnavailableException extends RuntimeException
 {
-    public function __construct(string $message, public readonly ?int $status = null)
-    {
+    /**
+     * @param  string  $reason  short code-like reason, safe to store:
+     *                          not_configured, connection_failed, http_<status>, invalid_response
+     */
+    public function __construct(
+        string $message,
+        public readonly string $reason,
+        public readonly ?int $status = null,
+    ) {
         parent::__construct($message);
     }
 }
