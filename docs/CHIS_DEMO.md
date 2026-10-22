@@ -39,8 +39,11 @@ Two Postman collections are used. Name them out loud so the panel can follow:
   - `php artisan telemed:api-token <admin-email> --name=demo --ability=encounters:read --ability=encounters:sync`
   - `php artisan telemed:api-token <admin-email> --name=demo-readonly --ability=encounters:read`
   - Paste them into the Postman environment as `telemed_token` and `telemed_read_token`. Each token is shown **once**; it lasts 30 days.
-- [ ] Reset to a clean state so the first sync shows **201**: use a *new* consultation — `php artisan db:seed --class=ChisDemoSeeder`. It prints `Demo consultation created: session #N …` (local environment only; it does nothing if patient.test1 already has an active consultation). Put `N` into the Postman variable `encounter_id`.
-  - If you re-run the demo on the same databases, the seeder will not create a second active consultation until the first is completed, and the completed one will already be synced (a sync of it returns **200**, not 201).
+- [ ] **Withdraw consent first**, so Step 1 can show giving it: log in as patient.test1 → Profile → **Share records with CHIS** → **Withdraw consent** (it should now say "Sharing is off"). patient.test1 already consented during development. This is safe: consent is forward-only, and the demo consultation is completed *after* Step 1, so it will still be eligible.
+- [ ] Prepare a never-sent consultation for the demo: `php artisan db:seed --class=ChisDemoSeeder` (local environment only).
+  - If it prints `Demo consultation created: session #N …`, put `N` into the Postman variable `encounter_id`.
+  - If it prints `patient.test1 already has an active consultation; nothing created.`, use that existing active consultation instead. Find its id as physician.test1: open **Active Consultations**, open the consultation, and read the number in the address bar — `/consultation-sessions/N/messaging`. Put `N` into `encounter_id`.
+  - The first delivery (HTTP **201**) happens in Step 3, when the background worker sends it; you will show that 201 in the audit log in Step 6. Every later sync of the same consultation returns **200** with the same reference.
 - [ ] Log in to three browser windows: **patient.test1** (profile page), **physician.test1** (active consultations), **admin** (`/admin/chis-sync`).
 - [ ] Patient.test1 password and the others are in `database/seeders/QaTestUsersSeeder.php`.
 
@@ -64,14 +67,15 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 
 - **Click:** physician window → **Assessment** tab → **Complete consultation** and confirm the "Complete consultation?" dialog.
 - **Admin window:** refresh `/admin/chis-sync` → the row appears as **Synced** with a CHIS reference such as `ENC-2026-00000N`.
-- **Postman, CHIS side ("CHIS Simulation" collection):** request **List encounters** (then **Get one encounter**). **Telemed side ("Telemed – CHIS demo" collection):** request **4. CHIS – get that encounter** needs the reference first — run step 4 before it, or paste the reference into the `chis_reference` collection variable.
+- **Postman, CHIS side ("CHIS Simulation" collection):** request **List encounters**, then **Get one encounter**. "Get one encounter" uses the collection variable `{{chis_encounter_id}}`: before sending it, replace it with the CHIS reference shown on `/admin/chis-sync` (e.g. `ENC-2026-00000N`) — either in the request URL or in the collection's **Variables** tab. **Telemed side ("Telemed – CHIS demo" collection):** request **4. CHIS – get that encounter** needs the reference first — run step 4 before it, or paste the reference into the `chis_reference` collection variable.
 - **They should see:** the encounter in CHIS with the diagnosis and the payload as CHIS received it.
 - **Say:** "Completing the consultation only queues the send, so a CHIS outage can never block the physician. A background worker sends the summary: diagnosis, assessment, plan, recommendations, symptoms — never the chat, uploads, or the prescription file."
 
 ### Step 4 — Safe to retry: the Telemed API (~2 min)
 
 - **Postman ("Telemed – CHIS demo"):** **1. list encounters** → **2. get encounter** → **3. sync encounter to CHIS** → **4. CHIS – get that encounter** → **5. sync again**.
-- **They should see:** request 3 → `chis_sync_status: synced`, `chis_http_status` **200** (the worker already delivered it in step 3; a brand-new, never-sent session would show **201**); request 5 → the **same reference**, `chis_http_status` 200; request 6 → no token gives 401, read-only token on sync gives 403.
+- **They should see:** request 3 → `chis_sync_status: synced`, `chis_http_status` **200**; request 5 → the **same reference**, `chis_http_status` 200; request 6 → no token gives 401, read-only token on sync gives 403.
+- **Note:** Postman will not show 201 here, because the worker already made the first delivery in Step 3. Do not apologise for it — the 201 is shown in the audit log in Step 6.
 - **Say:** "CHIS treats the encounter id as an idempotency key: sending the same summary twice returns the same reference, so retries are safe. The API only ever exposes sync status — no names, no CLSU IDs, no clinical text."
 
 ### Step 5 — Resilience (~2 min)
@@ -86,7 +90,8 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 
 - **Click:** admin window → **Audit log** (or `/admin/chis-audit`).
 - **They should see:** every send and every view — time, action ("Summary sent" / "Patient record viewed"), outcome, source (Sync job / API request / Consultation view), patient, actor (the physician, an admin, or "System"), consultation, HTTP status, duration. **History** on a sync row filters to one consultation.
-- **Say:** "The log records that data was sent or viewed, by whom and when — never what. It is append-only."
+- **Show the first-delivery vs safe-retry proof here:** on `/admin/chis-sync` click **History** on the demo consultation's row (or type its number in the audit page's *Consultation #* filter). The oldest "Summary sent · Sync job" row (actor "System") has HTTP **201** — the first delivery from Step 3. The later "Summary sent · API request" rows from Step 4 (actor: the admin who owns the token) have HTTP **200** with the **same CHIS reference**. (Step 5's outage adds an "Unavailable" row with no HTTP status, followed by another 200.)
+- **Say:** "The log records that data was sent or viewed, by whom and when — never what. It is append-only. Here you can see the first delivery returned 201 and every retry returned 200 with the same reference."
 
 ### Step 7 — Optional extras (if time allows)
 
