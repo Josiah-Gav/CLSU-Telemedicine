@@ -14,7 +14,7 @@
             'unavailable' => ['label' => 'Unavailable', 'class' => 'bg-gray-100 text-gray-600'],
             'identity_mismatch' => ['label' => 'Identity mismatch', 'class' => 'bg-amber-50 text-amber-800'],
         ];
-        $sources = ['sync_job' => 'Sync job', 'health_command' => 'Health command', 'consultation_view' => 'Consultation view'];
+        $sources = ['sync_job' => 'Sync job', 'api' => 'API request', 'health_command' => 'Health command', 'consultation_view' => 'Consultation view'];
         $rows = $logs->map(fn ($log) => [
             'log' => $log,
             'action' => \App\Models\ChisAuditLog::ACTION_LABELS[$log->action] ?? $log->action,

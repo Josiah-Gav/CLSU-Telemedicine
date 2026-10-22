@@ -33,7 +33,16 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
     /** Expires a lock left by a crashed worker; longer than the full backoff (~81 min). */
     public int $uniqueFor = 7200;
 
-    public function __construct(public int $sessionId) {}
+    /**
+     * Ids and strings only: the queued payload must never hold clinical data.
+     * $actorUserId/$source attribute the audit row (the API passes the token
+     * owner and 'api'; the queued/sweeper path keeps the defaults).
+     */
+    public function __construct(
+        public int $sessionId,
+        public ?int $actorUserId = null,
+        public string $source = 'sync_job',
+    ) {}
 
     public function uniqueId(): string
     {
@@ -83,7 +92,8 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
 
         // Exactly one audit row per real call; duration measured up to the moment it is written.
         $start = hrtime(true);
-        $audit = fn (string $outcome, array $context) => ChisAuditLog::record('encounter_push', $outcome, 'sync_job', [
+        $audit = fn (string $outcome, array $context) => ChisAuditLog::record('encounter_push', $outcome, $this->source, [
+            'actor_user_id' => $this->actorUserId,
             'patient_user_id' => $patientUserId,
             'consultation_session_id' => $this->sessionId,
             'clsu_id' => $payload['patient']['clsu_id'],
