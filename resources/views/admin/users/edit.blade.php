@@ -56,6 +56,11 @@
                                 @endif
                             </div>
                             <div>
+                                <label class="block text-sm font-medium text-gray-700">CLSU ID</label>
+                                <input type="text" name="clsu_id" value="{{ old('clsu_id', $user->clsu_id) }}" placeholder="e.g. 23-0001" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <p class="mt-1 text-xs text-gray-500">Include the dash: {{ \App\Rules\ClsuId::HINT }} Patients cannot change this themselves once set.</p>
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700">Department</label>
                                 <input type="text" name="department" value="{{ old('department', $user->department) }}" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>

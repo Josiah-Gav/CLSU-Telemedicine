@@ -2,10 +2,9 @@
 
 namespace App\Http\Requests;
 
-use App\Models\User;
+use App\Rules\ClsuId;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
@@ -19,9 +18,19 @@ class ProfileUpdateRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'clsu_id' => ['nullable', 'string', 'max:255'],
+            // Write-once: a user may set their CLSU ID only while it is empty.
+            // Once set, 'exclude' drops the field from validated(), so even a
+            // crafted request cannot change or blank it; only an admin can.
+            'clsu_id' => $this->user()->clsu_id === null
+                ? ['nullable', ...ClsuId::rules()]
+                : ['exclude'],
             'department' => ['nullable', 'string', 'max:255'],
             'contact_num' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['clsu_id.unique' => ClsuId::TAKEN];
     }
 }

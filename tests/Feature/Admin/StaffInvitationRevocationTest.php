@@ -76,6 +76,7 @@ test('an invitation cannot be redeemed against a different account after an emai
     test()->post(route('staff.activate.store'), [
         'token' => $token,
         'email' => 'shared-address@clsu.edu.ph',
+        'clsu_id' => '26-000104',
         'password' => 'attacker-chosen-password-1',
         'password_confirmation' => 'attacker-chosen-password-1',
     ])->assertSessionHasErrors('email');
@@ -296,6 +297,7 @@ test('creating a staff account after an email change still issues a fresh invita
         'first_name' => 'Carla',
         'last_name' => 'Diaz',
         'email' => 'shared-address@clsu.edu.ph',
+        'clsu_id' => '26-000104',
         'role' => 'physician',
     ])->assertSessionHasNoErrors();
 

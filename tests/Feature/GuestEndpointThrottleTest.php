@@ -82,7 +82,7 @@ it('lets a normal single registration through untouched', function () {
     $this->post(route('register'), [
         'first_name' => 'Juan',
         'last_name' => 'Dela Cruz',
-        'clsu_id' => '202012345',
+        'clsu_id' => '20-12345',
         'email' => 'juan.delacruz@clsu.edu.ph',
         'password' => 'Password123!',
         'password_confirmation' => 'Password123!',

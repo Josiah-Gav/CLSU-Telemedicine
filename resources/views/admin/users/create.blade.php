@@ -45,7 +45,8 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">CLSU ID <span class="text-red-600 font-bold" aria-hidden="true">*</span></label>
-                                <input type="text" name="clsu_id" value="{{ old('clsu_id') }}" placeholder="Staff employee ID number" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <input type="text" name="clsu_id" value="{{ old('clsu_id') }}" placeholder="e.g. 26-000001" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                <p class="mt-1 text-xs text-gray-500">Include the dash: {{ \App\Rules\ClsuId::HINT }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Department</label>
