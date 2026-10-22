@@ -96,7 +96,7 @@ of it is a connection to CLSU's actual CHIS. See `features/chis-integration.md`.
 | Feature | User Role | Description | Implementation Evidence | Main Routes | Controllers | Services | Models / Tables | Tests | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | CLSU ID as patient identifier | Patient, Admin | One shared format rule, unique across all users; required at registration, set once on the profile, corrected only by an admin. | `App\Rules\ClsuId::PATTERN/HINT/TAKEN/rules`; `Auth\RegisteredUserController::store`; `ProfileUpdateRequest::rules` (`exclude` once set); `Admin\UserManagementController::store/update`; `2026_10_22_120000_add_unique_index_to_users_clsu_id.php` | `POST register`, `PATCH profile`, `POST /admin/users`, `PUT /admin/users/{user}` | `Auth\RegisteredUserController`, `ProfileController`, `Admin\UserManagementController` | — | `User` / `users.clsu_id` | `tests/Feature/ClsuIdTest.php` | Implemented |
-| CHIS privacy notice (lawful basis) | Patient | Patient reads what is sent to CHIS and why; no consent is asked (RA 10173 Sec. 13, medical treatment). | `resources/views/profile/partials/chis-privacy-notice.blade.php`; notice line in `patient/newconsultation.blade.php`; section 9 of `privacy-policy.blade.php`; `ChisEncounterPayload` (`lawful_basis`) | `GET /profile` | `ProfileController::edit` | `ChisEncounterSync::ineligibilityReason` | `consultations.chis_*`; `users.chis_consent_at` (historic, unread) | `tests/Feature/ChisPrivacyNoticeTest.php` | Implemented |
+| CHIS privacy notice (lawful basis) | Patient | Patient reads what is sent to CHIS and why; no consent is asked (RA 10173 Sec. 13, medical treatment). | `resources/views/profile/partials/chis-privacy-notice.blade.php`; notice line in `patient/newconsultation.blade.php`; the *Sharing Consultation Summaries with CHIS* section of `privacy-policy.blade.php`; `ChisEncounterPayload` (`lawful_basis`) | `GET /profile` | `ProfileController::edit` | `ChisEncounterSync::ineligibilityReason` | `consultations.chis_*`; `users.chis_consent_at` (historic, unread) | `tests/Feature/ChisPrivacyNoticeTest.php` | Implemented |
 | Encounter push to CHIS | Physician (completes), System | Completed consultation sessions are queued and sent to the simulated CHIS with statuses, retries, a sweeper, and idempotent resend. | `ConsultationMessageController::complete` → `ChisEncounterSync::queue` → `SyncEncounterToChis::handle`; `ChisEncounterPayload::build`; `ChisClient::pushEncounter`; `ChisSyncPending` (`chis:sync-pending`, scheduled `everyFifteenMinutes`) | Hook on `POST /consultation-sessions/{session}/complete` | `ConsultationMessageController` | `ChisEncounterSync`, `ChisEncounterPayload`, `ChisClient`, `SyncEncounterToChis` | `ConsultationSession` / `consultations.chis_*` | `tests/Feature/ChisEncounterSyncTest.php`, `ChisClientTest.php` | Implemented |
 | Physician view of the CHIS medical profile | Physician (assigned) | Lazy-loaded Patient-tab profile behind a CLSU ID check, an identity check, minimisation, and a fail-closed audit row. | `ChisProfileController::show`; `ChisIdentity::matches`; Alpine `loadChisProfile` in `resources/views/consultations/messaging.blade.php` | `GET /consultation-sessions/{session}/chis-profile` | `ChisProfileController` | `ChisClient`, `ChisIdentity` | `ChisAuditLog` / `chis_audit_logs` | `tests/Feature/ChisProfileTest.php` | Implemented |
 | CHIS audit log | Admin | Append-only record that CHIS data was sent or viewed, by whom and when; never what. | `ChisAuditLog::record`; `Admin\ChisAuditController::index`; `2026_10_24_120000_create_chis_audit_logs_table.php` | `GET /admin/chis-audit` | `Admin\ChisAuditController` | — | `ChisAuditLog` / `chis_audit_logs` | `tests/Feature/Admin/ChisAuditLogTest.php` | Implemented |
@@ -324,14 +324,14 @@ These are all implemented and all absent from `CLAUDE.md`:
    limitations list lives in `chis-integration.md` §18. Decision #1 is kept above
    in its original wording so the change is traceable.
 8. **CHIS lawful basis replaces patient consent (2026-10-22, phase 8).** CLSU MISO
-   and the panel verbally required that all completed consultation results be sent
+   verbally required that all completed consultation results be sent
    to CHIS, so a consent patients could refuse would not be valid. Telemed now
    sends every completed consultation under RA 10173 Sec. 13 (medical treatment;
    Telemed and CHIS are both CLSU's), declares `lawful_basis: medical_treatment`
    in the payload, and shows patients a privacy notice instead of a consent form.
-   The requirement is **verbal**; the author is confirming it by email with MISO
-   (cc adviser), asking whether the DPO should review it. The paper must not
-   claim written approval. `users.chis_consent_at` is kept as a historic column.
+   The requirement was given verbally by CLSU MISO only; written confirmation has
+   not been obtained, and DPO review is recommended before production use. The
+   paper must not claim written approval. `users.chis_consent_at` is kept as a historic column.
    `features/chis-integration.md` (Lawful basis, §18) and `glossary.md` §15 are
    updated accordingly.
 

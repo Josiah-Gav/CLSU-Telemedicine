@@ -17,8 +17,8 @@
             if (!this.agreed) {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Agreement required',
-                    text: 'Please check the box confirming you have read and agree to the Privacy Policy before continuing.',
+                    title: 'Confirmation required',
+                    text: 'Please confirm you have read the Privacy Policy before continuing.',
                     confirmButtonColor: '#047857',
                 });
                 return;
@@ -39,19 +39,19 @@
                     </span>
                     <div>
                         <h3 class="text-lg font-bold text-emerald-800">Before You Register</h3>
-                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Capstone Testing Notice</span>
+                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Capstone Project Notice</span>
                     </div>
                 </div>
 
                 <div class="mt-3 space-y-3 text-sm text-gray-700">
-                    <p>This telemedicine system is currently being used for <strong>academic capstone testing purposes</strong>. During this 5-day live testing period, the system will be evaluated through actual use by the CLSU Infirmary to assess its functionality, usability, and acceptance.</p>
+                    <p>This telemedicine system is an <strong>academic capstone project</strong>. Its five-day live testing ended on October 13, 2026.</p>
 
                     <p>By proceeding with registration and using the system, you acknowledge that:</p>
                     <ul class="list-disc pl-5 space-y-1">
-                        <li>Your personal information and consultation-related information may be collected and processed for the purposes of providing the system's telemedicine functions and evaluating the system during the testing period.</li>
+                        <li>Your personal information and consultation-related information is processed to provide the telemedicine service, as necessary for medical treatment (Data Privacy Act, Section 13).</li>
+                        <li>A summary of each completed consultation is recorded in CHIS, CLSU's Comprehensive Health Information System. In this capstone, CHIS is a simulator operated by the researchers.</li>
                         <li>Your information will be handled in accordance with the system's <strong>Privacy Policy</strong> and applicable data protection requirements.</li>
                         <li>This system is <strong>not yet an officially integrated CLSU telemedicine system</strong> and is being further developed toward potential future integration with CLSU's existing systems.</li>
-                        <li>Information collected during this testing period may be used by the researchers for <strong>system evaluation and capstone research purposes</strong>, subject to the stated privacy and data-handling provisions.</li>
                     </ul>
 
                     <p>Please review the <strong>Privacy Policy</strong> before continuing.</p>
@@ -60,13 +60,13 @@
 
                     <label class="flex items-start gap-2 pt-2">
                         <input type="checkbox" x-model="agreed" class="mt-1 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                        <span>I have read and understood the Privacy Policy and agree to the collection and processing of my information for the purposes stated above.</span>
+                        <span>I have read and understood the Privacy Policy.</span>
                     </label>
                 </div>
 
                 <div class="mt-5 flex justify-end gap-3">
                     <button type="button" @click="cancel()" class="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
-                    <x-button-primary type="button" @click="continueRegistration()">I Agree &amp; Continue</x-button-primary>
+                    <x-button-primary type="button" @click="continueRegistration()">Continue</x-button-primary>
                 </div>
             </div>
         </div>

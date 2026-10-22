@@ -3,7 +3,7 @@
 <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="chis-privacy-notice-heading">
     <header>
         <h4 id="chis-privacy-notice-heading" class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ __('How your records are shared with CHIS') }}</h4>
-        <p class="mt-1 text-sm text-slate-600">{{ __('Telemed sends a summary of every completed consultation to CHIS, the CLSU Comprehensive Health Information System, for your continuing care. These are CLSU\'s own medical records, shared under the Data Privacy Act (RA 10173) Section 13: medical treatment. This is not optional and needs no consent. Consultations completed earlier may also be sent.') }}</p>
+        <p class="mt-1 text-sm text-slate-600">{{ __('Telemed sends a summary of every completed consultation to CHIS, the CLSU Comprehensive Health Information System, for your continuing care. CHIS is treated as CLSU\'s own medical-records system, and the sharing rests on the Data Privacy Act (RA 10173) Section 13: medical treatment. This is not optional and needs no consent. Consultations completed earlier may also be sent. In this capstone, CHIS is a simulator operated by the researchers and run locally.') }}</p>
     </header>
 
     <div class="mt-5 grid gap-4 text-sm text-slate-700 sm:grid-cols-2">
