@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ChisAuditController;
 use App\Http\Controllers\Admin\ChisSyncController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AttachmentController;
@@ -86,6 +87,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/chis-sync/{session}/retry', [ChisSyncController::class, 'retry'])
         ->middleware('throttle:30,1')
         ->name('admin.chis-sync.retry');
+    // Append-only CHIS audit log (admin-only, read-only).
+    Route::get('/admin/chis-audit', [ChisAuditController::class, 'index'])
+        ->name('admin.chis-audit.index');
 
     // 2. Safe placement for your new consultation page
     Route::get('/newconsultation', [DashboardController::class, 'newconsultation'])

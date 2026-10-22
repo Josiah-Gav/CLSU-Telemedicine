@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Exceptions\Chis\ChisRequestException;
 use App\Exceptions\Chis\ChisUnavailableException;
 use App\Exceptions\Chis\InvalidChisPayloadException;
+use App\Models\ChisAuditLog;
 use App\Models\ConsultationSession;
 use App\Services\ChisClient;
 use App\Services\ChisEncounterPayload;
@@ -47,7 +48,8 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
     public function handle(ChisClient $chis): void
     {
         // Decide and build under the row lock; never hold it across HTTP.
-        $payload = DB::transaction(function (): ?array {
+        // Returns [payload, patient user id], or null when there is nothing to send.
+        $prepared = DB::transaction(function (): ?array {
             $session = ConsultationSession::whereKey($this->sessionId)->lockForUpdate()->first();
 
             if (! $session || $session->chis_sync_status !== 'pending') {
@@ -70,29 +72,46 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
 
             $session->forceFill(['chis_attempts' => $session->chis_attempts + 1])->save();
 
-            return $payload;
+            return [$payload, $session->request->patient_id];
         });
 
-        if ($payload === null) {
-            return;
+        if ($prepared === null) {
+            return; // No call made, so no audit row: the session status shows why.
         }
+
+        [$payload, $patientUserId] = $prepared;
+
+        // Exactly one audit row per real call; duration measured up to the moment it is written.
+        $start = hrtime(true);
+        $audit = fn (string $outcome, array $context) => ChisAuditLog::record('encounter_push', $outcome, 'sync_job', [
+            'patient_user_id' => $patientUserId,
+            'consultation_session_id' => $this->sessionId,
+            'clsu_id' => $payload['patient']['clsu_id'],
+            'duration_ms' => intdiv(hrtime(true) - $start, 1_000_000),
+            ...$context,
+        ]);
 
         try {
             $receipt = $chis->pushEncounter($payload);
         } catch (ChisRequestException $e) {
             // Permanent: record for a human, never retry.
-            $this->record('failed', 'http_'.$e->status.($e->chisCode ? ':'.$e->chisCode : ''));
+            $reason = 'http_'.$e->status.($e->chisCode ? ':'.$e->chisCode : '');
+            $audit('rejected', ['http_status' => $e->status, 'reason' => $reason]);
+            $this->record('failed', $reason);
 
             return;
         } catch (ChisUnavailableException $e) {
             // Transient: stay pending and let the queue retry.
+            $audit('unavailable', ['http_status' => $e->status, 'reason' => $e->reason]);
             $this->record('pending', $e->reason);
 
             throw $e;
         }
 
+        $reference = isset($receipt['chis_encounter_id']) ? (string) $receipt['chis_encounter_id'] : null;
+        $audit('success', ['chis_reference' => $reference]);
         $this->record('synced', null, [
-            'chis_reference' => isset($receipt['chis_encounter_id']) ? (string) $receipt['chis_encounter_id'] : null,
+            'chis_reference' => $reference,
             'chis_synced_at' => now(),
         ]);
     }

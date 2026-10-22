@@ -3,6 +3,7 @@
 use App\Exceptions\Chis\ChisUnavailableException;
 use App\Exceptions\Chis\InvalidChisPayloadException;
 use App\Jobs\SyncEncounterToChis;
+use App\Models\ChisAuditLog;
 use App\Models\Consultation;
 use App\Models\ConsultationSession;
 use App\Models\Message;
@@ -12,8 +13,10 @@ use App\Services\ChisEncounterPayload;
 use App\Services\ChisEncounterSync;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     Http::preventStrayRequests();
@@ -409,4 +412,68 @@ it('never re-sends a session skipped for no consent, even after the patient cons
     expect($session->refresh()->only(['chis_sync_status', 'chis_last_error']))
         ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_consent']);
     Queue::assertNotPushed(SyncEncounterToChis::class);
+});
+
+// --- audit log -----------------------------------------------------------------
+
+it('writes exactly one audit row per push, with outcome, status, reason, reference and duration', function ($response, string $outcome, ?int $status, ?string $reason, ?string $reference) {
+    Http::fake(['chis.test/*' => $response]);
+    $session = chisPending();
+
+    try {
+        runChisJob($session);
+    } catch (ChisUnavailableException) {
+        // transient: rethrown for the queue, still audited
+    }
+
+    $rows = ChisAuditLog::all();
+    expect($rows)->toHaveCount(1);
+    expect($rows->first()->only(['action', 'outcome', 'source', 'actor_user_id', 'consultation_session_id', 'patient_user_id', 'clsu_id', 'http_status', 'reason', 'chis_reference']))
+        ->toBe([
+            'action' => 'encounter_push', 'outcome' => $outcome, 'source' => 'sync_job', 'actor_user_id' => null,
+            'consultation_session_id' => $session->id, 'patient_user_id' => $session->request->patient_id, 'clsu_id' => '23-0001',
+            'http_status' => $status, 'reason' => $reason, 'chis_reference' => $reference,
+        ])
+        ->and($rows->first()->duration_ms)->toBeInt()
+        ->and($rows->first()->created_at)->not->toBeNull();
+})->with([
+    'success' => [fn () => chisReceiptResponse(201), 'success', null, null, 'CHIS-ENC-000042'],
+    '409' => [fn () => Http::response(['message' => 'x', 'code' => 'ENCOUNTER_CONFLICT'], 409), 'rejected', 409, 'http_409:ENCOUNTER_CONFLICT', null],
+    '503' => [fn () => Http::response(['message' => 'x', 'code' => 'UNAVAILABLE'], 503), 'unavailable', 503, 'http_503', null],
+    'connection error' => [fn () => fn () => throw new ConnectionException('cURL error 7'), 'unavailable', null, 'connection_failed', null],
+]);
+
+it('writes no audit row when no call is made', function (Closure $setup) {
+    Http::fake();
+    runChisJob($setup());
+
+    expect(ChisAuditLog::count())->toBe(0);
+    Http::assertNothingSent();
+})->with([
+    'skipped (consent withdrawn)' => [fn () => chisPending(consent: null)],
+    'invalid payload' => [fn () => chisPending(request: ['symptoms_desc' => [['name' => 'x', 'severity' => 'mild']]])],
+    'already synced' => [fn () => tap(chisScenario(), fn ($s) => $s->forceFill(['chis_sync_status' => 'synced'])->save())],
+]);
+
+it('still syncs when the audit write fails', function () {
+    Http::fake(['chis.test/*' => chisReceiptResponse(201)]);
+    $session = chisPending();
+    Schema::drop('chis_audit_logs');
+
+    runChisJob($session);
+
+    expect($session->refresh()->only(['chis_sync_status', 'chis_reference']))
+        ->toBe(['chis_sync_status' => 'synced', 'chis_reference' => 'CHIS-ENC-000042']);
+});
+
+it('stores no clinical text or token in the audit row', function () {
+    Http::fake(['chis.test/*' => chisReceiptResponse(201)]);
+    $session = chisPending();
+
+    runChisJob($session);
+
+    $stored = json_encode(DB::table('chis_audit_logs')->get());
+    foreach (['Tension headache', 'Mild intermittent', 'Rest and hydration', 'Return if it worsens', 'Headache', 'Dela Cruz', 'Juan', 'test-chis-token'] as $secret) {
+        expect($stored)->not->toContain($secret);
+    }
 });

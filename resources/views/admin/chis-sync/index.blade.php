@@ -46,19 +46,22 @@
                             <h3 class="text-lg font-semibold">Consultation summaries sent to CHIS</h3>
                             <p class="text-sm text-gray-500">Comprehensive Health Information System. Sync status only; no clinical details are shown here.</p>
                         </div>
-                        <p @class([
-                            'inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium',
-                            'bg-emerald-50 text-emerald-800' => $chisReachable,
-                            'bg-amber-50 text-amber-800' => ! $chisReachable,
-                        ])>
-                            @if($chisReachable)
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                CHIS reachable
-                            @else
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line><circle cx="12" cy="12" r="10"></circle></svg>
-                                CHIS not reachable
-                            @endif
-                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <x-button-secondary href="{{ route('admin.chis-audit.index') }}">Audit log</x-button-secondary>
+                            <p @class([
+                                'inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium',
+                                'bg-emerald-50 text-emerald-800' => $chisReachable,
+                                'bg-amber-50 text-amber-800' => ! $chisReachable,
+                            ])>
+                                @if($chisReachable)
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    CHIS reachable
+                                @else
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line><circle cx="12" cy="12" r="10"></circle></svg>
+                                    CHIS not reachable
+                                @endif
+                            </p>
+                        </div>
                     </div>
 
                     {{-- Summary counts double as the status filter. --}}
@@ -99,12 +102,15 @@
                                     @if($row['error'])
                                         <p class="mt-1 text-xs text-gray-700">{{ $row['errorText'] ?? $row['error'] }} @if($row['errorText'])<span class="font-mono text-gray-400">({{ $row['error'] }})</span>@endif</p>
                                     @endif
-                                    @if($row['retryable'])
-                                        <form method="POST" action="{{ route('admin.chis-sync.retry', $row['session']) }}" class="mt-2">
-                                            @csrf
-                                            <x-button-ghost type="submit">Retry</x-button-ghost>
-                                        </form>
-                                    @endif
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <x-button-ghost href="{{ route('admin.chis-audit.index', ['session' => $row['session']->id]) }}">History</x-button-ghost>
+                                        @if($row['retryable'])
+                                            <form method="POST" action="{{ route('admin.chis-sync.retry', $row['session']) }}">
+                                                @csrf
+                                                <x-button-ghost type="submit">Retry</x-button-ghost>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </article>
                             @endforeach
                         </div>
@@ -148,14 +154,15 @@
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-sm">
-                                                @if($row['retryable'])
-                                                    <form method="POST" action="{{ route('admin.chis-sync.retry', $row['session']) }}">
-                                                        @csrf
-                                                        <x-button-ghost type="submit">Retry</x-button-ghost>
-                                                    </form>
-                                                @else
-                                                    <span class="text-gray-400">&mdash;</span>
-                                                @endif
+                                                <div class="flex items-center gap-1">
+                                                    <x-button-ghost href="{{ route('admin.chis-audit.index', ['session' => $row['session']->id]) }}">History</x-button-ghost>
+                                                    @if($row['retryable'])
+                                                        <form method="POST" action="{{ route('admin.chis-sync.retry', $row['session']) }}">
+                                                            @csrf
+                                                            <x-button-ghost type="submit">Retry</x-button-ghost>
+                                                        </form>
+                                                    @endif
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
