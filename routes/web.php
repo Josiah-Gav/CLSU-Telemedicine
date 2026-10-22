@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ChisSyncController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\ConsultationController;
@@ -78,6 +79,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/users/{user}/resend-invitation', [UserManagementController::class, 'resendInvitation'])
         ->middleware('throttle:30,1')
         ->name('admin.users.resend_invitation');
+
+    // CHIS encounter sync status + Retry (admin-only, checked in the controller).
+    Route::get('/admin/chis-sync', [ChisSyncController::class, 'index'])
+        ->name('admin.chis-sync.index');
+    Route::post('/admin/chis-sync/{session}/retry', [ChisSyncController::class, 'retry'])
+        ->middleware('throttle:30,1')
+        ->name('admin.chis-sync.retry');
 
     // 2. Safe placement for your new consultation page
     Route::get('/newconsultation', [DashboardController::class, 'newconsultation'])

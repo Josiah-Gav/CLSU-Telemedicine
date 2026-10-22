@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    <p class="mt-4 text-sm text-slate-600">{{ __('You can withdraw consent at any time. Withdrawing stops future sharing, but summaries already sent remain in CHIS.') }}</p>
+    <p class="mt-4 text-sm text-slate-600">{{ __('Applies to consultations completed after you give consent; earlier ones are never sent. You can withdraw consent at any time. Withdrawing stops future sharing, but summaries already sent remain in CHIS.') }}</p>
 
     <div class="mt-5 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end">
         <div role="status" aria-live="polite">

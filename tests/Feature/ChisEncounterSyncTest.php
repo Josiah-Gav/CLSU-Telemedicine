@@ -109,7 +109,7 @@ it('builds the exact contract payload for a general consultation', function () {
             'diagnosis' => 'Tension headache', 'assessment' => 'Mild intermittent headache, no red flags.',
             'plan' => 'Rest and hydration.', 'recommendations' => 'Return if it worsens.',
         ],
-        'follow_up' => ['required' => false, 'date' => null],
+        'follow_up' => ['required' => null, 'date' => null],
         'prescription' => ['attached' => false, 'file_name' => null, 'mime_type' => null],
     ]);
 });
@@ -392,4 +392,21 @@ it('chis:health --patient reports not found and errors', function () {
         ->expectsOutputToContain('Patient 23-0001: error ChisUnavailableException (http_500)')->assertExitCode(1);
     $this->artisan('chis:health', ['--patient' => '23-0002'])
         ->expectsOutputToContain('Patient 23-0002: error ChisRequestException (HTTP 401, UNAUTHENTICATED)')->assertExitCode(1);
+});
+
+// --- consent is forward-only ---------------------------------------------------
+
+it('never re-sends a session skipped for no consent, even after the patient consents', function () {
+    Queue::fake();
+    $session = chisScenario(consent: null);
+    ChisEncounterSync::queue($session);
+    expect($session->refresh()->chis_sync_status)->toBe('skipped');
+
+    $session->request->patient->forceFill(['chis_consent_at' => now()])->save();
+    ConsultationSession::whereKey($session->id)->update(['updated_at' => now()->subHour()]);
+    $this->artisan('chis:sync-pending')->assertExitCode(0);
+
+    expect($session->refresh()->only(['chis_sync_status', 'chis_last_error']))
+        ->toBe(['chis_sync_status' => 'skipped', 'chis_last_error' => 'no_consent']);
+    Queue::assertNotPushed(SyncEncounterToChis::class);
 });

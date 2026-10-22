@@ -93,9 +93,14 @@ class ChisEncounterPayload
                 'plan' => self::text($session->plan),
                 'recommendations' => self::text($session->recommendations),
             ],
+            // Always "not recorded": Telemed v1 does not record follow-up intent
+            // at completion (follow_up_required defaults to false and nothing
+            // writes it or follow_up_date), so sending false would tell a CHIS
+            // clinician "no follow-up needed" even when one was booked. The
+            // contract (simulator commit 4828c37) defines null as "not recorded".
             'follow_up' => [
-                'required' => (bool) $session->follow_up_required,
-                'date' => $session->follow_up_date?->toDateString(),
+                'required' => null,
+                'date' => null,
             ],
             'prescription' => [
                 'attached' => $attached,

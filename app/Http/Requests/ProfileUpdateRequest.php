@@ -16,8 +16,9 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            // Same caps as registration, so the two forms agree.
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
             // Write-once: a user may set their CLSU ID only while it is empty.
             // Once set, 'exclude' drops the field from validated(), so even a
             // crafted request cannot change or blank it; only an admin can.
