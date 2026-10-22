@@ -278,7 +278,7 @@ done in controllers; only the two policies above are registered.
 
 | Term | Meaning |
 |---|---|
-| **Scheduler** | Three commands are registered in `routes/console.php`: `consultations:mark-missed-slots` (every minute), `consultations:expire-intake-sessions` (every minute), and `auth:clear-resets staff_invitations` (daily). **They only run if `schedule:run` or `schedule:work` is actually invoked.** Registration alone does not make them run — state this as a deployment requirement. |
+| **Scheduler** | Four commands are registered in `routes/console.php`: `consultations:mark-missed-slots` (every minute), `consultations:expire-intake-sessions` (every minute), `chis:sync-pending` (every 15 minutes, added 2026-10-22), and `auth:clear-resets staff_invitations` (daily). **They only run if `schedule:run` or `schedule:work` is actually invoked.** Registration alone does not make them run — state this as a deployment requirement. |
 | **Engine split** | Development and production run **MySQL/MariaDB**; feature tests run **in-memory SQLite** (`phpunit.xml`). Three enum-altering migrations return early on SQLite, so enum constraints enforced in production are never enforced in tests. |
 | **Proxy trust** | `bootstrap/app.php` trusts loopback proxies for `X-Forwarded-*` headers so the application generates `https://` URLs when served through a TLS tunnel. |
 
@@ -288,7 +288,9 @@ done in controllers; only the two policies above are registered.
 
 | Do not write | Because |
 |---|---|
-| "CHIS integration", "CHIS sync", "CHIS interoperability" | Not implemented. One static UI placeholder exists (`resources/views/consultations/messaging.blade.php:633`), with no backend of any kind. CHIS may be mentioned only under limitations / future enhancements. |
+| "integrated with the real/actual CHIS", "connected to CLSU's CHIS", "CHIS interoperability" (unqualified) | The integration is with a **simulated CHIS** (`clsu-chis-simulation`) built to a team-defined contract. Say "simulated CHIS". *(Replaces the former ban on the phrase "CHIS integration", superseded by the author on 2026-10-22; see `00-feature-inventory.md` Decisions applied #7.)* |
+| "HL7", "FHIR" as a description of the CHIS payload | The payload is plain JSON loosely modelled on FHIR Encounter/Patient. It is not HL7 FHIR. |
+| "CHIS Sync Status" card / "Not connected" placeholder | Removed. The Patient tab now shows the CHIS profile; "CHIS sync status" means `consultations.chis_sync_status` (§15). |
 | "real-time websocket", "socket connection", "push" | All messaging and presence are HTTP-polled. |
 | "`general` consultation type" (as a stored value) | The stored value is `initial`; `general` is a filter label only. |
 | "status `assigned`" as a workflow state | Dead enum value, never written. |
@@ -296,6 +298,28 @@ done in controllers; only the two policies above are registered.
 | "`preffered_consultation_type`" | Dropped; verified absent from the live MySQL schema. |
 | "policy layer" (as a description of the whole system) | Only two policies are registered; the rest is controller-level authorization. |
 | bare "consultation" where request vs session matters | See section 1. |
+
+---
+
+## 15. CHIS integration (simulated CHIS)
+
+*Added 2026-10-22. Every term refers to the integration with a **simulated** CHIS
+described in `features/chis-integration.md`.*
+
+| Term | Meaning |
+|---|---|
+| **CHIS** | Comprehensive Health Information System. In this paper always the **simulated** CHIS unless a sentence says otherwise. |
+| **CHIS simulator** | The separate application `clsu-chis-simulation` that implements the team-defined REST contract (`docs/API_CONTRACT.md` in that repository). It is not CLSU's CHIS. |
+| **Encounter (CHIS sense)** | CHIS's word for the record Telemed pushes: one per completed **consultation session**. Keyed by `telemed_encounter_id` = `consultations.id`. Do not use "encounter" for anything else in the paper; in Telemed's own vocabulary it is a *consultation session*. |
+| **CHIS sync status** | `consultations.chis_sync_status`: `pending` (queued or retrying), `synced`, `failed` (permanent, needs a human), `skipped` (not eligible, final), or NULL (not applicable). A plain string column, not a DB enum. |
+| **CHIS reference** | `consultations.chis_reference` — CHIS's `chis_encounter_id` for a synced session. |
+| **Consent (CHIS data sharing)** | `users.chis_consent_at`, set by a patient on the profile page. Forward-only: it covers sessions completed after it is given. `User::hasChisConsent()`. Distinct from any other notion of consent. |
+| **CLSU ID** | `users.clsu_id`, validated by `App\Rules\ClsuId`, unique across all users, write-once for patients. The key used to look a patient up in CHIS. |
+| **Identity check** | `ChisIdentity::matches()` — the CHIS record's first and last name must equal the Telemed patient's (normalised for case, accents, punctuation, spacing) before any CHIS data is shown. Names only; Telemed stores no birth date. |
+| **Audit log (CHIS)** | `chis_audit_logs` / `ChisAuditLog` — append-only record that CHIS data was sent or viewed (who, whom, when, outcome, source); never the data. Not an audit of user administration. |
+| **Audit source** | `chis_audit_logs.source`: `sync_job`, `health_command`, `consultation_view`, `api`. |
+| **API token / ability** | A Sanctum bearer token created by `php artisan telemed:api-token` for an active admin. Abilities: `encounters:read`, `encounters:sync`; no wildcard. Tokens expire (default 30 days). |
+| **Sweeper** | The scheduled command `chis:sync-pending`, which re-queues `pending` syncs idle for 10+ minutes. |
 
 ---
 

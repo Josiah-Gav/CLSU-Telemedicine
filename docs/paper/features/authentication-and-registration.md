@@ -141,7 +141,7 @@ Relevant members:
 | `role` | enum | `patient`, `nurse`, `physician`, `admin`; default `patient` |
 | `account_status` | enum | `inactive`, `active`, `suspended`; default `active` |
 | `online_status` | enum | `offline`, `online`; default `offline` |
-| `clsu_id` | string(50), nullable | |
+| `clsu_id` | string(50), nullable, **unique** | Unique index added by `2026_10_22_120000_add_unique_index_to_users_clsu_id.php` (several NULLs are allowed; the migration trims values, turns `''` into NULL, and aborts naming any duplicates). See `chis-integration.md`. |
 | `user_type` | enum → later nullable | `student`, `staff`, `faculty` |
 | `department`, `staff_position`, `specialization` | string(100), nullable | |
 | `contact_num` | string(20), nullable | |
@@ -169,7 +169,7 @@ string `id` with a nullable indexed `user_id`.
 | Field | Rules |
 |---|---|
 | `first_name`, `last_name` | required, string, max 100 |
-| `clsu_id` | **required**, string, max 50 |
+| `clsu_id` | **required**, plus `App\Rules\ClsuId::rules()`: string, max 50, matches `/^(\d{2}|\d{4})-\d{4,6}$/D` (e.g. `23-0001`, `26-000001`, `1996-0042`), and `Rule::unique('users','clsu_id')` with the message `ClsuId::TAKEN`. Surrounding whitespace is trimmed by Laravel's `TrimStrings` middleware before validation. |
 | `email` | required, string, lowercase, email, max 150, `unique:users`, and `regex:/^[a-zA-Z0-9._%+-]+@clsu2?\.edu\.ph$/i` |
 | `password` | required, confirmed, `Rules\Password::defaults()` |
 
@@ -185,8 +185,12 @@ new `password` confirmed and meeting defaults; errors go to the `updatePassword`
 error bag.
 
 **Profile update** (`ProfileUpdateRequest`): `first_name` and `last_name` required
-(max 255); `clsu_id`, `department`, `contact_num` nullable. **Email and role are
-not in the rule set**, so a user cannot change either through this form.
+(**max 100**, matching registration; previously 255); `department`, `contact_num`
+nullable. `clsu_id` is **write-once**: while the stored value is NULL the rule is
+`nullable` plus `ClsuId::rules()`; once set the rule is `exclude`, which drops the
+field from `validated()` so even a hand-crafted request cannot change or blank it
+(only an admin can, in the admin edit form). **Email and role are not in the rule
+set**, so a user cannot change either through this form.
 
 **Authorization** is entirely middleware-based here — `guest` on the pre-login
 routes, `auth` (plus `signed` and `throttle` on verification) afterwards. No
@@ -255,7 +259,7 @@ views, not inferred from the controllers.
 | `auth/reset-password.blade.php` | `route('password.store')` | hidden `token`, `email`, `password`, `password_confirmation` |
 | `auth/verify-email.blade.php` | `route('verification.send')` and `route('logout')` | resend button and a logout button |
 | `auth/confirm-password.blade.php` | `route('password.confirm')` | `password` |
-| `profile/edit.blade.php` | includes three partials | `account-overview`, `update-profile-information-form` (`route('profile.update')`), `update-password-form` (`route('password.update')`) |
+| `profile/edit.blade.php` | includes three partials, plus a fourth for patients | `account-overview`, `update-profile-information-form` (`route('profile.update')`; the CLSU ID is an input only while unset, otherwise a read-only box with "Contact the clinic administrator to correct your CLSU ID."), `update-password-form` (`route('password.update')`), and for `role === 'patient'` only `chis-consent` (see `chis-integration.md`) |
 
 Alpine is used only for the password-reveal toggle (`x-data` on the password
 inputs, via the `components/password-reveal.blade.php` component). There is no
@@ -265,13 +269,14 @@ client-side validation substituting for server rules.
 
 | File | Cases | Covers |
 |---|---|---|
-| `tests/Feature/Auth/RegistrationTest.php` | 3 | screen renders; users can register; **CLSU ID is required** |
+| `tests/Feature/Auth/RegistrationTest.php` | 3 | screen renders; users can register; **CLSU ID is required** (format, uniqueness and trimming are in `tests/Feature/ClsuIdTest.php`) |
 | `tests/Feature/Auth/AuthenticationTest.php` | 5 | screen renders; valid login; invalid password; **inactive users cannot authenticate**; logout |
 | `tests/Feature/Auth/EmailVerificationTest.php` | 6 | verification screen; email verified; invalid hash rejected; **admins verified immediately on creation**; **nurses and physicians not verified on creation**; clearing a staff verification is not silently undone on save |
 | `tests/Feature/Auth/PasswordResetTest.php` | 4 | link screen; link requested; reset screen; reset with a valid token |
 | `tests/Feature/Auth/PasswordUpdateTest.php` | 2 | password updated; correct current password required |
 | `tests/Feature/Auth/PasswordConfirmationTest.php` | 3 | screen; confirmation succeeds; invalid password rejected |
-| `tests/Feature/ProfileTest.php` | 4 | profile displayed; information updated; verification unchanged when email unchanged; **account-deletion route no longer exists** |
+| `tests/Feature/ProfileTest.php` | 5 | profile displayed; information updated; verification unchanged when email unchanged; **account-deletion route no longer exists**; **names are capped at 100 characters** |
+| `tests/Feature/ClsuIdTest.php` | 16 | CLSU ID format, uniqueness, trimming at registration; write-once on the profile (including crafted requests); admin store/update; the migration; the QA seeder |
 
 **Coverage gap:** no test asserts the CLSU email-domain regex (BR-1) directly. The
 registration suite covers the required CLSU ID but not the domain restriction.
@@ -297,7 +302,7 @@ registration suite covers the required CLSU ID but not the domain restriction.
 |---|---|
 | A-1 | **BR-1 is untested.** The CLSU email-domain restriction — arguably the most institution-specific rule in the feature — has no test asserting it. A regression would pass CI. |
 | A-2 | **Profile routes are not `verified`-gated.** `/profile` sits in an `auth`-only group in `routes/web.php`, unlike the main application group. An authenticated but unverified user can reach and edit their profile. |
-| A-3 | **`clsu_id` is required at registration but nullable in the schema and optional in `ProfileUpdateRequest`.** The three layers disagree; only registration enforces presence. |
+| A-3 | **(Changed 2026-10-22.)** `clsu_id` was formerly required at registration but optional and freely editable on the profile, with no format or uniqueness rule. It now has one shared format rule (`ClsuId`), a unique index, and is write-once on the profile. The schema column is still nullable (existing accounts such as the seeded admin have none); only registration requires it. Uniqueness spans all roles. See `chis-integration.md` limitations CH-14 to CH-16, CH-19. |
 | A-4 | **Account deletion has been removed.** `ProfileTest` asserts the route no longer exists. There is no self-service or administrative delete — accounts are suspended, not deleted. |
 | A-5 | **Email uniqueness is the only database-enforced rule here.** Everything else in section 11 is application-level and bypassable by a direct database write. |
 | A-6 | **`user_type` is inconsistent across creation paths.** Only two application paths write it: `RegisteredUserController::store` writes `null`, and `Admin\UserManagementController::store` writes `'staff'` unconditionally. The `student` and `faculty` enum values are written by nothing in `app/` — the only place they appear is `database/factories/UserFactory.php`, which generates test data. The column's enum therefore describes an intent the application no longer implements. |

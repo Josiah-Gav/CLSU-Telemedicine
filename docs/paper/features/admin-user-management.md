@@ -125,7 +125,7 @@ for `User` (`AppServiceProvider::boot` registers only `ConsultationPolicy` and
 | `first_name`, `last_name` | required, string, max 100 |
 | `email` | required, email, max 150, `unique:users,email` |
 | `role` | required, `in:patient,nurse,physician,admin` |
-| `clsu_id` | nullable, max 50 |
+| `clsu_id` | store: **required** + `ClsuId::rules()` (format `/^(\d{2}|\d{4})-\d{4,6}$/D`, max 50, unique). update: `sometimes`, `nullable` + `ClsuId::rules($user)` (unique, ignoring the edited user's own row). Admin is the only way to change an existing ID; clearing it is possible because older accounts have none. Duplicate message: `ClsuId::TAKEN`. |
 | `department` | nullable, max 100 |
 | `contact_num` | nullable, max 20 |
 | `staff_position`, `specialization` | nullable, max 100 |
@@ -231,16 +231,19 @@ carries inputs for `first_name`, `last_name`, `email`, a `role` select, `clsu_id
 input exists in the markup for any role** — meaning the direct path's `password`
 rule cannot currently be satisfied through this form (see gap AU-1).
 
-**`resources/views/admin/users/edit.blade.php`** (76 lines) — posts to
+**`resources/views/admin/users/edit.blade.php`** (86 lines) — posts to
 `route('admin.users.update', $user)`. Carries `first_name`, `last_name`, `email`,
-a `role` select, `department`, `staff_position`, `specialization`, and the
-conditional status control: `@if($user->account_status === 'inactive')` renders
+a `role` select, **`clsu_id` (added 2026-10-22, with the format hint
+`ClsuId::HINT`)**, `department`, `staff_position`, `specialization`, and the
+conditional status control: `@if($user->awaitsStaffActivation())` renders
 non-editable text, `@else` renders a `select name="account_status"`. The view and
-the controller's conditional validation rule agree.
+the controller's conditional validation rule agree. *(The earlier text of this
+paragraph said the view tested `account_status === 'inactive'`; the source uses
+`User::awaitsStaffActivation()`.)*
 
-Note the edit form omits `clsu_id` and `contact_num`, which the create form
-includes and the update rules do not mention — so neither can be changed after
-creation through this UI.
+Note the edit form still omits `contact_num`, which the create form includes and
+the update rules do not mention — so it cannot be changed after creation through
+this UI. The create form (83 lines) now shows the same CLSU ID format hint.
 
 No Alpine or JavaScript governs this feature; the views are plain server-rendered
 forms.
@@ -279,9 +282,9 @@ The remaining invitation-focused files are covered in
 |---|---|
 | AU-1 | **The direct-creation path is unreachable through the UI.** `store()` requires `password` (required, min 8, confirmed) for `patient` and `admin` roles, but `admin/users/create.blade.php` contains no password input. Patients and admins can therefore only be created programmatically or by a hand-built request — the tests exercise this path directly. The form works for the two invited roles it was redesigned around. |
 | AU-2 | **Accounts cannot be deleted.** There is no destroy route, controller method, or UI control, and `ProfileTest` confirms self-deletion was removed too. Deactivation is by `suspended` status only. This has a data-retention consequence worth stating in the manuscript. |
-| AU-3 | **`clsu_id` and `contact_num` are create-only.** Both appear on the create form but on neither the edit form nor the update rule set, so neither can be corrected after creation through the interface. |
+| AU-3 | **(Narrowed 2026-10-22.)** `contact_num` is still create-only: it appears on the create form but on neither the edit form nor the update rule set. `clsu_id` was create-only too, but is now editable by an admin (the only role that can change an existing CLSU ID, since patients may set theirs only once). A user with a legacy invalid-format `clsu_id` cannot be saved in the edit form until the ID is corrected, because the form always submits it (see `chis-integration.md` CH-15). |
 | AU-4 | **`user_type` is written as `'staff'` for every admin-created account**, including patients and admins, so the column does not distinguish what it was designed to distinguish. See also gap A-6 in `authentication-and-registration.md`. |
 | AU-5 | **`department` silently defaults to `'General'`.** A blank field is stored as a real value rather than null, so "General" cannot be distinguished from a deliberate choice. |
 | AU-6 | **Authorization is duplicated, not centralized.** `authorizeAdmin()` is a private method repeated in both this controller and `DashboardController`. Adding an admin endpoint elsewhere requires remembering to repeat it; no policy or middleware enforces it. |
 | AU-7 | **`INVITED_ROLES` exists twice.** Duplicated between `User::INVITED_ROLES` and this controller's private constant, kept in step only by a comment. |
-| AU-8 | **No audit log.** Nothing records which admin created, edited, suspended, or reinstated an account, or when. The only temporal evidence is `users.created_at` / `updated_at`. |
+| AU-8 | **No audit log for account administration.** Nothing records which admin created, edited, suspended, or reinstated an account, or when. The only temporal evidence is `users.created_at` / `updated_at`. *(Added 2026-10-22: the separate `chis_audit_logs` table audits calls to the simulated CHIS only — see `chis-integration.md` — and does not cover user administration.)* |
