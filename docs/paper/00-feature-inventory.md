@@ -356,9 +356,14 @@ CHIS rows and `features/chis-integration.md`: `app/Services/Chis*.php`,
 migrations, `config/services.php`, `config/sanctum.php`, `routes/web.php`,
 `routes/api.php`, `routes/console.php`, `bootstrap/app.php`, the Patient-tab,
 profile-consent and admin CHIS views, and the ten CHIS test files listed in
-`chis-integration.md` §16. The simulator repository (`clsu-chis-simulation`) and its
-`docs/API_CONTRACT.md` were **not** opened for the documentation; its behaviour is
-described only as far as Telemed's code and tests evidence it.
+`chis-integration.md` §16. Simulator behaviour is cited from the simulator repository
+(`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`) only where `features/chis-integration.md` names a file there
+(`app/Http/Controllers/EncounterController.php`, `app/Support/CanonicalJson.php`,
+`app/Http/Middleware/EnsureChisToken.php`, `config/chis.php`,
+`tests/Feature/EncounterSubmissionTest.php`); the simulator's own suite has 60
+tests and passes. Its `docs/API_CONTRACT.md` was **not** read, and any other
+simulator behaviour is described only as far as Telemed's code and tests evidence
+it.
 
 **Not yet read in full** (deferred to per-feature documentation, where the detail is
 actually needed): the bodies of the largest controllers — `PhysicianController`

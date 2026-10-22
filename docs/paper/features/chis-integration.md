@@ -44,9 +44,12 @@ back, under the Data Privacy Act (RA 10173) constraints the code encodes:
 **What the simulator is, and what can be evidenced about it.** The simulator
 lives in a separate repository (`clsu-chis-simulation`) with its own API
 contract document (`docs/API_CONTRACT.md` in that repository). This document was
-written from Telemed's repository only; the simulator's code and contract were
-**not opened for it**. Everything said below about CHIS's behaviour is limited to
-what Telemed's own code and tests show it expects: the endpoints `ChisClient`
+written mainly from Telemed's repository. **Simulator behaviour is cited from the
+simulator repository** (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`) only where a specific file is named below (the
+idempotency rule, the token check, and the simulator's own suite of 60 tests, all
+verified by the author and read for this file). Its contract document
+`docs/API_CONTRACT.md` was not read. Everything else said below about CHIS's
+behaviour is limited to what Telemed's own code and tests show it expects: the endpoints `ChisClient`
 calls (`GET /health`, `GET /patients/{clsu_id}`, `POST /encounters`), the status
 codes and error `code` values it classifies (`PATIENT_NOT_FOUND`,
 `ENCOUNTER_CONFLICT`, `VALIDATION_FAILED`, `UNAUTHENTICATED`), and the `Http::fake`
@@ -306,7 +309,15 @@ receipt on 201 and 200"; manual runs in phases 4A and 6 observed the same
 reference on resend). A different body for the same id is expected to be rejected
 with 409 `ENCOUNTER_CONFLICT`, which Telemed classifies as permanent
 (`ChisEncounterSyncTest` "records a permanent rejection as failed with its code").
-Telemed cannot show how CHIS decides "identical"; that is the simulator's logic.
+How the simulator decides "identical" is verified in its repository (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`):
+`app/Http/Controllers/EncounterController.php` (`replay()`) compares a SHA-256 hash
+of the canonical JSON body (`app/Support/CanonicalJson.php`, object keys sorted
+recursively, list order kept, so key order does not matter) with `hash_equals`. A
+matching hash returns the stored receipt (200); a different hash returns 409
+`ENCOUNTER_CONFLICT` ("Summaries are immutable; the original is kept") and the
+original record is kept. Its test
+`tests/Feature/EncounterSubmissionTest.php::a_changed_resend_is_a_conflict_and_the_original_is_kept`
+asserts 201, then 409, then that the original diagnosis is still stored.
 
 **Retry schedule:** `$tries = 5`, `backoff() = [60, 300, 900, 3600]` seconds.
 `chis:sync-pending` re-dispatches `pending` rows whose `updated_at` is older than
@@ -392,19 +403,21 @@ Tests run on in-memory SQLite (see glossary §13).
 ## 18. Limitations / Gaps
 
 Each item below was checked against the source for this document. Items marked
-**(corrected)** or **(narrowed)** differ from the wording first proposed.
+**(corrected)** differ from the wording first proposed. Items marked **(verified)**
+are simulator behaviour confirmed in the simulator repository at the commit cited
+in the item.
 
 | # | Limitation |
 |---|---|
-| CH-1 | **CHIS is simulated.** The contract is team-defined; the real CHIS may differ. The simulator's code and contract document were not opened for this file. |
+| CH-1 | **CHIS is simulated.** The contract is team-defined; the real CHIS may differ. Simulator behaviour in this file is cited from `josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`; the simulator's own suite has 60 tests (254 assertions) and passes. |
 | CH-2 | **Identity check is by first and last name only.** Telemed stores no birth date (no such column in `users`), so two people with the same name and a mistyped CLSU ID would not be caught (`ChisIdentity::matches`). |
 | CH-3 | **Follow-up intent is not recorded at completion.** `consultations.follow_up_required` defaults to false and no code writes it or `follow_up_date`, so the payload always sends `follow_up {required: null, date: null}` ("not recorded"). |
 | CH-4 | **Custom symptom names are not length-validated at intake** (`ConsultationController::store` validates `symptoms_payload` only as a string plus per-entry severity/date). Entries over 255 characters are silently dropped from the payload (`ChisEncounterPayload::symptoms`). |
 | CH-5 | **Consent is forward-only.** A session completed before consent is `skipped` permanently; Retry, the API and the sweeper all refuse it. |
-| CH-6 | **(narrowed)** Summaries are meant to be immutable in CHIS: Telemed treats a 409 `ENCOUNTER_CONFLICT` as a permanent `failed` and `describeError` says "CHIS already holds different content". A resend after the payload format changes can therefore be rejected. Telemed's code shows how it *classifies* a 409; whether and when the simulator returns one is simulator logic that was not opened. (During development, the first resend after the `follow_up` change returned 200, not 409.) |
+| CH-6 | **(verified)** Summaries are immutable in CHIS: a resend of the same `telemed_encounter_id` with **different content** is rejected with 409 `ENCOUNTER_CONFLICT` and the original record is kept. Simulator: `app/Http/Controllers/EncounterController.php` (`replay()` compares a hash of the canonical JSON body with `hash_equals`) and `app/Support/CanonicalJson.php`; test `tests/Feature/EncounterSubmissionTest.php::a_changed_resend_is_a_conflict_and_the_original_is_kept` (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). Telemed treats the 409 as permanent: the session becomes `failed` (`http_409:ENCOUNTER_CONFLICT`) and `describeError` says "CHIS already holds different content", so a resend after the payload format changes is rejected. The 200 seen when the format changed during development (phase 4C) occurred, per the author, because the simulator database had been reset and so already held the new format; that reset is not visible in code. |
 | CH-7 | **Audit log is append-only at the model level only.** Query-builder `update()`/`delete()` and raw SQL bypass the model events (`ChisAuditLog` docblock). Database permissions would be needed for real immutability. |
 | CH-8 | **Lookups via `chis:health --patient` have no actor** — a command-line run has no authenticated user (`actor_user_id` is null; source `health_command`). |
-| CH-9 | **(narrowed)** Telemed sends one shared static bearer token (`services.chis.token`) for every call. Whether CHIS offers per-client scopes could not be evidenced from Telemed's repository. |
+| CH-9 | **(verified)** One shared static bearer token, on both sides. Telemed sends `services.chis.token` on every call (`ChisClient::send`). The simulator authenticates with a single shared token compared with `hash_equals` — no per-client tokens and no scopes — and fails closed with a 500 if the token is unset: `app/Http/Middleware/EnsureChisToken.php`, `config/chis.php` (`api_token`, "the single shared bearer token Telemed authenticates with") (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). |
 | CH-10 | **Telemed API tokens are admin-only** (`telemed:api-token` refuses other roles; `authorizeToken` re-checks), and the API deliberately exposes sync status only — no names, CLSU IDs or clinical data. |
 | CH-11 | **No patient self-view of their CHIS record and no nurse access** (`ChisProfileController::show` aborts 403 for any non-assigned-physician). |
 | CH-12 | **No retention or pruning policy** for `chis_audit_logs`; no command or schedule removes rows. |
@@ -416,7 +429,11 @@ Each item below was checked against the source for this document. Items marked
 | CH-18 | **Re-syncing a synced session through the API while CHIS is down** sets it to `pending` (the API claims `pending` before sending) and it stays `pending` until a later attempt or the sweeper succeeds. |
 | CH-19 | **CLSU ID format validation is deliberately loose** (`^(\d{2}|\d{4})-\d{4,6}$`, no cross-check with `user_type`): the registrar's exact digit counts were not confirmed (`ClsuId` docblock). |
 
-**Gaps in this document.** The simulator repository and its API contract were not
-opened (§2). Test counts are `it()`/`test()` definitions, not the executed-case
-total. The `.docx` copies of the other feature files predate this feature (see the
+**Gaps in this document.** Simulator behaviour is cited from the simulator
+repository at `josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`, and only for the items that name a file there (CH-1, CH-6,
+CH-9 and the idempotency rule in §13); its API contract document
+(`docs/API_CONTRACT.md`) was not read, and any other statement about CHIS is
+limited to what Telemed's code and tests expect (§2). The simulator's suite has 60
+tests. Telemed test counts here are `it()`/`test()` definitions, not the
+executed-case total. The `.docx` copies of the other feature files predate this feature (see the
 phase summary); there is no `chis-integration.docx`.
