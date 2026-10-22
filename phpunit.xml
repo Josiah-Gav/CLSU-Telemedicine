@@ -35,5 +35,8 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="CONSULTATION_INTAKE_SCHEDULE_END_GRACE" value="15"/>
         <env name="CONSULTATION_INTAKE_MAX_OVERTIME" value="120"/>
+        <!-- A fake host, so no test can ever reach a real CHIS. -->
+        <env name="CHIS_BASE_URL" value="http://chis.test/api/v1"/>
+        <env name="CHIS_TOKEN" value="test-chis-token"/>
     </php>
 </phpunit>
