@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ChisAuditController;
 use App\Http\Controllers\Admin\ChisSyncController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\ChisProfileController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\ConsultationMessageController;
 use App\Http\Controllers\ConsultationVideoController;
@@ -225,6 +226,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('consultations.messaging.read');
     Route::post('/consultation-sessions/{session}/clinical-details', [ConsultationMessageController::class, 'updateClinicalDetails'])
         ->name('consultations.messaging.clinical_details.update');
+    // Lazy-loaded CHIS medical profile for the assigned physician (never fetched during page render).
+    Route::get('/consultation-sessions/{session}/chis-profile', [ChisProfileController::class, 'show'])
+        ->middleware('throttle:30,1')
+        ->name('consultations.chis_profile.show');
     Route::post('/consultation-sessions/{session}/complete', [ConsultationMessageController::class, 'complete'])
         ->name('consultations.messaging.complete');
     Route::get('/consultation-sessions/unread-counts', [ConsultationMessageController::class, 'unreadCounts'])

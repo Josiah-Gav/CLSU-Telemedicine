@@ -124,7 +124,7 @@
                         </button>
                         <button
                             type="button"
-                            @click="activeTab = 'patient'"
+                            @click="activeTab = 'patient'; loadChisProfile()"
                             :aria-pressed="activeTab === 'patient'"
                             :class="activeTab === 'patient' ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100'"
                             class="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2"
@@ -552,96 +552,97 @@
                 </div>
 
                 <div x-show="activeTab === 'patient'" x-cloak class="bg-brand-muted px-3 py-4 sm:px-6 sm:py-5">
-                    {{-- Placeholder only: no Hospital Information System integration exists
-                         yet. Every value below is a static "No Data" stand-in so the layout
-                         is ready for when that feed is wired up — nothing here is fetched,
-                         stored, or backed by a route. --}}
-                    <div class="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                        </svg>
-                        <span><span class="font-semibold">Not connected yet.</span> This tab is reserved for records pulled from the Hospital Information System (HIS) integration. Fields will populate automatically once that connection is built &mdash; for now they show as placeholders.</span>
-                    </div>
+                    @if($isAssignedPhysician)
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">CHIS medical record</h4>
+                                <x-button-secondary size="sm" @click="loadChisProfile(true)" x-bind:disabled="chisLoading">Refresh</x-button-secondary>
+                            </div>
+                            <div role="status" aria-live="polite" class="mt-3">
+                                <p x-show="chisLoading" class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">Loading the CHIS record&hellip;</p>
+                                <p x-show="!chisLoading && chis.state === 'no_consent'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">The patient has not consented to sharing with CHIS.</p>
+                                <p x-show="!chisLoading && chis.state === 'no_clsu_id'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">The patient has no CLSU ID on file, so no CHIS record can be looked up.</p>
+                                <p x-show="!chisLoading && chis.state === 'not_found'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">No CHIS record for CLSU ID <span class="font-mono" x-text="chis.clsuId"></span>.</p>
+                                <p x-show="!chisLoading && chis.state === 'identity_mismatch'" x-cloak class="rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">The CHIS record for this CLSU ID does not match this patient's name &mdash; not displayed. Ask an administrator to verify the CLSU ID.</p>
+                                <p x-show="!chisLoading && (chis.state === 'unavailable' || chis.state === 'error')" x-cloak class="rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">CHIS could not be reached &mdash; try Refresh.</p>
+                            </div>
 
-                    <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Vitals &amp; Identifiers</h4>
-                            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">Blood Type</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
+                            <div x-show="!chisLoading && chis.state === 'ok'" x-cloak>
+                                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+                                    <div><dt class="text-xs font-medium text-slate-500">Blood type</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chis.profile.blood_type || 'Not recorded'"></dd></div>
+                                    <div><dt class="text-xs font-medium text-slate-500">Sex</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chis.profile.sex || 'Not recorded'"></dd></div>
+                                    <div><dt class="text-xs font-medium text-slate-500">Birth date</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chisDate(chis.profile.birth_date)"></dd></div>
+                                </dl>
+                                <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Allergies</h4>
+                                <p x-show="!(chis.profile.medical_profile.allergies || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
+                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.allergies || []).length">
+                                    <template x-for="(item, i) in (chis.profile.medical_profile.allergies || [])" :key="i">
+                                        <li class="rounded-xl px-3 py-2.5 text-sm" :class="String(item.severity).toLowerCase() === 'severe' ? 'border-l-4 border-amber-600 bg-amber-50 font-semibold text-amber-900' : 'bg-slate-50 text-slate-700'">
+                                            <span x-text="item.substance"></span>
+                                            <span x-show="item.reaction" class="font-normal" x-text="' — ' + item.reaction"></span>
+                                            <span x-show="item.severity" class="ml-1 inline-flex rounded-full bg-white px-2 py-0.5 text-xs font-semibold" x-text="String(item.severity).toLowerCase() === 'severe' ? 'Severe' : item.severity"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Chronic conditions</h4>
+                                <p x-show="!(chis.profile.medical_profile.chronic_conditions || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
+                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.chronic_conditions || []).length">
+                                    <template x-for="(item, i) in (chis.profile.medical_profile.chronic_conditions || [])" :key="i">
+                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.name"></span><span x-show="item.diagnosed_on" x-text="' · since ' + chisDate(item.diagnosed_on)"></span><span x-show="item.status" x-text="' · ' + item.status"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current medications</h4>
+                                <p x-show="!(chis.profile.medical_profile.current_medications || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
+                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.current_medications || []).length">
+                                    <template x-for="(item, i) in (chis.profile.medical_profile.current_medications || [])" :key="i">
+                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.name"></span><span x-show="item.dose" x-text="' · ' + item.dose"></span><span x-show="item.frequency" x-text="' · ' + item.frequency"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Immunizations</h4>
+                                <p x-show="!(chis.profile.medical_profile.immunizations || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
+                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.immunizations || []).length">
+                                    <template x-for="(item, i) in (chis.profile.medical_profile.immunizations || [])" :key="i">
+                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.vaccine"></span><span x-show="item.dose" x-text="' · dose ' + item.dose"></span><span x-show="item.date_administered" x-text="' · ' + chisDate(item.date_administered)"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Family history</h4>
+                                <p x-show="!(chis.profile.medical_profile.family_history || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
+                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.family_history || []).length">
+                                    <template x-for="(item, i) in (chis.profile.medical_profile.family_history || [])" :key="i">
+                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.relation"></span><span x-text="': ' + item.condition"></span></li>
+                                    </template>
+                                </ul>
+                            </div>
                                 </div>
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">Height</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">Weight</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">BMI</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                            </dl>
-                        </div>
+                                <p class="mt-4 text-xs text-slate-500">Last updated in CHIS: <span x-text="chisDate(chis.profile.record_updated_at)"></span></p>
+                            </div>
 
+                            <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">Viewing this record is logged.</p>
+                        </div>
+                    @else
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emergency Contact</h4>
-                            <dl class="mt-4 grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">Name</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-medium text-slate-500">Relationship</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <dt class="text-xs font-medium text-slate-500">Contact Number</dt>
-                                    <dd class="mt-1 text-sm font-semibold text-slate-400">No Data</dd>
-                                </div>
-                            </dl>
+                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Your CHIS medical record</h4>
+                            <p class="mt-3 text-sm text-slate-700">Your CHIS medical record is visible to your assigned physician only.</p>
+                            <p class="mt-2 text-sm text-slate-600">
+                                @if(optional($consultationRequest->patient)->hasChisConsent())
+                                    Sharing with CHIS: <span class="font-semibold">on</span> (consent given {{ $consultationRequest->patient->chis_consent_at->timezone(config('app.timezone'))->format('F j, Y') }}).
+                                @else
+                                    Sharing with CHIS: <span class="font-semibold">off</span>. Your physician will not see a CHIS record.
+                                @endif
+                                <a href="{{ route('profile.edit') }}#chis-consent-heading" class="font-semibold text-brand-green hover:underline">Manage consent</a>
+                            </p>
                         </div>
-                    </div>
-
-                    <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Known Allergies</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Chronic Illnesses / Conditions</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current Medications</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Past Injuries / Surgeries</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Immunization History</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Family Medical History</h4>
-                            <p class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-400">No Data</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                        <div class="flex items-center justify-between gap-3">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">CHIS Sync Status</h4>
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                <span class="inline-block h-2 w-2 rounded-full bg-slate-400" aria-hidden="true"></span>
-                                Not connected
-                            </span>
-                        </div>
-                        <p class="mt-2 text-sm text-slate-400">Last synced: No Data</p>
-                    </div>
+                    @endif
                 </div>
 
                 <div x-show="activeTab === 'assessment'" x-cloak class="bg-brand-muted px-3 py-4 sm:px-6 sm:py-5">
@@ -1024,6 +1025,36 @@
                 // Only affects which buttons render. The server re-checks the assigned
                 // physician on every start/end request, so this is never load-bearing.
                 isAssignedPhysician: @js($isAssignedPhysician),
+                // CHIS medical profile: fetched lazily the first time the Patient tab is
+                // opened (and on Refresh), never during page render. Rendered with
+                // x-text only: CHIS data is external input. Authorization is the server's.
+                chisProfileUrl: @js($isAssignedPhysician ? route('consultations.chis_profile.show', $session) : null),
+                chis: { state: 'idle', profile: null, clsuId: null },
+                chisLoading: false,
+                chisLoaded: false,
+                async loadChisProfile(force = false) {
+                    if (!this.chisProfileUrl || this.chisLoading || (this.chisLoaded && !force)) {
+                        return;
+                    }
+                    this.chisLoading = true;
+                    try {
+                        const response = await fetch(this.chisProfileUrl, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                        const data = response.ok ? await response.json() : null;
+                        this.chis = data && data.state
+                            ? { state: data.state, profile: data.profile || null, clsuId: data.clsu_id || null }
+                            : { state: 'error', profile: null, clsuId: null };
+                    } catch (e) {
+                        this.chis = { state: 'error', profile: null, clsuId: null };
+                    } finally {
+                        this.chisLoading = false;
+                        this.chisLoaded = true;
+                    }
+                },
+                chisDate(value) {
+                    if (!value) { return 'Not recorded'; }
+                    const d = new Date(value);
+                    return isNaN(d) ? String(value) : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                },
                 videoStartUrl: '{{ route('consultations.video.start', $session) }}',
                 videoJoinUrl: '{{ route('consultations.video.join', $session) }}',
                 videoEndUrl: '{{ route('consultations.video.end', $session) }}',

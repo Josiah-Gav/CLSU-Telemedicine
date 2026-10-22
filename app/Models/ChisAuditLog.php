@@ -16,7 +16,7 @@ use Throwable;
  * Written only through record(), by the callers (they know the actor, session
  * and source; ChisClient does not).
  *
- * ponytail: append-only is enforced on the model only; query-builder
+ * Limitation: append-only is enforced on the model only; query-builder
  * update()/delete() and raw SQL bypass model events. Real immutability needs
  * DB permissions (no UPDATE/DELETE grant on this table) if it ever matters.
  */
@@ -29,7 +29,7 @@ class ChisAuditLog extends Model
         'patient_lookup' => 'Patient record viewed',
     ];
 
-    public const OUTCOMES = ['success', 'not_found', 'rejected', 'unavailable'];
+    public const OUTCOMES = ['success', 'not_found', 'rejected', 'unavailable', 'identity_mismatch'];
 
     /** The only context record() accepts; anything else is dropped. */
     private const CONTEXT_KEYS = [
@@ -51,9 +51,11 @@ class ChisAuditLog extends Model
 
     /**
      * Never throws: a failed audit write must not break or change the CHIS
-     * flow. Only the exception class is logged.
+     * flow. Only the exception class is logged. Returns whether the row was
+     * written, so a caller that must fail closed (viewing a medical record:
+     * "no audit, no access") can check it; pushes ignore it.
      */
-    public static function record(string $action, string $outcome, string $source, array $context = []): void
+    public static function record(string $action, string $outcome, string $source, array $context = []): bool
     {
         try {
             static::create([
@@ -62,8 +64,12 @@ class ChisAuditLog extends Model
                 'source' => $source,
                 ...Arr::only($context, self::CONTEXT_KEYS),
             ]);
+
+            return true;
         } catch (Throwable $e) {
             Log::warning('CHIS audit log write failed.', ['exception' => $e::class]);
+
+            return false;
         }
     }
 

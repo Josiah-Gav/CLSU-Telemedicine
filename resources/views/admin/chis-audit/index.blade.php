@@ -12,6 +12,7 @@
             'not_found' => ['label' => 'Not found', 'class' => 'bg-slate-100 text-slate-700'],
             'rejected' => ['label' => 'Rejected', 'class' => 'bg-amber-50 text-amber-800'],
             'unavailable' => ['label' => 'Unavailable', 'class' => 'bg-gray-100 text-gray-600'],
+            'identity_mismatch' => ['label' => 'Identity mismatch', 'class' => 'bg-amber-50 text-amber-800'],
         ];
         $sources = ['sync_job' => 'Sync job', 'health_command' => 'Health command', 'consultation_view' => 'Consultation view'];
         $rows = $logs->map(fn ($log) => [

@@ -98,10 +98,10 @@ it('URL-encodes the clsu_id and sends the bearer token and Accept header', funct
 
 // --- pushEncounter -------------------------------------------------------------
 
-it('returns the receipt on 201 and 200', function (int $status) {
+it('returns the status and receipt on 201 and 200', function (int $status) {
     Http::fake(['chis.test/*' => Http::response(['data' => chisReceipt()], $status)]);
 
-    expect(app(ChisClient::class)->pushEncounter(['telemed_encounter_id' => 'TM-1']))->toBe(chisReceipt());
+    expect(app(ChisClient::class)->pushEncounter(['telemed_encounter_id' => 'TM-1']))->toBe(['receipt' => chisReceipt(), 'status' => $status]);
 
     Http::assertSent(fn (Request $r) => $r->url() === 'http://chis.test/api/v1/encounters'
         && $r->method() === 'POST'

@@ -46,6 +46,7 @@ class ChisEncounterSync
         return match (true) {
             $code === 'no_consent' => 'Patient has not consented',
             $code === 'no_clsu_id' => 'Patient has no CLSU ID',
+            $code === 'identity_mismatch' => 'CHIS record name does not match the Telemed patient',
             $code === 'connection_failed' => 'CHIS could not be reached',
             $code === 'not_configured' => 'CHIS is not configured in Telemed',
             $code === 'invalid_response' => 'CHIS sent an unreadable response',

@@ -65,14 +65,19 @@ class ChisClient
     }
 
     /**
-     * Push one encounter; returns the CHIS receipt (201 new, 200 identical resend).
+     * Push one encounter; returns the HTTP status (201 new, 200 identical
+     * resend) and the CHIS receipt.
+     *
+     * @return array{status: int, receipt: array}
      *
      * @throws ChisUnavailableException
      * @throws ChisRequestException
      */
     public function pushEncounter(array $payload): array
     {
-        return $this->data('pushEncounter', $this->send('pushEncounter', fn (PendingRequest $http) => $http->post('/encounters', $payload)));
+        $response = $this->send('pushEncounter', fn (PendingRequest $http) => $http->post('/encounters', $payload));
+
+        return ['receipt' => $this->data('pushEncounter', $response), 'status' => $response->status()];
     }
 
     /**

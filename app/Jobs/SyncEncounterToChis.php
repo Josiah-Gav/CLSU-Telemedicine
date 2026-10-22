@@ -92,7 +92,7 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
         ]);
 
         try {
-            $receipt = $chis->pushEncounter($payload);
+            $result = $chis->pushEncounter($payload);
         } catch (ChisRequestException $e) {
             // Permanent: record for a human, never retry.
             $reason = 'http_'.$e->status.($e->chisCode ? ':'.$e->chisCode : '');
@@ -108,8 +108,8 @@ class SyncEncounterToChis implements ShouldBeUnique, ShouldQueue
             throw $e;
         }
 
-        $reference = isset($receipt['chis_encounter_id']) ? (string) $receipt['chis_encounter_id'] : null;
-        $audit('success', ['chis_reference' => $reference]);
+        $reference = isset($result['receipt']['chis_encounter_id']) ? (string) $result['receipt']['chis_encounter_id'] : null;
+        $audit('success', ['chis_reference' => $reference, 'http_status' => $result['status']]);
         $this->record('synced', null, [
             'chis_reference' => $reference,
             'chis_synced_at' => now(),

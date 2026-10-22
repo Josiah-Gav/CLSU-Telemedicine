@@ -437,7 +437,8 @@ it('writes exactly one audit row per push, with outcome, status, reason, referen
         ->and($rows->first()->duration_ms)->toBeInt()
         ->and($rows->first()->created_at)->not->toBeNull();
 })->with([
-    'success' => [fn () => chisReceiptResponse(201), 'success', null, null, 'CHIS-ENC-000042'],
+    'success 201' => [fn () => chisReceiptResponse(201), 'success', 201, null, 'CHIS-ENC-000042'],
+    'identical resend 200' => [fn () => chisReceiptResponse(200), 'success', 200, null, 'CHIS-ENC-000042'],
     '409' => [fn () => Http::response(['message' => 'x', 'code' => 'ENCOUNTER_CONFLICT'], 409), 'rejected', 409, 'http_409:ENCOUNTER_CONFLICT', null],
     '503' => [fn () => Http::response(['message' => 'x', 'code' => 'UNAVAILABLE'], 503), 'unavailable', 503, 'http_503', null],
     'connection error' => [fn () => fn () => throw new ConnectionException('cURL error 7'), 'unavailable', null, 'connection_failed', null],
