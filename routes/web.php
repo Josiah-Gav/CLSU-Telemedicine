@@ -255,10 +255,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/consultation-message-attachments/{attachment}/download', [ConsultationMessageController::class, 'downloadAttachment'])
         ->name('consultations.messaging.attachments.download');
 
-    // Patient consent to share records with CHIS (patient-only, checked in the controller).
-    Route::post('/profile/chis-consent', [ProfileController::class, 'giveChisConsent'])->name('profile.chis-consent.store');
-    Route::delete('/profile/chis-consent', [ProfileController::class, 'withdrawChisConsent'])->name('profile.chis-consent.destroy');
-
 }); // --- MIDDLEWARE GROUP ENDS HERE ---
 
 Route::middleware('auth')->group(function () {

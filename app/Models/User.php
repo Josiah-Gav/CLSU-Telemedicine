@@ -60,17 +60,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'last_seen_at' => 'datetime',
-        'chis_consent_at' => 'datetime',
+        'chis_consent_at' => 'datetime', // historic (pre phase 8); no longer read
     ];
-
-    /**
-     * Whether the patient consented to sharing records with CHIS. Without it,
-     * CHIS is skipped for them; nothing else is blocked.
-     */
-    public function hasChisConsent(): bool
-    {
-        return $this->chis_consent_at !== null;
-    }
 
     /**
      * Roles that are provisioned by admin invitation rather than by

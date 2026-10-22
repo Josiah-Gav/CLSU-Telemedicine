@@ -6,7 +6,7 @@ Triggers a CHIS sync from Telemed's API and shows CHIS's acknowledgement.
 
 - Telemed running on `http://localhost:8000` (`php artisan serve`) and the CHIS simulator on `http://localhost:8001`.
 - Migrations run (`php artisan migrate`, which creates `personal_access_tokens`).
-- At least one completed consultation whose patient consented to CHIS, so it has a sync status (encounter `1` by default).
+- At least one completed consultation of a patient with a CLSU ID, so it has a sync status (encounter `1` by default).
 
 ## 1. Create API tokens
 
@@ -41,7 +41,7 @@ Other commands: `php artisan telemed:api-token --list` (never shows tokens) and 
 | 5 | Telemed - sync again | 200, **same reference**, `chis_http_status` 200 (idempotent) |
 | 6 | Auth checks | no token → 401 `UNAUTHENTICATED`; read-only token on sync → 403 `FORBIDDEN` |
 
-If CHIS is down, request 3 still returns 200 with `chis_sync_status: "pending"` and an error text; Telemed retries automatically. A consultation that was skipped (patient had not consented) answers `409 NOT_ELIGIBLE`.
+If CHIS is down, request 3 still returns 200 with `chis_sync_status: "pending"` and an error text; Telemed retries automatically. A consultation that was skipped (the patient has no CLSU ID, or it was skipped under the earlier consent rule) answers `409 NOT_ELIGIBLE`.
 
 Every API-triggered push is recorded in the CHIS audit log (admin page `/admin/chis-audit`) with source "API request" and the token's owner.
 

@@ -29,8 +29,8 @@ function apiCall(string $method, string $uri, string $token, array $data = [])
     return test()->withToken($token)->json($method, "/api/v1{$uri}", $data);
 }
 
-/** A completed, consented session with the given CHIS sync status. Clinical text is distinctive so leaks are detectable. */
-function apiSession(string $status = 'pending', array $patient = [], bool $consented = true): ConsultationSession
+/** A completed session with the given CHIS sync status. Clinical text is distinctive so leaks are detectable. */
+function apiSession(string $status = 'pending', array $patient = []): ConsultationSession
 {
     static $n = 0;
     $n++;
@@ -38,7 +38,6 @@ function apiSession(string $status = 'pending', array $patient = [], bool $conse
     $patientUser = User::factory()->create(array_merge([
         'role' => 'patient', 'first_name' => 'Zebediah', 'last_name' => 'Quillfeather', 'clsu_id' => sprintf('23-%04d', $n),
     ], $patient));
-    $patientUser->forceFill(['chis_consent_at' => $consented ? now() : null])->save();
     $physician = User::factory()->create(['role' => 'physician', 'first_name' => 'Ana', 'last_name' => 'Reyes']);
 
     $request = Consultation::forceCreate([
@@ -211,10 +210,10 @@ it('records a CHIS rejection as failed with its text', function () {
 it('refuses a skipped session with 409 NOT_ELIGIBLE and no CHIS call', function () {
     Http::fake();
     $session = apiSession('skipped');
-    $session->forceFill(['chis_last_error' => 'no_consent'])->save();
+    $session->forceFill(['chis_last_error' => 'no_clsu_id'])->save();
 
     apiCall('POST', "/encounters/{$session->id}/sync", apiToken())
-        ->assertStatus(409)->assertJsonPath('code', 'NOT_ELIGIBLE')->assertJsonPath('reason', 'no_consent');
+        ->assertStatus(409)->assertJsonPath('code', 'NOT_ELIGIBLE')->assertJsonPath('reason', 'no_clsu_id');
 
     Http::assertNothingSent();
     expect($session->refresh()->chis_sync_status)->toBe('skipped');

@@ -208,7 +208,19 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">9. Data Retention</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">9. Sharing Consultation Summaries with CHIS</h2>
+                    <div class="mt-3 space-y-3">
+                        <p>When a consultation is completed, Telemed sends a summary of it to the CLSU Comprehensive Health Information System (CHIS) so that it forms part of your medical record for continuing care. Telemed and CHIS are both operated by CLSU, and this sharing is not optional.</p>
+                        <p><strong>Why no consent is asked.</strong> Health information is sensitive personal information. Under Section 13 of the Data Privacy Act of 2012 (RA 10173), it may be processed without consent when it is necessary for medical treatment, is carried out by a medical practitioner or medical treatment institution, and adequate safeguards are in place. Consultation summaries are sent on that basis, and consultations completed earlier may also be sent.</p>
+                        <p><strong>What is sent:</strong> your CLSU ID and name, your physician, your symptoms, and the diagnosis, assessment, plan, recommendations, and the name of any prescription file.</p>
+                        <p><strong>What is never sent:</strong> your chat messages, files you upload, the prescription file itself, and your contact details.</p>
+                        <p>Your assigned physician may view your CHIS medical record during a consultation. Every such view, and every summary sent, is recorded in an audit log that notes that it happened, but not what the information was.</p>
+                        <p>For questions or corrections, contact the clinic or CLSU's Data Protection Officer.</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-emerald-800">10. Data Retention</h2>
                     <div class="mt-3 space-y-3">
                         <p>Personal information shall not be retained indefinitely.</p>
                         <p>Information collected through the system will be retained only for as long as reasonably necessary to fulfill the purposes for which it was collected, support legitimate operational or academic requirements, comply with applicable legal obligations, or establish, exercise, or defend legal claims, as applicable.</p>
@@ -219,7 +231,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">10. Security Measures</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">11. Security Measures</h2>
                     <div class="mt-3 space-y-3">
                         <p>Reasonable and appropriate organizational, physical, and technical measures shall be implemented to protect personal information against unauthorized access, alteration, disclosure, loss, destruction, or other unlawful processing.</p>
                         <p>Depending on the applicable system component, security measures may include:</p>
@@ -242,7 +254,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">11. Data Breach and Security Incidents</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">12. Data Breach and Security Incidents</h2>
                     <div class="mt-3 space-y-3">
                         <p>The system will maintain procedures for identifying, documenting, investigating, and responding to security incidents and personal data breaches.</p>
                         <p>Where a personal data breach meets the requirements for mandatory notification under applicable law and regulations, the appropriate notifications shall be made to the affected data subjects and the National Privacy Commission within the prescribed period.</p>
@@ -251,7 +263,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">12. Your Rights as a Data Subject</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">13. Your Rights as a Data Subject</h2>
                     <p class="mt-3">Subject to the limitations and conditions provided by law, you may have the following rights under the Data Privacy Act:</p>
 
                     <h3 class="mt-5 text-base font-semibold text-emerald-700">Right to Be Informed</h3>
@@ -282,7 +294,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">13. How to Exercise Your Rights</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">14. How to Exercise Your Rights</h2>
                     <div class="mt-3 space-y-3">
                         <p>To exercise your privacy rights or raise a concern regarding the processing of your personal information, you may contact:</p>
 
@@ -305,7 +317,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">14. Capstone Testing Notice</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">15. Capstone Testing Notice</h2>
                     <div class="mt-3 space-y-3">
                         <p>This system is currently being used as part of an academic capstone project.</p>
                         <p>The five-day live testing period is intended to evaluate the system under actual operating conditions of the CLSU Infirmary.</p>
@@ -322,7 +334,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">15. Changes to This Privacy Policy</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">16. Changes to This Privacy Policy</h2>
                     <div class="mt-3 space-y-3">
                         <p>This Privacy Policy may be updated when necessary to reflect changes in the system, applicable laws and regulations, data processing activities, or security practices.</p>
                         <p>Material changes should be communicated through an appropriate notice before or when they take effect, where required.</p>
@@ -331,7 +343,7 @@
                 </section>
 
                 <section>
-                    <h2 class="text-xl font-bold text-emerald-800">16. Contact and Complaints</h2>
+                    <h2 class="text-xl font-bold text-emerald-800">17. Contact and Complaints</h2>
                     <div class="mt-3 space-y-3">
                         <p>For questions, concerns, or requests regarding the processing of your personal information, please contact the designated privacy contact identified above.</p>
                         <p>You may also contact the <strong>National Privacy Commission of the Philippines</strong> regarding concerns involving your rights under the Data Privacy Act.</p>

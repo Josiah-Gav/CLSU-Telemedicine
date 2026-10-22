@@ -259,7 +259,7 @@ views, not inferred from the controllers.
 | `auth/reset-password.blade.php` | `route('password.store')` | hidden `token`, `email`, `password`, `password_confirmation` |
 | `auth/verify-email.blade.php` | `route('verification.send')` and `route('logout')` | resend button and a logout button |
 | `auth/confirm-password.blade.php` | `route('password.confirm')` | `password` |
-| `profile/edit.blade.php` | includes three partials, plus a fourth for patients | `account-overview`, `update-profile-information-form` (`route('profile.update')`; the CLSU ID is an input only while unset, otherwise a read-only box with "Contact the clinic administrator to correct your CLSU ID."), `update-password-form` (`route('password.update')`), and for `role === 'patient'` only `chis-consent` (see `chis-integration.md`) |
+| `profile/edit.blade.php` | includes three partials, plus a fourth for patients | `account-overview`, `update-profile-information-form` (`route('profile.update')`; the CLSU ID is an input only while unset, otherwise a read-only box with "Contact the clinic administrator to correct your CLSU ID."), `update-password-form` (`route('password.update')`), and for `role === 'patient'` only `chis-privacy-notice` (see `chis-integration.md`) |
 
 Alpine is used only for the password-reveal toggle (`x-data` on the password
 inputs, via the `components/password-reveal.blade.php` component). There is no

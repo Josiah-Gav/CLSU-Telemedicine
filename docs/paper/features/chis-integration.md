@@ -21,8 +21,9 @@ CHIS Integration — Telemed exchanges data with a simulated CHIS
 (Comprehensive Health Information System) in two directions: it **sends** a
 summary of each completed consultation session (outbound encounter push), and it
 **receives** the patient's medical profile for the assigned physician (inbound
-patient lookup). Both directions require the patient's consent, both are
-recorded in an append-only audit log, and a small token-protected REST API lets
+patient lookup). Neither direction asks for patient consent: both rest on the
+lawful basis "medical treatment" (§2.1), patients are told through a privacy
+notice, both are recorded in an append-only audit log, and a small token-protected REST API lets
 an administrator trigger and observe a sync.
 
 ## 2. Purpose
@@ -32,7 +33,8 @@ The Patient tab of the consultation screen was originally a set of hardcoded
 feature replaces them with real data from a CHIS and sends the clinical outcome
 back, under the Data Privacy Act (RA 10173) constraints the code encodes:
 
-- consent is required and applies **forward only**;
+- no patient consent is asked: the lawful basis is *medical treatment* (RA 10173
+  Sec. 13, §2.1) and patients get a privacy notice instead;
 - the record shown must belong to the person in the consultation (identity
   check), and must be withheld if the access cannot be logged;
 - nothing received from CHIS is stored or cached in Telemed;
@@ -40,6 +42,40 @@ back, under the Data Privacy Act (RA 10173) constraints the code encodes:
 
 > *"This log records THAT data was sent or viewed — never WHAT."*
 > — `database/migrations/2026_10_24_120000_create_chis_audit_logs_table.php`
+
+### 2.1 Lawful basis
+
+*Added phase 8 (2026-10-22); replaces the earlier patient-consent rule.*
+
+- **Basis.** Health data is sensitive personal information (RA 10173 Sec. 3(l)).
+  Sec. 13 allows processing it without consent when it is necessary for medical
+  treatment, is carried out by a medical practitioner or medical treatment
+  institution, and an adequate level of protection is ensured. Telemed (the CLSU
+  telemedicine service) and CHIS (CLSU's Comprehensive Health Information System)
+  belong to the same institution, and the summary serves the patient's continuing
+  care. Payloads declare it: `lawful_basis: "medical_treatment"`, `consent: null`
+  (`ChisEncounterPayload::build`).
+- **Why consent would be invalid.** CLSU's MISO and the panel required that **all**
+  completed consultation results be sent to CHIS. A consent the patient could refuse
+  (and still be sent) is not freely given, so asking for it would misdescribe the
+  processing. The earlier phases did ask (`users.chis_consent_at`); phase 8 removed
+  that gate.
+- **Safeguards that stay** (Sec. 13's "adequate protection"): the identity check
+  (`ChisIdentity::matches`), the append-only audit log, the minimal payload
+  (BR-7), physician-only viewing, `no-store` and no caching of CHIS data.
+- **Status of the requirement: verbal.** The MISO requirement was stated verbally.
+  The author is confirming it by email with MISO (cc adviser) and asking whether the
+  Data Protection Officer should review the arrangement. **No written approval
+  exists yet; none may be claimed.** DPO review is recommended before the system is
+  used with real patients.
+- **Notice.** Patients see the privacy notice
+  (`resources/views/profile/partials/chis-privacy-notice.blade.php`), a line on the
+  consultation request form (`resources/views/patient/newconsultation.blade.php`)
+  and section 9 of the public privacy policy (`resources/views/privacy-policy.blade.php`).
+- **Simulator side (verified, commit `b6eec90`).** The simulator accepts an optional `lawful_basis` of `consent` or `medical_treatment`; `medical_treatment` needs no consent object and `consent: null` is valid; omitting the field keeps the original rule (`app/Http/Requests/StoreEncounterRequest.php`, `josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`). Its viewer shows "Shared under: Medical treatment" (`resources/views/viewer/encounters/show.blade.php`). Its `docs/API_CONTRACT.md` was not read for this change.
+- **Historic column.** `users.chis_consent_at` remains in the schema and the `User`
+  cast, but no code reads it. Sessions that were skipped with `no_consent` under the
+  old rule can be sent once with `chis:send-skipped --confirm`.
 
 **What the simulator is, and what can be evidenced about it.** The simulator
 lives in a separate repository (`clsu-chis-simulation`) with its own API
@@ -59,7 +95,7 @@ responses in `tests/Feature/Chis*Test.php`.
 
 | Actor | Part in this feature |
 |---|---|
-| Patient | Gives or withdraws consent (profile page); sets their CLSU ID once. Cannot see their CHIS record (limitation CH-11). |
+| Patient | Reads the privacy notice (profile page); sets their CLSU ID once. Cannot see their CHIS record (limitation CH-11). |
 | Physician (assigned) | Views the patient's CHIS profile on the Patient tab; completing a consultation triggers the push. Only the physician assigned to the session. |
 | Nurse | No access to any CHIS data or page. |
 | Admin | Reads the CHIS Sync and CHIS Audit pages, retries failed syncs, creates API tokens, corrects CLSU IDs. |
@@ -73,15 +109,18 @@ responses in `tests/Feature/Chis*Test.php`.
 unique). A patient with no ID may set it once on the profile page; afterwards
 only an admin can change it (admin edit form).
 
-**B. Consent.** On the profile page a patient sees a "Share records with CHIS"
-section (what is and is not shared, forward-only wording) and a button to give or
-withdraw consent. Giving consent twice keeps the first timestamp.
+**B. Privacy notice.** On the profile page a patient sees "How your records are
+shared with CHIS": that a summary of every completed consultation (earlier ones
+included) goes to CHIS under RA 10173 Sec. 13 (medical treatment), what is and is
+not sent, that the assigned physician may view their CHIS record and every view is
+logged, and whom to ask (the clinic or CLSU's Data Protection Officer). There are
+no buttons. The request form carries a one-line pointer to it.
 
 **C. Outbound push.**
 1. The physician completes the consultation session
    (`ConsultationMessageController::complete`).
 2. After the completion transaction commits, `ChisEncounterSync::queue` marks the
-   session `skipped` (no consent / no CLSU ID) or `pending`, and dispatches
+   session `skipped` (no CLSU ID) or `pending`, and dispatches
    `SyncEncounterToChis`.
 3. The worker builds the payload (`ChisEncounterPayload::build`), calls
    `ChisClient::pushEncounter`, and records `synced`, `failed` or leaves
@@ -106,8 +145,6 @@ or fetches sync status and can trigger a synchronous sync.
 | Method | Path | Name | Middleware / notes |
 |---|---|---|---|
 | GET | `/consultation-sessions/{session}/chis-profile` | `consultations.chis_profile.show` | `auth`,`verified`; `throttle:30,1` |
-| POST | `/profile/chis-consent` | `profile.chis-consent.store` | `auth`,`verified` |
-| DELETE | `/profile/chis-consent` | `profile.chis-consent.destroy` | `auth`,`verified` |
 | GET | `/admin/chis-sync` | `admin.chis-sync.index` | `auth`,`verified`; admin check in controller |
 | POST | `/admin/chis-sync/{session}/retry` | `admin.chis-sync.retry` | `throttle:30,1` |
 | GET | `/admin/chis-audit` | `admin.chis-audit.index` | admin check in controller |
@@ -117,13 +154,14 @@ or fetches sync status and can trigger a synchronous sync.
 
 Artisan commands: `chis:health [--patient=]`, `chis:sync-pending` (scheduled
 `everyFifteenMinutes()->withoutOverlapping()` in `routes/console.php`),
-`telemed:api-token`.
+`chis:send-skipped [--confirm]` (one-time, not scheduled; dry run without
+`--confirm`), `telemed:api-token`.
 
 ## 6. Controllers
 
 `ChisProfileController` (inbound lookup), `Admin\ChisSyncController`,
-`Admin\ChisAuditController`, `Api\EncounterController`, and for consent and
-profile `ProfileController::giveChisConsent` / `::withdrawChisConsent`.
+`Admin\ChisAuditController` and `Api\EncounterController`; `ProfileController::edit`
+renders the privacy notice.
 `ConsultationMessageController::complete` carries the one-line hook.
 Registration and admin user management carry the CLSU ID rules
 (`Auth\RegisteredUserController::store`, `Admin\UserManagementController::store`
@@ -139,6 +177,7 @@ and `::update`).
 | `App\Services\ChisIdentity` | `matches()` — first-and-last-name identity check. |
 | `App\Jobs\SyncEncounterToChis` | Queued job; see §11–§13. |
 | `App\Rules\ClsuId` | CLSU ID format + uniqueness rule shared by every form. |
+| `App\Console\Commands\ChisSendSkipped` | `chis:send-skipped`: lists, and with `--confirm` requeues, sessions `skipped`/`no_consent` (conditional update, then `SyncEncounterToChis::dispatch`). |
 
 Exceptions (`App\Exceptions\Chis\`): `ChisUnavailableException` (transient; carries
 a short `reason`), `ChisRequestException` (permanent; carries `status` and
@@ -146,7 +185,7 @@ a short `reason`), `ChisRequestException` (permanent; carries `status` and
 
 ## 8. Models
 
-`User` (`chis_consent_at`, `hasChisConsent()`, `HasApiTokens`),
+`User` (`HasApiTokens`; the `chis_consent_at` cast is historic and unread),
 `ConsultationSession` (CHIS sync columns), `ChisAuditLog` (append-only),
 `Laravel\Sanctum\PersonalAccessToken` (framework model, table
 `personal_access_tokens`).
@@ -158,7 +197,8 @@ All names copied from the migrations.
 **`users`** — `2026_10_22_120000_add_unique_index_to_users_clsu_id`: unique index on
 `clsu_id` (before adding it, the migration trims values, converts `''` to NULL, and
 aborts naming any duplicates without altering data). `2026_10_22_130000_add_chis_consent_at_to_users_table`:
-`chis_consent_at` nullable timestamp.
+`chis_consent_at` nullable timestamp (**historic**: written by the earlier consent
+rule, never read since phase 8; deliberately not dropped).
 
 **`consultations`** (the consultation-session table) —
 `2026_10_23_120000_add_chis_sync_columns_to_consultations_table`:
@@ -209,13 +249,13 @@ request cannot change or blank it. Admin store: required; admin update:
    assigned physician, session and request `active`/`completed`), then
    `abort_unless` the user is the **assigned physician** → everyone else 403, no
    CHIS call, no audit row.
-2. Patient has no consent → `{state: no_consent}` (no call, no audit row).
-3. Patient has no `clsu_id` → `{state: no_clsu_id}` (same).
-4. `ChisClient::findPatient`, timed, then **one** audit row:
+2. Patient has no `clsu_id` → `{state: no_clsu_id}` (no call, no audit row). There
+   is no consent gate (phase 8).
+3. `ChisClient::findPatient`, timed, then **one** audit row:
    not found → `not_found`; `ChisUnavailableException` → `unavailable`;
    `ChisRequestException` → `rejected`; name mismatch → `identity_mismatch`
    (response carries no data and no CHIS name); match → `success`.
-5. **Fail closed:** `ChisAuditLog::record()` returns a bool; if the success row
+4. **Fail closed:** `ChisAuditLog::record()` returns a bool; if the success row
    cannot be written, the response is `{state: unavailable}` with no profile.
 
 **Identity check** (`ChisIdentity::matches`): first **and** last name must be equal
@@ -239,13 +279,13 @@ and the token must carry the ability, else 403 `FORBIDDEN`. Tokens expire.
 
 | # | Rule | Where | Enforced by |
 |---|---|---|---|
-| BR-1 | CHIS is skipped, never blocking, without consent or CLSU ID | `ChisEncounterSync::ineligibilityReason` | Application |
-| BR-2 | Consent is forward-only: a session skipped for `no_consent` is never re-sent (not by Retry, API, or sweeper) | `queue()` claims only NULL status; `retry()` / API `sync()` act only on `failed`/`pending`(/`synced` via API); sweeper selects `pending` | Application |
+| BR-1 | CHIS is skipped, never blocking, without a CLSU ID; patient consent is not an eligibility condition | `ChisEncounterSync::ineligibilityReason` | Application |
+| BR-2 | A session skipped for `no_consent` (legacy) is never re-sent by Retry, the API or the sweeper; only `chis:send-skipped --confirm` requeues it | `queue()` claims only NULL status; `retry()` / API `sync()` act only on `failed`/`pending`(/`synced` via API); sweeper selects `pending`; `ChisSendSkipped` | Application |
 | BR-3 | Completion only queues; a CHIS outage cannot fail or slow it | `queue()` wraps dispatch in `try/catch Throwable` | Application |
 | BR-4 | Transient failures (timeout, connection, 429, 5xx, unreadable 2xx body, not configured) retry; every other 4xx is permanent | `ChisClient::send` / `::data` | Application |
 | BR-5 | Invalid payloads are never truncated or sent | `ChisEncounterPayload::validate` → `failed`, `invalid_payload:<reason>` | Application |
-| BR-6 | Eligibility is re-checked at send time (consent may be withdrawn) | `SyncEncounterToChis::handle` | Application |
-| BR-7 | Only the consented summary leaves Telemed: no chat, attachments, prescription file/path, priority, nurse, email, phone, or patient user id | `ChisEncounterPayload::build` | Application (tested) |
+| BR-6 | Eligibility is re-checked at send time (a CLSU ID may be removed) | `SyncEncounterToChis::handle` | Application |
+| BR-7 | Only the summary described in the privacy notice leaves Telemed: no chat, attachments, prescription file/path, priority, nurse, email, phone, or patient user id | `ChisEncounterPayload::build` | Application (tested) |
 | BR-8 | `follow_up` is always `{required: null, date: null}` ("not recorded") | `ChisEncounterPayload::build` | Application |
 | BR-9 | Symptoms: only entries with a name ≤ 255 and severity 1–4 are sent; others are skipped; none valid → payload invalid | `ChisEncounterPayload::symptoms` | Application |
 | BR-10 | Length limits: clinical fields 10000; names and physician name 255; specialization, concern category 100; CLSU ID 50; additional information 1000 | `ChisEncounterPayload::LIMITS` | Application |
@@ -276,28 +316,30 @@ smaller guards. (For the main lifecycle locks see
 
 | From | To | Trigger | Code |
 |---|---|---|---|
-| NULL | `skipped` | completion, patient has no consent / no CLSU ID | `ChisEncounterSync::queue` |
+| NULL | `skipped` | completion, patient has no CLSU ID | `ChisEncounterSync::queue` |
 | NULL | `pending` | completion, eligible | `ChisEncounterSync::queue` |
 | `pending` | `synced` | CHIS 200/201 | `SyncEncounterToChis::handle` |
 | `pending` | `failed` | permanent 4xx (`http_<status>:<code>`), or invalid payload | `handle()` |
-| `pending` | `skipped` | consent withdrawn / CLSU ID removed before send | `handle()` |
+| `pending` | `skipped` | CLSU ID removed before send | `handle()` |
 | `pending` | `pending` | transient failure (error recorded, exception rethrown for the queue); tries exhausted (`failed()` leaves it `pending`) | `handle()`, `failed()` |
 | `failed` / `pending` | `pending` | admin Retry, or API sync | `ChisSyncController::retry`, `Api\EncounterController::sync` |
 | `synced` | `pending` | **API resend only** (demonstrates CHIS idempotency) | `Api\EncounterController::sync` |
-| `skipped` | — | final; never re-sent | — |
+| `skipped` (`no_clsu_id`) | — | final; never re-sent | — |
+| `skipped` (`no_consent`, legacy) | `pending` | one-time `chis:send-skipped --confirm` | `ChisSendSkipped::handle` |
 
 ```mermaid
 stateDiagram-v2
     [*] --> NULL
-    NULL --> skipped : no consent / no CLSU ID
+    NULL --> skipped : no CLSU ID
     NULL --> pending : eligible, queued
     pending --> synced : CHIS 201 / 200
     pending --> failed : permanent 4xx / invalid payload
-    pending --> skipped : consent withdrawn before send
+    pending --> skipped : CLSU ID removed before send
     pending --> pending : transient error (retry, sweeper)
     failed --> pending : Retry / API sync
     synced --> pending : API resend only
-    skipped --> [*]
+    skipped --> pending : legacy no_consent only, chis:send-skipped --confirm
+    skipped --> [*] : no_clsu_id
 ```
 
 *Figure X.1 `chis_sync_status` state machine.*
@@ -344,17 +386,18 @@ asserts 201, then 409, then that the original diagnosis is still stored.
 
 - **Patient tab** (`resources/views/consultations/messaging.blade.php`): for the
   assigned physician, a "CHIS medical record" card with Refresh, a panel per
-  `state` (loading, `no_consent`, `no_clsu_id`, `not_found`, `identity_mismatch`,
+  `state` (loading, `no_clsu_id`, `not_found`, `identity_mismatch`,
   `unavailable`/`error`), blood type / sex / birth date, and five lists (allergies
   with a text "Severe" badge so colour is not the only signal; conditions;
   medications; immunizations; family history; "None recorded in CHIS" when
   empty), and the footer "Viewing this record is logged." Alpine `loadChisProfile`
   fetches lazily and everything is rendered with `x-text` (never `x-html`). The
-  patient sees one note: the record is visible to the assigned physician only, with
-  their consent state and a link to the consent section.
-- **Profile consent** (`resources/views/profile/partials/chis-consent.blade.php`,
-  patient-only): status panel, what is and is not shared, forward-only wording,
-  give / withdraw buttons.
+  patient sees one note: the record is visible to the assigned physician only, every
+  view is logged, and a link to the privacy notice.
+- **Profile privacy notice** (`resources/views/profile/partials/chis-privacy-notice.blade.php`,
+  patient-only): the lawful basis in plain words, what is and is not sent, the
+  physician-view and logging statement, contact route. No buttons. Also: one line
+  on the consultation request form and section 9 of the privacy policy.
 - **Admin CHIS Sync** (`resources/views/admin/chis-sync/index.blade.php`): status
   counts as filter tabs, a reachability banner (cached 60 s via
   `Cache::remember('chis.health', 60, …)`), table and mobile cards, plain-language
@@ -370,14 +413,14 @@ asserts 201, then 409, then that the original diagnosis is still stored.
 |---|---|---|
 | `tests/Feature/ClsuIdTest.php` | 16 | Format rule incl. trailing-newline rejection; registration accepts three formats, rejects bad ones and duplicates, trims; profile write-once incl. crafted requests; admin store/update; migration trims and nulls `''` and aborts naming duplicates; QA seeder IDs, backfill, idempotency |
 | `tests/Feature/ChisClientTest.php` | 15 | Every outcome of `findPatient`/`pushEncounter` (200/201/404/409/422/401/429/500/503/connection/malformed), transient vs permanent classification, status and code carried, bearer + `Accept` headers, URL-encoding, not-configured sends nothing, no internal retry, privacy (no body/token in logs or messages), `chis:health` exit codes |
-| `tests/Feature/ChisConsentTest.php` | 5 | Give/withdraw, first timestamp kept, non-patients 403, guests redirected, section shown to patients only |
-| `tests/Feature/ChisEncounterSyncTest.php` | 27 | Payload shape and normalisation, follow-up parent, limits, forbidden data absent; completion queues once / skips / survives CHIS down; job outcomes; serialised job holds no clinical text; sweeper; forward-only consent; audit rows per call; `chis:health --patient` |
-| `tests/Feature/ChisProfileTest.php` | 12 | Access matrix; no call/audit before consent; minimised response, `no-store`, one audit row; outcome mapping; identity mismatch leaks nothing; fail-closed audit; nothing persisted (all tables scanned); page HTML without placeholders; `ChisIdentity` cases |
+| `tests/Feature/ChisPrivacyNoticeTest.php` | 5 | Consent routes gone (404, not registered); notice shown to patients with no consent button and not to staff; request-form line; privacy-policy section |
+| `tests/Feature/ChisEncounterSyncTest.php` | 30 | Payload shape (`lawful_basis`, `consent: null`) and normalisation, follow-up parent, limits, forbidden data absent; completion queues once / skips only without a CLSU ID / survives CHIS down; a never-consented patient is synced; job outcomes; serialised job holds no clinical text; sweeper; `chis:send-skipped` dry run and `--confirm`; audit rows per call; `chis:health --patient` |
+| `tests/Feature/ChisProfileTest.php` | 13 | Access matrix; no call/audit without a CLSU ID; lookup works for a patient who never consented; minimised response, `no-store`, one audit row; outcome mapping; identity mismatch leaks nothing; fail-closed audit; nothing persisted (all tables scanned); page HTML without placeholders; `ChisIdentity` cases |
 | `tests/Feature/Admin/ChisSyncPageTest.php` | 10 | Rows/counts/plain-language errors, no clinical text, filter, non-admins 403, Retry rules, lock-held message, error descriptions |
 | `tests/Feature/Admin/ChisAuditLogTest.php` | 8 | Append-only, whitelist, `chis:health --patient` audit, page, filters, access, History link |
 | `tests/Feature/Api/EncounterApiTest.php` | 18 | 401/403 matrix (revoked, expired, demoted, missing ability), list/get fields without identities, sync 201→200, 503/422 handling, 409 cases, unrelated audit row ignored, rate limit |
 | `tests/Feature/TelemedApiTokenCommandTest.php` | 6 | Admin-only owners, explicit abilities, `--days` bounds, `--list` never shows tokens, `--revoke` |
-| `tests/Feature/ChisDemoSeederTest.php` | 4 | Demo seeder refuses outside local, is idempotent, reports missing QA accounts |
+| `tests/Feature/ChisDemoSeederTest.php` | 4 | Demo seeder refuses outside local, is idempotent, reports missing QA accounts; the seeded (never-consented) session queues a CHIS push on completion |
 
 "Definitions" counts `it()` / `test()` blocks; datasets expand them into more
 cases at run time. The tests use `Http::fake()` and `Http::preventStrayRequests()`
@@ -413,8 +456,8 @@ in the item.
 | CH-2 | **Identity check is by first and last name only.** Telemed stores no birth date (no such column in `users`), so two people with the same name and a mistyped CLSU ID would not be caught (`ChisIdentity::matches`). |
 | CH-3 | **Follow-up intent is not recorded at completion.** `consultations.follow_up_required` defaults to false and no code writes it or `follow_up_date`, so the payload always sends `follow_up {required: null, date: null}` ("not recorded"). |
 | CH-4 | **Custom symptom names are not length-validated at intake** (`ConsultationController::store` validates `symptoms_payload` only as a string plus per-entry severity/date). Entries over 255 characters are silently dropped from the payload (`ChisEncounterPayload::symptoms`). |
-| CH-5 | **Consent is forward-only.** A session completed before consent is `skipped` permanently; Retry, the API and the sweeper all refuse it. |
-| CH-6 | **(verified)** Summaries are immutable in CHIS: a resend of the same `telemed_encounter_id` with **different content** is rejected with 409 `ENCOUNTER_CONFLICT` and the original record is kept. Simulator: `app/Http/Controllers/EncounterController.php` (`replay()` compares a hash of the canonical JSON body with `hash_equals`) and `app/Support/CanonicalJson.php`; test `tests/Feature/EncounterSubmissionTest.php::a_changed_resend_is_a_conflict_and_the_original_is_kept` (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). Telemed treats the 409 as permanent: the session becomes `failed` (`http_409:ENCOUNTER_CONFLICT`) and `describeError` says "CHIS already holds different content", so a resend after the payload format changes is rejected. The 200 seen when the format changed during development (phase 4C) occurred, per the author, because the simulator database had been reset and so already held the new format; that reset is not visible in code. |
+| CH-5 | **The lawful basis rests on a verbal requirement; written confirmation and DPO review are pending.** The MISO requirement that all completed consultations go to CHIS was stated verbally. The author is emailing MISO (cc adviser) to confirm it and to ask whether the DPO should review. Until then the arrangement must not be described as approved in writing. |
+| CH-6 | **(verified)** Summaries are immutable in CHIS (since phase 8 this also means a session synced under the old `consent` payload and re-sent through the API now has different content and gets 409; reset the simulator, see `docs/CHIS_DEMO.md`): a resend of the same `telemed_encounter_id` with **different content** is rejected with 409 `ENCOUNTER_CONFLICT` and the original record is kept. Simulator: `app/Http/Controllers/EncounterController.php` (`replay()` compares a hash of the canonical JSON body with `hash_equals`) and `app/Support/CanonicalJson.php`; test `tests/Feature/EncounterSubmissionTest.php::a_changed_resend_is_a_conflict_and_the_original_is_kept` (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). Telemed treats the 409 as permanent: the session becomes `failed` (`http_409:ENCOUNTER_CONFLICT`) and `describeError` says "CHIS already holds different content", so a resend after the payload format changes is rejected. The 200 seen when the format changed during development (phase 4C) occurred, per the author, because the simulator database had been reset and so already held the new format; that reset is not visible in code. |
 | CH-7 | **Audit log is append-only at the model level only.** Query-builder `update()`/`delete()` and raw SQL bypass the model events (`ChisAuditLog` docblock). Database permissions would be needed for real immutability. |
 | CH-8 | **Lookups via `chis:health --patient` have no actor** — a command-line run has no authenticated user (`actor_user_id` is null; source `health_command`). |
 | CH-9 | **(verified)** One shared static bearer token, on both sides. Telemed sends `services.chis.token` on every call (`ChisClient::send`). The simulator authenticates with a single shared token compared with `hash_equals` — no per-client tokens and no scopes — and fails closed with a 500 if the token is unset: `app/Http/Middleware/EnsureChisToken.php`, `config/chis.php` (`api_token`, "the single shared bearer token Telemed authenticates with") (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). |
@@ -428,6 +471,7 @@ in the item.
 | CH-17 | **The admin "CHIS reachable" banner is cached for 60 seconds** (`Cache::remember('chis.health', 60, …)`), so it can lag a change. |
 | CH-18 | **Re-syncing a synced session through the API while CHIS is down** sets it to `pending` (the API claims `pending` before sending) and it stays `pending` until a later attempt or the sweeper succeeds. |
 | CH-19 | **CLSU ID format validation is deliberately loose** (`^(\d{2}|\d{4})-\d{4,6}$`, no cross-check with `user_type`): the registrar's exact digit counts were not confirmed (`ClsuId` docblock). |
+| CH-20 | **CHIS records the declared basis but cannot verify it.** The simulator stores `lawful_basis` as sent; nothing on the CHIS side checks that medical treatment actually applies. |
 
 **Gaps in this document.** Simulator behaviour is cited from the simulator
 repository at `josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`, and only for the items that name a file there (CH-1, CH-6,

@@ -25,7 +25,8 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 
 - [ ] Telemed: `composer install`, `npm install && npm run build`, `php artisan migrate`.
 - [ ] Telemed: `php artisan config:clear` and `php artisan route:clear` (a stale route cache hides new routes).
-- [ ] Simulator (`clsu-chis-simulation`): `git pull`, `composer install`, `php artisan migrate:fresh --seed`.
+- [ ] Simulator (`clsu-chis-simulation`): `git pull` (it must be at commit `b6eec90` or later, which accepts `lawful_basis`), `composer install`, `php artisan migrate:fresh --seed`.
+- [ ] **After phase 8, reset the simulator: `php artisan migrate:fresh --seed` (mandatory).** Summaries synced under the old consent payload are rejected on resend with 409 (the content changed), so the simulator must hold none of them. Demo only with consultations completed after phase 8.
 - [ ] Telemed `.env` has `CHIS_BASE_URL=http://localhost:8001/api/v1` and a `CHIS_TOKEN` equal to the simulator's `CHIS_API_TOKEN` (see `.env.example`).
 - [ ] `php artisan db:seed --class=QaTestUsersSeeder` (creates `patient.test1`, `physician.test1`, …; their CLSU IDs match the simulator's seed data).
 - [ ] Rehearse the whole script once.
@@ -39,7 +40,7 @@ Two Postman collections are used. Name them out loud so the panel can follow:
   - `php artisan telemed:api-token <admin-email> --name=demo --ability=encounters:read --ability=encounters:sync`
   - `php artisan telemed:api-token <admin-email> --name=demo-readonly --ability=encounters:read`
   - Paste them into the Postman environment as `telemed_token` and `telemed_read_token`. Each token is shown **once**; it lasts 30 days.
-- [ ] **Withdraw consent first**, so Step 1 can show giving it: log in as patient.test1 → Profile → **Share records with CHIS** → **Withdraw consent** (it should now say "Sharing is off"). patient.test1 already consented during development. This is safe: consent is forward-only, and the demo consultation is completed *after* Step 1, so it will still be eligible.
+- [ ] If Telemed holds consultations skipped under the old consent rule, check with `php artisan chis:send-skipped` (dry run, prints a count and ids). Only run `php artisan chis:send-skipped --confirm` when you want them sent; the demo does not need it.
 - [ ] Prepare a never-sent consultation for the demo: `php artisan db:seed --class=ChisDemoSeeder` (local environment only).
   - If it prints `Demo consultation created: session #N …`, put `N` into the Postman variable `encounter_id`.
   - If it prints `patient.test1 already has an active consultation; nothing created.`, use that existing active consultation instead. Find its id as physician.test1: open **Active Consultations**, open the consultation, and read the number in the address bar — `/consultation-sessions/N/messaging`. Put `N` into `encounter_id`.
@@ -51,17 +52,17 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 
 ## 2. Script
 
-### Step 1 — Consent (patient window, ~1 min)
+### Step 1 — Privacy notice (patient window, ~1 min)
 
-- **Click:** patient.test1 → Profile → scroll to **Share records with CHIS** → **I consent to sharing with CHIS**.
-- **They should see:** green "Sharing is on" with today's date; the lists of what is and is not shared; "Applies to consultations completed after you give consent".
-- **Say:** "Nothing leaves Telemed without the patient's consent, and consent only covers consultations completed after it is given."
+- **Click:** patient.test1 → Profile → scroll to **How your records are shared with CHIS**. (The same notice is linked from the consultation request form and the privacy policy.)
+- **They should see:** no buttons; what is sent, what is never sent, that the assigned physician may view the CHIS record and every view is logged, who to contact (the clinic or the Data Protection Officer).
+- **Say:** "There is no consent to click, on purpose: CLSU requires every completed consultation to go to CHIS, so a refusable consent would not be valid. The legal basis is medical treatment under Section 13 of the Data Privacy Act, and the patient is told in plain words what is sent."
 
 ### Step 2 — Receive: the physician sees the CHIS record (~2 min)
 
 - **Click:** physician.test1 → Active consultations → open the demo consultation → **Patient Details** tab.
 - **They should see:** "CHIS medical record" with blood type, allergies (Penicillin, and Shrimp marked **Severe**), asthma, Salbutamol, immunizations, family history, "Last updated in CHIS", and "Viewing this record is logged."
-- **Say:** "The tab loads the record only when it is opened, never while the page renders. Before showing anything, Telemed checks consent, then that the CHIS record's name matches this patient, and it writes an audit entry; if it cannot log the view, it does not show the record. Nothing from CHIS is stored in our database."
+- **Say:** "The tab loads the record only when it is opened, never while the page renders. Before showing anything, Telemed checks that the patient has a CLSU ID, then that the CHIS record's name matches this patient, and it writes an audit entry; if it cannot log the view, it does not show the record. Nothing from CHIS is stored in our database."
 
 ### Step 3 — Send: complete the consultation (~2 min)
 
@@ -111,11 +112,11 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 | "already has a sync attempt waiting" | A queued attempt is in its backoff | Wait for it, or run the worker; it sends at its scheduled retry |
 | `failed` with "CHIS rejected… invalid" (422) | Payload rejected by the simulator | See the last-error code on `/admin/chis-sync`; the payload shape may not match the simulator version — `git pull` the simulator |
 | `failed` with "already holds different content" (409) | The same consultation id was sent earlier with different content (e.g. simulator not reset after Telemed was reset, or the payload format changed) | Use a new consultation (ChisDemoSeeder after completing the old one), or reset the simulator with `migrate:fresh --seed` |
-| `skipped` ("Patient has not consented") | Consent was given after the consultation completed — consent is forward-only | Give consent first, then use a new consultation |
+| `failed` with "already holds different content" (409) on an **old** session | Synced before phase 8 under the consent payload; the resend has different content | Reset the simulator (`php artisan migrate:fresh --seed`) and demo with a consultation completed after phase 8 |
+| `skipped` ("Skipped under the earlier consent rule") | Completed under the old consent rule | `php artisan chis:send-skipped` (dry run), then `--confirm` if they should be sent |
 | Patient tab stuck on "Loading…" | Server or worker not running; JS error | Reload; check the browser console and `storage/logs/laravel.log` |
 | Patient tab says "CHIS could not be reached — try Refresh" | Simulator down or slow | Start it, press **Refresh** |
 | "does not match this patient's name" | CLSU ID points at someone else in CHIS | Admin edits the user's CLSU ID (Admin → Users → Edit) |
-| "The patient has not consented…" | Step 1 not done | Do step 1 |
 | `Address already in use` on 8001 | An old simulator is still running | Stop it (find the process on port 8001), start again |
 | Nothing is sent after completing | Queue worker not running | `composer run dev`, or `php artisan queue:work` |
 | New route/page 404s | Stale route cache | `php artisan route:clear` |
@@ -131,9 +132,9 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 
 **What happens if CHIS is down?** Consultations complete normally. The summary stays pending and is retried automatically (backoff, then a scheduled sweeper); a permanent rejection is marked failed and shown to the admin. The physician's Patient tab shows "CHIS could not be reached" and can be refreshed.
 
-**Who can see the data?** Only the physician assigned to that consultation can see the patient's CHIS profile. Patients and nurses cannot (patient self-view is future work). Admins see sync status and the audit log, not clinical content.
+**Who can see the data?** Only the physician assigned to that consultation can see the patient's CHIS profile, and every view is logged. Patients and nurses cannot (patient self-view is future work). Admins see sync status and the audit log, not clinical content.
 
-**How is consent handled?** The patient gives or withdraws it on their profile. It is required for both directions, it applies forward only, and withdrawing stops future sharing but does not recall summaries already sent.
+**Why is there no consent?** The panel and CLSU MISO told us, verbally, that all completed consultation results must be sent to CHIS. A consent the patient could refuse would then not be valid consent, so we do not ask for it. Under the Data Privacy Act Section 13, sensitive personal information may be processed without consent when it is necessary for medical treatment, by a medical practitioner or institution, with adequate protection; Telemed and CHIS both belong to CLSU and the summary is for continuing care. The patient gets a privacy notice instead, and every other safeguard stays (identity check, audit log, minimal payload, physician-only view). Be honest about two things: the requirement is verbal so far (we are confirming it with MISO by email, cc our adviser, and asking whether the DPO should review it), and CHIS records the basis we declare but cannot verify it.
 
 **What is stored?** Telemed stores only sync status columns on the consultation (status, CHIS reference, attempts, a short error code) and the audit log (that a call happened, never its content). It does not store or cache the CHIS medical profile.
 

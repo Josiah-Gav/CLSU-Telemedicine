@@ -209,7 +209,7 @@ The **Assessment** tab in `messaging.blade.php`. Verified from the view:
 "CHIS Sync Status" card, and fake Height/Weight/BMI/Emergency Contact fields. Those
 placeholders were **removed**. For the assigned physician the tab now loads the
 patient's CHIS medical profile (allergies, conditions, medications, immunizations,
-family history) from the simulated CHIS, behind consent and an identity check. That
+family history) from the simulated CHIS, behind an identity check (no patient consent gate; see `chis-integration.md`). That
 is read-only reference data from an external system: it is **not** part of this
 feature, is never written to the `consultations` clinical columns, and is documented
 in `chis-integration.md`. Completing the session also queues a CHIS push of the

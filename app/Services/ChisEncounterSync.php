@@ -20,17 +20,14 @@ class ChisEncounterSync
     /**
      * Why this session must not be sent to CHIS, or null when it may be.
      * The single eligibility rule, checked at completion and again by the job
-     * at send time (consent can be withdrawn in between).
+     * at send time (an admin can clear a CLSU ID in between). Patient consent
+     * plays no part: the lawful basis is medical treatment (RA 10173 Sec. 13).
      */
     public static function ineligibilityReason(ConsultationSession $session): ?string
     {
         $patient = $session->request?->patient;
 
-        return match (true) {
-            ! $patient?->hasChisConsent() => 'no_consent',
-            blank($patient->clsu_id) => 'no_clsu_id',
-            default => null,
-        };
+        return blank($patient?->clsu_id) ? 'no_clsu_id' : null;
     }
 
     /**
@@ -44,7 +41,7 @@ class ChisEncounterSync
         }
 
         return match (true) {
-            $code === 'no_consent' => 'Patient has not consented',
+            $code === 'no_consent' => 'Skipped under the earlier consent rule (see chis:send-skipped)',
             $code === 'no_clsu_id' => 'Patient has no CLSU ID',
             $code === 'identity_mismatch' => 'CHIS record name does not match the Telemed patient',
             $code === 'connection_failed' => 'CHIS could not be reached',

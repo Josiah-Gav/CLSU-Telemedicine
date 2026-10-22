@@ -68,7 +68,7 @@ class ChisSyncController extends Controller
         $this->authorizeAdmin();
 
         // Conditional, so a synced or skipped session can never be re-sent
-        // (skipped is final: consent applies to later consultations only).
+        // (skipped is never re-sent from here; only chis:send-skipped requeues no_consent rows).
         $claimed = ConsultationSession::whereKey($session->id)
             ->whereIn('chis_sync_status', ['failed', 'pending'])
             ->update(['chis_sync_status' => 'pending', 'chis_last_error' => null]);

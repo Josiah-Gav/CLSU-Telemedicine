@@ -13,11 +13,10 @@ beforeEach(function () {
     Http::preventStrayRequests();
 });
 
-/** An active session for a patient "Juan Dela Cruz" (23-0001), consented by default. */
-function chisViewSession(array $patient = [], array $session = [], bool $consented = true): ConsultationSession
+/** An active session for a patient "Juan Dela Cruz" (23-0001); the patient has never consented. */
+function chisViewSession(array $patient = [], array $session = []): ConsultationSession
 {
     $patientUser = User::factory()->create(array_merge(['role' => 'patient', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'clsu_id' => '23-0001'], $patient));
-    $patientUser->forceFill(['chis_consent_at' => $consented ? now() : null])->save();
     $physician = User::factory()->create(['role' => 'physician']);
 
     $request = Consultation::forceCreate([
@@ -91,17 +90,24 @@ it('forbids a session that is not active or completed', function () {
     expect(ChisAuditLog::count())->toBe(0);
 });
 
-it('makes no call and writes no audit row without consent or a CLSU ID', function (array $patient, bool $consented, string $state) {
+it('makes no call and writes no audit row without a CLSU ID', function () {
     Http::fake();
 
-    viewChis(chisViewSession($patient, consented: $consented))->assertOk()->assertExactJson(['state' => $state]);
+    viewChis(chisViewSession(['clsu_id' => null]))->assertOk()->assertExactJson(['state' => 'no_clsu_id']);
 
     Http::assertNothingSent();
     expect(ChisAuditLog::count())->toBe(0);
-})->with([
-    'no consent' => [[], false, 'no_consent'],
-    'no clsu id' => [['clsu_id' => null], true, 'no_clsu_id'],
-]);
+});
+
+it('looks up a patient who never consented', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $session = chisViewSession();
+    expect($session->request->patient->chis_consent_at)->toBeNull();
+
+    viewChis($session)->assertOk()->assertJsonPath('state', 'ok');
+
+    expect(ChisAuditLog::sole()->outcome)->toBe('success');
+});
 
 // --- ok ------------------------------------------------------------------------
 
@@ -192,13 +198,14 @@ it('replaces the placeholder tab for the physician', function () {
         ->assertDontSee('Past Injuries');
 });
 
-it('shows the patient only a consent note, with no profile endpoint', function () {
+it('shows the patient only a privacy note, with no profile endpoint', function () {
     $session = chisViewSession();
 
     $this->actingAs(User::find($session->request->patient_id))->get(route('consultations.messaging.show', $session))
         ->assertOk()
         ->assertSee('visible to your assigned physician only')
-        ->assertSee('Manage consent')
+        ->assertSee('How your records are shared with CHIS')
+        ->assertDontSee('Manage consent')
         ->assertDontSee('chis-profile', false)
         ->assertDontSee('Hospital Information System');
 });
