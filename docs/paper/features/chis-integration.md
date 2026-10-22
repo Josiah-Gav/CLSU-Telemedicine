@@ -55,7 +55,7 @@ back, under the Data Privacy Act (RA 10173) constraints the code encodes:
   belong to the same institution, and the summary serves the patient's continuing
   care. Payloads declare it: `lawful_basis: "medical_treatment"`, `consent: null`
   (`ChisEncounterPayload::build`).
-- **Why consent would be invalid.** CLSU's MISO and the panel required that **all**
+- **Why consent would be invalid.** CLSU's MISO required, verbally, that **all**
   completed consultation results be sent to CHIS. A consent the patient could refuse
   (and still be sent) is not freely given, so asking for it would misdescribe the
   processing. The earlier phases did ask (`users.chis_consent_at`); phase 8 removed
@@ -63,16 +63,17 @@ back, under the Data Privacy Act (RA 10173) constraints the code encodes:
 - **Safeguards that stay** (Sec. 13's "adequate protection"): the identity check
   (`ChisIdentity::matches`), the append-only audit log, the minimal payload
   (BR-7), physician-only viewing, `no-store` and no caching of CHIS data.
-- **Status of the requirement: verbal.** The MISO requirement was stated verbally.
-  The author is confirming it by email with MISO (cc adviser) and asking whether the
-  Data Protection Officer should review the arrangement. **No written approval
-  exists yet; none may be claimed.** DPO review is recommended before the system is
+- **Status of the requirement: verbal.** The MISO requirement was stated verbally, by
+  MISO only. **Written confirmation has not been obtained, and no written approval
+  exists; none may be claimed.** Review by CLSU's Data Protection Officer is
+  recommended. DPO review is recommended before the system is
   used with real patients.
 - **Notice.** Patients see the privacy notice
   (`resources/views/profile/partials/chis-privacy-notice.blade.php`), a line on the
   consultation request form (`resources/views/patient/newconsultation.blade.php`)
-  and section 9 of the public privacy policy (`resources/views/privacy-policy.blade.php`).
+  and the *Sharing Consultation Summaries with CHIS* section of the public privacy policy (`resources/views/privacy-policy.blade.php`). The policy also states that the testing was role-played and that CHIS here is a researcher-run local simulator.
 - **Simulator side (verified, commit `b6eec90`).** The simulator accepts an optional `lawful_basis` of `consent` or `medical_treatment`; `medical_treatment` needs no consent object and `consent: null` is valid; omitting the field keeps the original rule (`app/Http/Requests/StoreEncounterRequest.php`, `josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`). Its viewer shows "Shared under: Medical treatment" (`resources/views/viewer/encounters/show.blade.php`). Its `docs/API_CONTRACT.md` was not read for this change.
+- **Never connected to the testing deployment.** The five-day live testing (role-played consultations, ended October 13, 2026) ran on Railway before the CHIS integration existed; that deployment was never connected to CHIS, and no testing data was sent to it. The integration runs only locally against the researcher-run simulator.
 - **Historic column.** `users.chis_consent_at` remains in the schema and the `User`
   cast, but no code reads it. Sessions that were skipped with `no_consent` under the
   old rule can be sent once with `chis:send-skipped --confirm`.
@@ -397,7 +398,7 @@ asserts 201, then 409, then that the original diagnosis is still stored.
 - **Profile privacy notice** (`resources/views/profile/partials/chis-privacy-notice.blade.php`,
   patient-only): the lawful basis in plain words, what is and is not sent, the
   physician-view and logging statement, contact route. No buttons. Also: one line
-  on the consultation request form and section 9 of the privacy policy.
+  on the consultation request form and the *Sharing Consultation Summaries with CHIS* section of the privacy policy.
 - **Admin CHIS Sync** (`resources/views/admin/chis-sync/index.blade.php`): status
   counts as filter tabs, a reachability banner (cached 60 s via
   `Cache::remember('chis.health', 60, …)`), table and mobile cards, plain-language
@@ -456,7 +457,7 @@ in the item.
 | CH-2 | **Identity check is by first and last name only.** Telemed stores no birth date (no such column in `users`), so two people with the same name and a mistyped CLSU ID would not be caught (`ChisIdentity::matches`). |
 | CH-3 | **Follow-up intent is not recorded at completion.** `consultations.follow_up_required` defaults to false and no code writes it or `follow_up_date`, so the payload always sends `follow_up {required: null, date: null}` ("not recorded"). |
 | CH-4 | **Custom symptom names are not length-validated at intake** (`ConsultationController::store` validates `symptoms_payload` only as a string plus per-entry severity/date). Entries over 255 characters are silently dropped from the payload (`ChisEncounterPayload::symptoms`). |
-| CH-5 | **The lawful basis rests on a verbal requirement; written confirmation and DPO review are pending.** The MISO requirement that all completed consultations go to CHIS was stated verbally. The author is emailing MISO (cc adviser) to confirm it and to ask whether the DPO should review. Until then the arrangement must not be described as approved in writing. |
+| CH-5 | **The lawful basis rests on a verbal requirement; written confirmation and DPO review are pending.** The requirement that all completed consultations go to CHIS was stated verbally by CLSU MISO only. Written confirmation has not been obtained, and review by CLSU's DPO is recommended before any production use. The arrangement must not be described as approved in writing. |
 | CH-6 | **(verified)** Summaries are immutable in CHIS (since phase 8 this also means a session synced under the old `consent` payload and re-sent through the API now has different content and gets 409; reset the simulator, see `docs/CHIS_DEMO.md`): a resend of the same `telemed_encounter_id` with **different content** is rejected with 409 `ENCOUNTER_CONFLICT` and the original record is kept. Simulator: `app/Http/Controllers/EncounterController.php` (`replay()` compares a hash of the canonical JSON body with `hash_equals`) and `app/Support/CanonicalJson.php`; test `tests/Feature/EncounterSubmissionTest.php::a_changed_resend_is_a_conflict_and_the_original_is_kept` (`josiah-gav/clsu-chis-simulation`, branch `claude/sleepy-galileo-gejtn4`, commit `4828c37`). Telemed treats the 409 as permanent: the session becomes `failed` (`http_409:ENCOUNTER_CONFLICT`) and `describeError` says "CHIS already holds different content", so a resend after the payload format changes is rejected. The 200 seen when the format changed during development (phase 4C) occurred, per the author, because the simulator database had been reset and so already held the new format; that reset is not visible in code. |
 | CH-7 | **Audit log is append-only at the model level only.** Query-builder `update()`/`delete()` and raw SQL bypass the model events (`ChisAuditLog` docblock). Database permissions would be needed for real immutability. |
 | CH-8 | **Lookups via `chis:health --patient` have no actor** — a command-line run has no authenticated user (`actor_user_id` is null; source `health_command`). |
