@@ -221,7 +221,7 @@ Index on (`chis_sync_status`, `updated_at`).
 `id`; `action` (string 30: `encounter_push` | `patient_lookup`); `outcome`
 (string 30: `success` | `not_found` | `rejected` | `unavailable` |
 `identity_mismatch`); `source` (string 30: `sync_job` | `health_command` |
-`consultation_view` | `patient_self_view` | `api`); `patient_user_id`, `actor_user_id`,
+`consultation_view` | `patient_self_view` | `profile_view` | `api`); `patient_user_id`, `actor_user_id`,
 `consultation_session_id` (unsigned big int, nullable, **no foreign keys** so rows
 outlive deleted users and sessions); `clsu_id` (string 50, snapshot);
 `http_status` (unsigned small int); `reason` (string 100); `chis_reference`;
@@ -402,7 +402,7 @@ asserts 201, then 409, then that the original diagnosis is still stored.
 - **Profile CHIS record** (`resources/views/profile/partials/chis-record.blade.php`,
   patient-only, `GET /profile/chis-record` → `ChisProfileController::showOwn`): the
   same read-only record without a consultation. Nothing is fetched until the patient
-  clicks *Show my record*; the audit row is `patient_self_view` with no session id.
+  clicks *Show my record*; the audit row is source `profile_view` with no session id.
 - **Profile privacy notice** (`resources/views/profile/partials/chis-privacy-notice.blade.php`,
   patient-only): the lawful basis in plain words, what is and is not sent, the
   physician-view, patient self-view and logging statement, contact route. No buttons. Also: one line

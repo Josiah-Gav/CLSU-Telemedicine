@@ -147,3 +147,15 @@ it('links each CHIS sync row to its audit history', function () {
         ->assertSee(route('admin.chis-audit.index', ['session' => $session->id]), false)
         ->assertSee('Audit log');
 });
+
+it('labels a patient\'s profile view apart from their consultation view', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'clsu_id' => '23-0006']);
+    ChisAuditLog::record('patient_lookup', 'success', 'patient_self_view', ['actor_user_id' => $patient->user_id, 'patient_user_id' => $patient->user_id, 'consultation_session_id' => 9, 'clsu_id' => '23-0006', 'http_status' => 200]);
+    ChisAuditLog::record('patient_lookup', 'success', 'profile_view', ['actor_user_id' => $patient->user_id, 'patient_user_id' => $patient->user_id, 'clsu_id' => '23-0006', 'http_status' => 200]);
+
+    $this->actingAs(auditAdmin())->get(route('admin.chis-audit.index'))
+        ->assertOk()
+        ->assertSee('Patient view (consultation)')
+        ->assertSee('Patient view (profile)')
+        ->assertDontSee('profile_view');
+});

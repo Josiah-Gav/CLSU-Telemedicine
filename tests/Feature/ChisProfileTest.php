@@ -287,7 +287,7 @@ it('lets a patient view their own record from the profile, without any consultat
     }
     expect($response->headers->get('Cache-Control'))->toContain('no-store');
     expect(ChisAuditLog::sole()->only(['action', 'source', 'outcome', 'actor_user_id', 'patient_user_id', 'consultation_session_id', 'clsu_id']))->toBe([
-        'action' => 'patient_lookup', 'source' => 'patient_self_view', 'outcome' => 'success', 'actor_user_id' => $patient->user_id,
+        'action' => 'patient_lookup', 'source' => 'profile_view', 'outcome' => 'success', 'actor_user_id' => $patient->user_id,
         'patient_user_id' => $patient->user_id, 'consultation_session_id' => null, 'clsu_id' => '23-0001',
     ]);
 });
@@ -334,7 +334,7 @@ it('shows nothing from the profile on an identity mismatch', function () {
     $response = viewOwnChis(profileChisPatient())->assertOk()->assertExactJson(['state' => 'identity_mismatch']);
 
     expect($response->getContent())->not->toContain('Penicillin')
-        ->and(ChisAuditLog::sole()->outcome)->toBe('identity_mismatch');
+        ->and(ChisAuditLog::sole()->only(['source', 'outcome']))->toBe(['source' => 'profile_view', 'outcome' => 'identity_mismatch']);
 });
 
 it('fails closed from the profile when the audit row cannot be written', function () {
