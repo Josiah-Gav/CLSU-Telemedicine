@@ -1054,16 +1054,17 @@
                     this.fetchPresence();
                     this.poller = setInterval(() => this.fetchMessages(false), 3000);
                     this.presencePoller = setInterval(() => this.fetchPresence(), 4000);
-                    window.addEventListener('beforeunload', () => {
-                        if (this.poller) {
-                            clearInterval(this.poller);
+                    // pagehide rather than beforeunload: mobile Safari often never
+                    // fires beforeunload, and browsers routinely cancel async XHRs
+                    // started during unload, so the peer kept seeing "typing" and
+                    // "online". The pollers are left alone: a real unload ends them,
+                    // and a page frozen into the back/forward cache should resume
+                    // polling when it is restored.
+                    window.addEventListener('pagehide', () => {
+                        if (this.consultationStatus === 'active') {
+                            this.sendExitSignal(this.typingUrl, { is_typing: '0' });
                         }
 
-                        if (this.presencePoller) {
-                            clearInterval(this.presencePoller);
-                        }
-
-                        this.sendTypingState(false);
                         this.markOffline();
                     });
                     // Covers the session already being completed on page load.
@@ -1118,11 +1119,32 @@
                     } catch (e) {}
                 },
                 markOffline() {
+                    this.sendExitSignal(this.offlineUrl, {});
+                },
+                // A POST that survives the page going away. sendBeacon is queued
+                // by the browser itself rather than tied to this page, but it
+                // cannot set headers, so the CSRF token travels as a _token form
+                // field, which Laravel's CSRF check reads just like the header.
+                // These routes stay CSRF-protected. Where sendBeacon is missing,
+                // or refuses because its queue is full, fall back to the original
+                // best-effort XHR.
+                sendExitSignal(url, fields) {
                     const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
+                    if (navigator.sendBeacon) {
+                        const formData = new FormData();
+                        formData.append('_token', csrfToken);
+                        Object.entries(fields).forEach(([key, value]) => formData.append(key, value));
+
+                        if (navigator.sendBeacon(url, formData)) {
+                            return;
+                        }
+                    }
+
                     $.ajax({
-                        url: this.offlineUrl,
+                        url: url,
                         method: 'POST',
+                        data: fields,
                         headers: {
                             'X-CSRF-TOKEN': csrfToken,
                             'X-Requested-With': 'XMLHttpRequest'
