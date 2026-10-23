@@ -122,7 +122,6 @@ class DashboardController extends Controller
                 $activeConsultation = $this->getPatientActiveConsultation($patientInfo->user_id);
                 $activeConsultationSummary = $this->getConsultationSummary($activeConsultation);
                 $followUpStatus = $this->getPatientFollowUpStatus($patientInfo->user_id);
-                $physicianFollowUp = $this->getPhysicianInitiatedFollowUp($patientInfo->user_id);
 
                 // Same single source of truth as newconsultation()'s
                 // informational banner. The next window is only worth a
@@ -132,7 +131,7 @@ class DashboardController extends Controller
                 $weeklySchedule = $this->availabilityService->weeklyScheduleOverview();
                 $tamEvaluationSessionId = $this->getPatientMostRecentCompletedConsultationSessionId($patientInfo->user_id);
 
-                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule', 'tamEvaluationSessionId'));
+                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule', 'tamEvaluationSessionId'));
             case 'physician':
                 // Physicians land here on first login/verification (Breeze's
                 // redirect()->intended(route('dashboard')) — see
@@ -195,11 +194,9 @@ class DashboardController extends Controller
         }
 
         $consultation = $this->getPatientActiveConsultation($patient->user_id);
-        $physicianFollowUp = $this->getPhysicianInitiatedFollowUp($patient->user_id);
 
         return response()->json([
             'consultation' => $this->serializePatientConsultation($consultation),
-            'physician_follow_up' => $physicianFollowUp,
         ]);
     }
 
@@ -242,7 +239,7 @@ class DashboardController extends Controller
 
     private function getPatientActiveConsultation(int $patientId): ?Consultation
     {
-        return Consultation::with('consultationSession.slot')
+        return Consultation::with(['consultationSession.slot', 'physician'])
             ->where('patient_id', $patientId)
             ->whereIn('request_status', ['pending', 'reviewed', 'assigned', 'scheduled', 'active'])
             ->where(function ($query) {
@@ -333,63 +330,6 @@ class DashboardController extends Controller
         };
     }
 
-    /**
-     * Both follow-up creation paths produce a type = 'follow_up' Consultation,
-     * so the type alone cannot say who started it. The discriminator is the
-     * session's follow_up_request_id: the patient-initiated path (patient asks
-     * -> nurse forwards -> physician approves, ConsultationOwnershipService::
-     * decideFollowUpByPhysician) links the new session back to the originating
-     * FollowUpRequest, while a physician acting on their own (PhysicianController::
-     * createPhysicianFollowUp -> createFollowUpConsultationFromSource, called
-     * without a $followUpRequestId) leaves it null. Without the whereHas below
-     * this card also appeared for follow-ups the patient themselves requested.
-     */
-    private function getPhysicianInitiatedFollowUp(int $patientId): ?array
-    {
-        $consultation = Consultation::query()
-            ->with(['consultationSession.slot', 'physician'])
-            ->where('patient_id', $patientId)
-            ->where('type', 'follow_up')
-            ->whereHas('consultationSession', function ($sessionQuery) {
-                $sessionQuery->whereNull('follow_up_request_id');
-            })
-            ->whereIn('request_status', ['scheduled', 'active'])
-            ->orderByRaw("CASE request_status WHEN 'scheduled' THEN 1 WHEN 'active' THEN 2 ELSE 3 END")
-            ->latest('submitted_at')
-            ->first();
-
-        if (! $consultation) {
-            return null;
-        }
-
-        $session = $consultation->consultationSession;
-
-        return [
-            'request_id' => $consultation->request_id,
-            'consultation_type_label' => 'Follow-up',
-            'request_status' => $consultation->request_status,
-            'status_label' => ucfirst($consultation->request_status),
-            'status_badge_class' => $this->getPatientStatusBadgeClass($consultation->request_status),
-            'submitted_at' => optional($consultation->submitted_at)->format('M d, Y'),
-            'physician_name' => trim(optional($consultation->physician)->first_name.' '.optional($consultation->physician)->last_name) ?: 'Your physician',
-            'consultation_status' => $consultation->request_status,
-            'scheduled_slot' => $consultation->consultationSession?->slot ? [
-                'slot_date' => $consultation->consultationSession->slot->slot_date?->format('M d, Y') ?? (string) $consultation->consultationSession->slot->slot_date,
-                'start_time' => $consultation->consultationSession->slot->start_time,
-                'end_time' => $consultation->consultationSession->slot->end_time,
-            ] : null,
-            'consultation_session' => $session ? [
-                'id' => $session->id,
-                'consultation_status' => $session->consultation_status,
-                'scheduled_slot' => $session->slot ? [
-                    'slot_date' => $session->slot->slot_date?->format('M d, Y') ?? (string) $session->slot->slot_date,
-                    'start_time' => $session->slot->start_time,
-                    'end_time' => $session->slot->end_time,
-                ] : null,
-            ] : null,
-        ];
-    }
-
     private function serializePatientConsultation(?Consultation $consultation): ?array
     {
         if (! $consultation) {
@@ -415,6 +355,7 @@ class DashboardController extends Controller
             'submitted_at' => optional($consultation->submitted_at)->format('M d, Y'),
             'status_badge_class' => $this->getPatientStatusBadgeClass($status),
             'status_label' => ucfirst($status),
+            'arranged_by_physician' => $consultation->arrangingPhysicianName(),
             'session' => $consultationSession ? [
                 'id' => $consultationSession->id,
                 'consultation_status' => $consultationSession->consultation_status,

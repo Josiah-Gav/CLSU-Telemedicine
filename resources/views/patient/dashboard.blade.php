@@ -29,6 +29,7 @@
                 // idea what's happening or what to expect next — same sentence
                 // StatusBadge::patientMeaning() supplies on consultation-details.blade.php.
                 'status_meaning' => \App\Support\StatusBadge::patientMeaning($status),
+                'arranged_by_physician' => $activeConsultation->arrangingPhysicianName(),
                 'submitted_at' => optional($activeConsultation->submitted_at)->format('M d, Y'),
                 'show_messaging' => in_array($status, ['active', 'completed'], true) && $activeConsultation->consultationSession,
                 'session' => $activeConsultation->consultationSession ? [
@@ -53,7 +54,6 @@
 
     <script>
         window.patientConsultation = @json($patientConsultationPayload);
-        window.physicianFollowUp = @json($physicianFollowUp);
         window.tamEvaluationSessionId = @json($tamEvaluationSessionId);
 
         function cancelFollowUpRequest(triggerElement) {
@@ -101,10 +101,9 @@
             });
         }
 
-        function patientDashboard(initialConsultation, initialPhysicianFollowUp, refreshUrl, unreadUrl, tamEvaluationSessionId) {
+        function patientDashboard(initialConsultation, refreshUrl, unreadUrl, tamEvaluationSessionId) {
             return {
                 consultation: initialConsultation,
-                physicianFollowUp: initialPhysicianFollowUp,
                 refreshUrl,
                 unreadUrl,
                 refreshTimer: null,
@@ -149,11 +148,9 @@
                         },
                         success: (data) => {
                             const nextConsultation = data?.consultation ?? null;
-                            const nextPhysicianFollowUp = data?.physician_follow_up ?? null;
                             const previousUnreadCount = this.consultation?.session?.unread_count ?? 0;
 
                             this.consultation = nextConsultation;
-                            this.physicianFollowUp = nextPhysicianFollowUp;
 
                             if (this.consultation?.session) {
                                 this.consultation.session.unread_count = previousUnreadCount;
@@ -209,7 +206,7 @@
         }
     </script>
 
-    <div class="py-12" x-data="patientDashboard(window.patientConsultation, window.physicianFollowUp, '{{ route('dashboard.active_consultation') }}', '{{ route('consultations.messaging.unread_counts') }}', window.tamEvaluationSessionId)" x-init="init()">
+    <div class="py-12" x-data="patientDashboard(window.patientConsultation, '{{ route('dashboard.active_consultation') }}', '{{ route('consultations.messaging.unread_counts') }}', window.tamEvaluationSessionId)" x-init="init()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="overflow-hidden rounded-3xl bg-brand-green-deep shadow-sm">
                 <div class="p-6 sm:p-8">
@@ -268,43 +265,6 @@
                 </{{ $followUpCardTag }}>
             @endif
 
-            <div class="mt-6" x-show="physicianFollowUp" x-cloak>
-                <template x-if="physicianFollowUp">
-                    <div class="rounded-3xl border border-gray-200 bg-white shadow-sm">
-                        <div class="p-6 sm:p-8">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Physician Follow-up</p>
-                                    <h3 class="mt-2 text-xl font-bold text-slate-900">A follow-up consultation was initiated by your physician</h3>
-                                    <p class="mt-1 text-sm text-slate-600" x-text="(physicianFollowUp?.physician_name || 'Your physician') + ' has arranged a follow-up consultation for you.'"></p>
-                                </div>
-                                <span :class="physicianFollowUp?.status_badge_class" x-text="physicianFollowUp?.status_label"></span>
-                            </div>
-
-                            <div class="mt-6 grid gap-4 sm:grid-cols-2">
-                                <div class="rounded-2xl border border-gray-200 bg-slate-50 p-4">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Consultation Type</p>
-                                    <p class="mt-2 text-sm font-semibold text-slate-900" x-text="physicianFollowUp?.consultation_type_label"></p>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-slate-50 p-4">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Consultation Status</p>
-                                    <p class="mt-2 text-sm font-semibold text-slate-900" x-text="physicianFollowUp?.status_label"></p>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-slate-50 p-4 sm:col-span-2">
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Scheduled Appointment</p>
-                                    <template x-if="physicianFollowUp?.scheduled_slot">
-                                        <p class="mt-2 text-sm font-semibold text-slate-900" x-text="physicianFollowUp.scheduled_slot.slot_date + ' ' + physicianFollowUp.scheduled_slot.start_time + ' - ' + physicianFollowUp.scheduled_slot.end_time"></p>
-                                    </template>
-                                    <template x-if="!physicianFollowUp?.scheduled_slot">
-                                        <p class="mt-2 text-sm text-slate-600">No schedule slot has been assigned yet.</p>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
             <div class="mt-6" x-show="consultation" x-cloak>
                 <a :href="consultation?.details_url" class="block rounded-3xl border border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg transition shadow-sm">
                     <template x-if="consultation">
@@ -317,6 +277,9 @@
                                          details page (consultation-details.blade.php). --}}
                                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" x-text="(consultation?.status_label || 'Active') + ' Consultation'"></p>
                                     <h3 class="mt-2 text-xl font-bold text-slate-900" x-text="consultationTitle()"></h3>
+                                    {{-- Physician-initiated follow-ups used to get a separate
+                                         card as well, so the same request showed twice. --}}
+                                    <p class="mt-1 text-sm font-medium text-brand-green-deep" x-show="consultation?.arranged_by_physician" x-text="consultation?.arranged_by_physician + ' has arranged this follow-up consultation for you.'" x-cloak></p>
                                     {{-- Phase 2 UX: explains what the status badge actually means,
                                          rather than leaving a first-time patient to guess. Hidden
                                          entirely when the status has no plain-language sentence

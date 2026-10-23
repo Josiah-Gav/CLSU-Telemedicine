@@ -108,6 +108,37 @@ class Consultation extends Model
         return $this->belongsTo(ConsultationSession::class, 'parent_consultation_id', 'id');
     }
 
+    /**
+     * Both follow-up creation paths produce a type = 'follow_up' request, so
+     * the type alone cannot say who started it. The discriminator is the
+     * session's follow_up_request_id: the patient-initiated path (patient asks
+     * -> nurse forwards -> physician approves, ConsultationOwnershipService::
+     * decideFollowUpByPhysician) links the new session back to the originating
+     * FollowUpRequest, while a physician acting on their own (PhysicianController::
+     * createPhysicianFollowUp -> createFollowUpConsultationFromSource, called
+     * without a $followUpRequestId) leaves it null.
+     */
+    public function isPhysicianInitiatedFollowUp(): bool
+    {
+        return $this->type === 'follow_up'
+            && $this->consultationSession !== null
+            && $this->consultationSession->follow_up_request_id === null;
+    }
+
+    /**
+     * The name the patient dashboard shows on a physician-initiated follow-up
+     * ("<name> has arranged this follow-up"), or null for any other request.
+     * Expects physician and consultationSession to be loaded.
+     */
+    public function arrangingPhysicianName(): ?string
+    {
+        if (! $this->isPhysicianInitiatedFollowUp()) {
+            return null;
+        }
+
+        return trim(optional($this->physician)->first_name.' '.optional($this->physician)->last_name) ?: 'Your physician';
+    }
+
     /*
     |--------------------------------------------------------------------
     | Analytics scopes
