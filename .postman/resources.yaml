@@ -1,0 +1,9 @@
+# Use this workspace to collaborate
+workspace:
+  id: 38de2bdd-cfcb-441b-a706-ea838d874c85
+
+localResources:
+  collections:
+    - ../docs/postman/Telemed-CHIS-Demo.postman_collection.json
+  environments:
+    - ../docs/postman/Telemed-CHIS-Local.postman_environment.json
