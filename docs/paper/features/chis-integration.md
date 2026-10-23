@@ -114,7 +114,8 @@ only an admin can change it (admin edit form).
 shared with CHIS": that a summary of every completed consultation (earlier ones
 included) goes to CHIS under RA 10173 Sec. 13 (medical treatment), what is and is
 not sent, that the assigned physician may view their CHIS record, that they can
-view the same record themselves (read-only, from a consultation), and that every
+view the same record themselves (read-only, on the profile page or from a
+consultation), and that every
 view is logged, and whom to ask (the clinic or CLSU's Data Protection Officer). There are
 no buttons. The request form carries a one-line pointer to it.
 
@@ -396,6 +397,12 @@ asserts 201, then 409, then that the original diagnosis is still stored.
   empty), and the footer "Viewing this record is logged." Alpine `loadChisProfile`
   fetches lazily and everything is rendered with `x-text` (never `x-html`). A
   patient's view is audited as source `patient_self_view` with the patient as actor.
+  The panels live in `resources/views/chis/partials/record.blade.php`, shared with
+  the profile page.
+- **Profile CHIS record** (`resources/views/profile/partials/chis-record.blade.php`,
+  patient-only, `GET /profile/chis-record` → `ChisProfileController::showOwn`): the
+  same read-only record without a consultation. Nothing is fetched until the patient
+  clicks *Show my record*; the audit row is `patient_self_view` with no session id.
 - **Profile privacy notice** (`resources/views/profile/partials/chis-privacy-notice.blade.php`,
   patient-only): the lawful basis in plain words, what is and is not sent, the
   physician-view, patient self-view and logging statement, contact route. No buttons. Also: one line

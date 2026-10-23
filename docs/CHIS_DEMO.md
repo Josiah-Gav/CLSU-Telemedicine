@@ -55,7 +55,7 @@ Two Postman collections are used. Name them out loud so the panel can follow:
 ### Step 1 — Privacy notice (patient window, ~1 min)
 
 - **Click:** patient.test1 → Profile → scroll to **How your records are shared with CHIS**. (The same notice is linked from the consultation request form and the privacy policy.)
-- **They should see:** no buttons; what is sent, what is never sent, that the assigned physician may view the CHIS record, that the patient can view it too (read-only), and every view is logged, who to contact (the clinic or the Data Protection Officer).
+- **They should see:** no buttons; what is sent, what is never sent, that the assigned physician may view the CHIS record, that the patient can view it too (read-only, via *Show my record* just above), and every view is logged, who to contact (the clinic or the Data Protection Officer).
 - **Say:** "There is no consent to click, on purpose: CLSU requires every completed consultation to go to CHIS, so a refusable consent would not be valid. The legal basis is medical treatment under Section 13 of the Data Privacy Act, and the patient is told in plain words what is sent."
 
 ### Step 2 — Receive: the physician sees the CHIS record (~2 min)

@@ -217,7 +217,7 @@
                         <p><strong>Why no consent is asked.</strong> Health information is sensitive personal information. Under Section 13 of the Data Privacy Act of 2012 (RA 10173), it may be processed without consent when it is necessary for medical treatment, is carried out by a medical practitioner or medical treatment institution, and adequate safeguards are in place. Consultation summaries are sent on that basis, and consultations completed earlier may also be sent.</p>
                         <p><strong>What is sent:</strong> the patient's CLSU ID and name, your physician, your symptoms, and the diagnosis, assessment, plan, recommendations, and the name of any prescription file.</p>
                         <p><strong>What is never sent:</strong> chat messages, uploaded files, the prescription file itself, and contact details.</p>
-                        <p>The assigned physician may view the patient's CHIS medical record during a consultation, and patients may view their own CHIS record, read-only, from an active or completed consultation. Every such view, and every summary sent, is recorded in an audit log that notes that it happened, but not what the information was.</p>
+                        <p>The assigned physician may view the patient's CHIS medical record during a consultation, and patients may view their own CHIS record, read-only, from their profile page or from a consultation. Every such view, and every summary sent, is recorded in an audit log that notes that it happened, but not what the information was.</p>
                         <p>For questions or corrections, contact the clinic or CLSU's Data Protection Officer.</p>
                     </div>
                 </section>

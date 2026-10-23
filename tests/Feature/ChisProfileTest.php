@@ -263,6 +263,108 @@ it('gives the patient a read-only view of their own record', function () {
     expect(ChisAuditLog::count())->toBe(0);
 });
 
+// --- profile page --------------------------------------------------------------
+
+function viewOwnChis(User $as)
+{
+    return test()->actingAs($as)->getJson(route('profile.chis_record.show'));
+}
+
+function profileChisPatient(array $override = []): User
+{
+    return User::factory()->create(array_merge(['role' => 'patient', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'clsu_id' => '23-0001'], $override));
+}
+
+it('lets a patient view their own record from the profile, without any consultation', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $patient = profileChisPatient();
+
+    $response = viewOwnChis($patient)->assertOk()->assertJsonPath('state', 'ok')
+        ->assertJsonPath('profile.blood_type', 'O+');
+
+    foreach (['middle_name', 'Santos', 'college', 'secret'] as $absent) {
+        expect($response->getContent())->not->toContain($absent);
+    }
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+    expect(ChisAuditLog::sole()->only(['action', 'source', 'outcome', 'actor_user_id', 'patient_user_id', 'consultation_session_id', 'clsu_id']))->toBe([
+        'action' => 'patient_lookup', 'source' => 'patient_self_view', 'outcome' => 'success', 'actor_user_id' => $patient->user_id,
+        'patient_user_id' => $patient->user_id, 'consultation_session_id' => null, 'clsu_id' => '23-0001',
+    ]);
+});
+
+it('only ever looks up the signed-in patient', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    profileChisPatient(['clsu_id' => '23-0002', 'first_name' => 'Maria', 'last_name' => 'Santos']);
+
+    viewOwnChis(profileChisPatient())->assertOk();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '23-0001'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '23-0002'));
+});
+
+it('forbids staff the profile endpoint, without any CHIS call or audit row', function (string $role) {
+    Http::fake();
+
+    viewOwnChis(User::factory()->create(['role' => $role, 'clsu_id' => null]))->assertForbidden();
+
+    Http::assertNothingSent();
+    expect(ChisAuditLog::count())->toBe(0);
+})->with(['nurse', 'physician', 'admin']);
+
+it('requires sign-in for the profile endpoint', function () {
+    Http::fake();
+
+    $this->getJson(route('profile.chis_record.show'))->assertUnauthorized();
+
+    Http::assertNothingSent();
+});
+
+it('makes no call from the profile without a CLSU ID', function () {
+    Http::fake();
+
+    viewOwnChis(profileChisPatient(['clsu_id' => null]))->assertOk()->assertExactJson(['state' => 'no_clsu_id']);
+
+    Http::assertNothingSent();
+    expect(ChisAuditLog::count())->toBe(0);
+});
+
+it('shows nothing from the profile on an identity mismatch', function () {
+    fakeChis(Http::response(['data' => chisRecord(['first_name' => 'Maria', 'last_name' => 'Santos'])]));
+
+    $response = viewOwnChis(profileChisPatient())->assertOk()->assertExactJson(['state' => 'identity_mismatch']);
+
+    expect($response->getContent())->not->toContain('Penicillin')
+        ->and(ChisAuditLog::sole()->outcome)->toBe('identity_mismatch');
+});
+
+it('fails closed from the profile when the audit row cannot be written', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $patient = profileChisPatient();
+    Schema::drop('chis_audit_logs');
+
+    viewOwnChis($patient)->assertOk()->assertExactJson(['state' => 'unavailable']);
+});
+
+it('shows the record section on the patient profile without calling CHIS', function () {
+    Http::fake();
+
+    $this->actingAs(profileChisPatient())->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee('Your CHIS medical record')
+        ->assertSee('Show my record')
+        ->assertSee(substr(json_encode(route('profile.chis_record.show')), 1, -1), false);
+
+    Http::assertNothingSent();
+    expect(ChisAuditLog::count())->toBe(0);
+});
+
+it('does not show the record section to staff', function (string $role) {
+    $this->actingAs(User::factory()->create(['role' => $role]))->get(route('profile.edit'))
+        ->assertOk()
+        ->assertDontSee('Show my record')
+        ->assertDontSee('chis-record', false);
+})->with(['nurse', 'physician', 'admin']);
+
 // --- identity ------------------------------------------------------------------
 
 it('matches names ignoring case, accents, punctuation and spacing', function (string $first, string $last, string $chisFirst, string $chisLast, bool $expected) {

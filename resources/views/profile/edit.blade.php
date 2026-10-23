@@ -16,6 +16,7 @@
                     @include('profile.partials.update-profile-information-form')
                     @include('profile.partials.update-password-form')
                     @if ($user->role === 'patient')
+                        @include('profile.partials.chis-record')
                         @include('profile.partials.chis-privacy-notice')
                     @endif
                 </div>
