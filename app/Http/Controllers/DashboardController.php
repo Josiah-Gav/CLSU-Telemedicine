@@ -11,6 +11,7 @@ use App\Services\Export\DashboardExportRows;
 use App\Services\PhysicianAvailabilityService;
 use App\Support\CsvDownload;
 use App\Support\DateRange;
+use App\Support\StatusBadge;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -119,10 +120,14 @@ class DashboardController extends Controller
         switch ($user->role) {
             case 'patient':
                 $patientInfo = Auth::user();
-                $activeConsultation = $this->getPatientActiveConsultation($patientInfo->user_id);
-                $activeConsultationSummary = $this->getConsultationSummary($activeConsultation);
+                // Built by the same serializer the 5s dashboard poll
+                // (activeConsultation()) uses, so the first render and every
+                // refresh agree — they used to be two hand-kept copies, and
+                // status_meaning vanished after the first poll.
+                $patientConsultationPayload = $this->serializePatientConsultation(
+                    $this->getPatientActiveConsultation($patientInfo->user_id)
+                );
                 $followUpStatus = $this->getPatientFollowUpStatus($patientInfo->user_id);
-                $physicianFollowUp = $this->getPhysicianInitiatedFollowUp($patientInfo->user_id);
 
                 // Same single source of truth as newconsultation()'s
                 // informational banner. The next window is only worth a
@@ -132,7 +137,7 @@ class DashboardController extends Controller
                 $weeklySchedule = $this->availabilityService->weeklyScheduleOverview();
                 $tamEvaluationSessionId = $this->getPatientMostRecentCompletedConsultationSessionId($patientInfo->user_id);
 
-                return view('patient.dashboard', compact('patientInfo', 'activeConsultation', 'activeConsultationSummary', 'followUpStatus', 'physicianFollowUp', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule', 'tamEvaluationSessionId'));
+                return view('patient.dashboard', compact('patientInfo', 'patientConsultationPayload', 'followUpStatus', 'intakeAvailable', 'nextScheduledWindow', 'weeklySchedule', 'tamEvaluationSessionId'));
             case 'physician':
                 // Physicians land here on first login/verification (Breeze's
                 // redirect()->intended(route('dashboard')) — see
@@ -195,11 +200,9 @@ class DashboardController extends Controller
         }
 
         $consultation = $this->getPatientActiveConsultation($patient->user_id);
-        $physicianFollowUp = $this->getPhysicianInitiatedFollowUp($patient->user_id);
 
         return response()->json([
             'consultation' => $this->serializePatientConsultation($consultation),
-            'physician_follow_up' => $physicianFollowUp,
         ]);
     }
 
@@ -242,7 +245,7 @@ class DashboardController extends Controller
 
     private function getPatientActiveConsultation(int $patientId): ?Consultation
     {
-        return Consultation::with('consultationSession.slot')
+        return Consultation::with(['consultationSession.slot', 'physician'])
             ->where('patient_id', $patientId)
             ->whereIn('request_status', ['pending', 'reviewed', 'assigned', 'scheduled', 'active'])
             ->where(function ($query) {
@@ -333,63 +336,6 @@ class DashboardController extends Controller
         };
     }
 
-    /**
-     * Both follow-up creation paths produce a type = 'follow_up' Consultation,
-     * so the type alone cannot say who started it. The discriminator is the
-     * session's follow_up_request_id: the patient-initiated path (patient asks
-     * -> nurse forwards -> physician approves, ConsultationOwnershipService::
-     * decideFollowUpByPhysician) links the new session back to the originating
-     * FollowUpRequest, while a physician acting on their own (PhysicianController::
-     * createPhysicianFollowUp -> createFollowUpConsultationFromSource, called
-     * without a $followUpRequestId) leaves it null. Without the whereHas below
-     * this card also appeared for follow-ups the patient themselves requested.
-     */
-    private function getPhysicianInitiatedFollowUp(int $patientId): ?array
-    {
-        $consultation = Consultation::query()
-            ->with(['consultationSession.slot', 'physician'])
-            ->where('patient_id', $patientId)
-            ->where('type', 'follow_up')
-            ->whereHas('consultationSession', function ($sessionQuery) {
-                $sessionQuery->whereNull('follow_up_request_id');
-            })
-            ->whereIn('request_status', ['scheduled', 'active'])
-            ->orderByRaw("CASE request_status WHEN 'scheduled' THEN 1 WHEN 'active' THEN 2 ELSE 3 END")
-            ->latest('submitted_at')
-            ->first();
-
-        if (! $consultation) {
-            return null;
-        }
-
-        $session = $consultation->consultationSession;
-
-        return [
-            'request_id' => $consultation->request_id,
-            'consultation_type_label' => 'Follow-up',
-            'request_status' => $consultation->request_status,
-            'status_label' => ucfirst($consultation->request_status),
-            'status_badge_class' => $this->getPatientStatusBadgeClass($consultation->request_status),
-            'submitted_at' => optional($consultation->submitted_at)->format('M d, Y'),
-            'physician_name' => trim(optional($consultation->physician)->first_name.' '.optional($consultation->physician)->last_name) ?: 'Your physician',
-            'consultation_status' => $consultation->request_status,
-            'scheduled_slot' => $consultation->consultationSession?->slot ? [
-                'slot_date' => $consultation->consultationSession->slot->slot_date?->format('M d, Y') ?? (string) $consultation->consultationSession->slot->slot_date,
-                'start_time' => $consultation->consultationSession->slot->start_time,
-                'end_time' => $consultation->consultationSession->slot->end_time,
-            ] : null,
-            'consultation_session' => $session ? [
-                'id' => $session->id,
-                'consultation_status' => $session->consultation_status,
-                'scheduled_slot' => $session->slot ? [
-                    'slot_date' => $session->slot->slot_date?->format('M d, Y') ?? (string) $session->slot->slot_date,
-                    'start_time' => $session->slot->start_time,
-                    'end_time' => $session->slot->end_time,
-                ] : null,
-            ] : null,
-        ];
-    }
-
     private function serializePatientConsultation(?Consultation $consultation): ?array
     {
         if (! $consultation) {
@@ -413,8 +359,14 @@ class DashboardController extends Controller
             'summary' => $this->getConsultationSummary($consultation) ?: 'No symptoms recorded',
             'request_status' => $status,
             'submitted_at' => optional($consultation->submitted_at)->format('M d, Y'),
-            'status_badge_class' => $this->getPatientStatusBadgeClass($status),
+            // Phase 4: shared with consultation-details.blade.php — see
+            // StatusBadge::patientClasses()'s docblock.
+            'status_badge_class' => StatusBadge::patientClasses($status),
             'status_label' => ucfirst($status),
+            // Phase 2 UX: a bare status word gives a first-time patient no
+            // idea what's happening or what to expect next.
+            'status_meaning' => StatusBadge::patientMeaning($status),
+            'arranged_by_physician' => $consultation->arrangingPhysicianName(),
             'session' => $consultationSession ? [
                 'id' => $consultationSession->id,
                 'consultation_status' => $consultationSession->consultation_status,
@@ -427,37 +379,11 @@ class DashboardController extends Controller
                 'clinical_badge_class' => $consultationSession->hasClinicalDocumentation() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700',
                 'clinical_label' => $consultationSession->hasClinicalDocumentation() ? __('Assessment ready') : __('Assessment pending'),
                 'has_prescription' => $consultationSession->hasPrescription(),
-                'prescription_badge_class' => $consultationSession->hasPrescription() ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600',
+                'prescription_badge_class' => $consultationSession->hasPrescription() ? 'bg-brand-green-soft text-brand-green-deep' : 'bg-slate-100 text-slate-600',
                 'prescription_label' => $consultationSession->hasPrescription() ? __('Prescription uploaded') : __('No prescription'),
+                'unread_count' => 0,
             ] : null,
         ];
-    }
-
-    private function getPatientStatusBadgeClass(string $status): string
-    {
-        $statusClasses = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ';
-
-        if (in_array($status, ['rejected', 'cancelled'], true)) {
-            return $statusClasses.'bg-red-100 text-red-700';
-        }
-
-        if ($status === 'completed') {
-            return $statusClasses.'bg-emerald-100 text-emerald-700';
-        }
-
-        if (in_array($status, ['pending', 'assigned'], true)) {
-            return $statusClasses.'bg-yellow-100 text-yellow-700';
-        }
-
-        if ($status === 'scheduled') {
-            return $statusClasses.'bg-indigo-100 text-indigo-700';
-        }
-
-        if ($status === 'active') {
-            return $statusClasses.'bg-blue-100 text-blue-700';
-        }
-
-        return $statusClasses.'bg-slate-100 text-slate-700';
     }
 
     /**

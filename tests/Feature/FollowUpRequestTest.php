@@ -5,7 +5,7 @@ use App\Models\ConsultationSession;
 use App\Models\ScheduleSlot;
 use App\Models\User;
 
-it('shows a physician initiated follow-up card on the patient dashboard with the scheduled consultation details', function () {
+it('shows a physician initiated follow-up as a single consultation card naming the physician', function () {
     $patient = User::factory()->create([
         'first_name' => 'Maya',
         'last_name' => 'Reyes',
@@ -57,12 +57,24 @@ it('shows a physician initiated follow-up card on the patient dashboard with the
 
     $session->update(['slot_id' => $slot->slot_id]);
 
-    $this->actingAs($patient)
-        ->get(route('dashboard'))
+    $this->actingAs($patient);
+
+    $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Physician Follow-up')
         ->assertSee('Scheduled Appointment')
-        ->assertSee($slot->slot_date->format('M d, Y'));
+        ->assertSee('Noah Flores')
+        ->assertSee($slot->slot_date->format('M d, Y'))
+        ->assertViewMissing('physicianFollowUp');
+
+    // Regression: this request used to come back twice, once as
+    // `consultation` and again as `physician_follow_up`, and the dashboard
+    // drew a card for each.
+    $this->getJson(route('dashboard.active_consultation'))
+        ->assertOk()
+        ->assertJsonPath('consultation.request_id', $consultationRequest->request_id)
+        ->assertJsonPath('consultation.arranged_by_physician', 'Noah Flores')
+        ->assertJsonPath('consultation.session.scheduled_slot.slot_date', $slot->slot_date->format('M d, Y'))
+        ->assertJsonMissingPath('physician_follow_up');
 });
 
 it('prefers scheduled physician follow-up data over completed follow-up data on the patient dashboard', function () {
@@ -136,12 +148,16 @@ it('prefers scheduled physician follow-up data over completed follow-up data on 
     $this->actingAs($patient)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Consultation Status')
         ->assertSee('Scheduled')
         ->assertSee($slot->slot_date->format('M d, Y'));
+
+    $this->getJson(route('dashboard.active_consultation'))
+        ->assertOk()
+        ->assertJsonPath('consultation.request_id', $scheduledConsultation->request_id)
+        ->assertJsonPath('consultation.request_status', 'scheduled');
 });
 
-it('hides physician follow-up card when the follow-up consultation is completed', function () {
+it('hides the consultation card when the physician follow-up consultation is completed', function () {
     $patient = User::factory()->create([
         'first_name' => 'Maya',
         'last_name' => 'Reyes',
@@ -191,10 +207,10 @@ it('hides physician follow-up card when the follow-up consultation is completed'
 
     $this->getJson(route('dashboard.active_consultation'))
         ->assertOk()
-        ->assertJsonPath('physician_follow_up', null);
+        ->assertJsonPath('consultation', null);
 });
 
-it('hides the physician follow-up card when the patient themselves initiated the follow-up', function () {
+it('does not label a patient initiated follow-up as arranged by the physician', function () {
     $patient = User::factory()->create([
         'first_name' => 'Maya',
         'last_name' => 'Reyes',
@@ -261,8 +277,8 @@ it('hides the physician follow-up card when the patient themselves initiated the
     ]);
 
     // Patient-initiated: the session links back to the FollowUpRequest the
-    // patient submitted — this is what must exclude it from the
-    // physician-initiated card (see DashboardController::getPhysicianInitiatedFollowUp).
+    // patient submitted — this is what must keep the "arranged by your
+    // physician" line off it (see Consultation::isPhysicianInitiatedFollowUp).
     ConsultationSession::create([
         'request_id' => $patientInitiatedConsultation->request_id,
         'physician_id' => $physician->user_id,
@@ -280,7 +296,8 @@ it('hides the physician follow-up card when the patient themselves initiated the
 
     $this->getJson(route('dashboard.active_consultation'))
         ->assertOk()
-        ->assertJsonPath('physician_follow_up', null);
+        ->assertJsonPath('consultation.request_id', $patientInitiatedConsultation->request_id)
+        ->assertJsonPath('consultation.arranged_by_physician', null);
 });
 
 it('hides the follow-up status card on patient dashboard when latest follow-up request is rejected', function () {
