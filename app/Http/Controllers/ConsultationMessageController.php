@@ -74,22 +74,46 @@ class ConsultationMessageController extends Controller
         ]);
     }
 
-    public function index(ConsultationSession $session): JsonResponse
+    public function index(Request $request, ConsultationSession $session): JsonResponse
     {
         $this->authorize('viewMessaging', $session);
 
-        $currentUser = Auth::user();
-        $this->touchLastSeen((int) $session->id, (int) $currentUser->user_id);
+        $validated = $request->validate([
+            'after_id' => 'nullable|integer|min:0',
+        ]);
+        $afterId = isset($validated['after_id']) ? (int) $validated['after_id'] : null;
 
+        $currentUser = Auth::user();
+        $currentUserId = (int) $currentUser->user_id;
+        $this->touchLastSeen((int) $session->id, $currentUserId);
+
+        // The poller sends after_id once it holds the conversation, so a 3s tick
+        // only carries what is new instead of the whole history. The cursor is
+        // the auto-increment message_id, not created_at: second-precision
+        // timestamps tie, and a tie at the boundary would silently skip a
+        // message. Ordering by the same column keeps a full and an incremental
+        // response in the order the client sorts by.
         $messages = $session->messages()
+            ->when($afterId !== null, fn ($query) => $query->where('message_id', '>', $afterId))
             ->with(['sender', 'attachments'])
-            ->orderBy('created_at', 'asc')
+            ->orderBy('message_id')
             ->get()
             ->map(fn (Message $message) => $this->serializeMessage($message))
             ->values();
 
+        // An incremental fetch never re-delivers old messages, so read_at
+        // changes on them would never reach the sender's Sent/Seen ticks. This
+        // single id carries them instead: markRead() marks ALL of the reader's
+        // unread messages at once, so read state is monotonic by id — every
+        // message the caller sent at or below this id has been seen.
+        $lastReadOwnMessageId = $session->messages()
+            ->where('sender_id', $currentUserId)
+            ->whereNotNull('read_at')
+            ->max('message_id');
+
         return response()->json([
             'messages' => $messages,
+            'last_read_own_message_id' => $lastReadOwnMessageId !== null ? (int) $lastReadOwnMessageId : null,
             // Lets the patient's existing 3s poller (fetchMessages() in
             // messaging.blade.php) detect a physician-side completion without
             // a page reload — this endpoint was already being polled, so this
@@ -166,30 +190,44 @@ class ConsultationMessageController extends Controller
             ], 422);
         }
 
-        $message = Message::create([
-            'consultation_id' => $session->id,
-            'sender_id' => Auth::user()->user_id,
-            'message' => $body !== '' ? $body : null,
-        ]);
-
+        // Every upload finishes before the message row exists. The peer's poller
+        // fetches incrementally past the highest message_id it has seen, so a
+        // message committed while its attachments were still uploading (a video
+        // can take seconds) would be delivered without them and never fetched
+        // again until the next full resync. Writing the rows in one short
+        // transaction afterwards means the message only ever becomes visible
+        // complete — and the slow upload is kept out of the transaction.
+        $uploads = [];
         foreach ($files as $file) {
             // Cloudinary (authenticated delivery) with a private-disk fallback,
             // both owned by MedicalFileStorage. What is stored is a reference,
             // never a URL, so downloadAttachment() below stays the only way to
             // reach the bytes whichever backend actually took the file.
-            $storedPath = $this->medicalFiles->store(
+            $uploads[] = [$file, $this->medicalFiles->store(
                 $file,
                 'message_attachments',
                 'message-attachments/'.$session->id
-            );
-
-            $message->attachments()->create([
-                'file_name' => $file->getClientOriginalName(),
-                'file_path' => $storedPath,
-                'mime_type' => $file->getClientMimeType() ?? 'application/octet-stream',
-                'file_size' => $file->getSize() ?? 0,
-            ]);
+            )];
         }
+
+        $message = DB::transaction(function () use ($session, $body, $uploads) {
+            $message = Message::create([
+                'consultation_id' => $session->id,
+                'sender_id' => Auth::user()->user_id,
+                'message' => $body !== '' ? $body : null,
+            ]);
+
+            foreach ($uploads as [$file, $storedPath]) {
+                $message->attachments()->create([
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $storedPath,
+                    'mime_type' => $file->getClientMimeType() ?? 'application/octet-stream',
+                    'file_size' => $file->getSize() ?? 0,
+                ]);
+            }
+
+            return $message;
+        });
 
         $this->setTyping((int) $session->id, (int) Auth::user()->user_id, false);
         $this->touchLastSeen((int) $session->id, (int) Auth::user()->user_id);

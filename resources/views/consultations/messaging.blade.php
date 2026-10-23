@@ -937,6 +937,23 @@
                 // requests on top of each other until the server catches up.
                 isFetchingMessages: false,
                 isFetchingPresence: false,
+                // Incremental-fetch cursor: the highest message_id the SERVER has
+                // returned to a poll. It is computed from data.messages only, never
+                // from this.messages, because this.messages can also hold the
+                // user's own just-sent messages (appendSentMessage(), and the
+                // re-merge after a full sync). Their ids can sit above a peer
+                // message that was committed but not fetched yet; advancing the
+                // cursor past them would skip that peer message for good.
+                // ponytail: two inserts committing out of id order within
+                // milliseconds can still slip a lower id behind the cursor; the
+                // periodic full resync below heals it. An overlap window on
+                // after_id is the stricter fix if that ever shows up.
+                lastMessageId: 0,
+                // When the last full (no after_id) fetch succeeded. Starts at 0 so
+                // the first load is a full fetch. A full resync every 60s — or when
+                // the tab becomes visible again — means a client-side merge bug can
+                // never persist past a minute.
+                lastFullSyncAt: 0,
                 // Latched the first time the assessment tab is opened, so the
                 // prescription thumbnail is not requested by browsers that never
                 // open that tab, and is not re-requested on every tab switch once
@@ -1058,6 +1075,17 @@
                     // non-completed -> completed transition rather than re-running on
                     // every "still completed" poll.
                     this.$watch('consultationStatus', () => this.maybeShowTamPrompt());
+                    // A backgrounded tab may have been throttled or frozen; force
+                    // the next poll to be a full resync rather than trusting the
+                    // incremental state. Resetting the timestamp instead of
+                    // fetching directly means that if a poll is already in flight
+                    // (and the guard skips this call), the next tick still does it.
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') {
+                            this.lastFullSyncAt = 0;
+                            this.fetchMessages(false);
+                        }
+                    });
                 },
                 maybeShowTamPrompt() {
                     if (this.consultationStatus !== 'completed') return;
@@ -1135,16 +1163,52 @@
                     this.isFetchingMessages = true;
 
                     const csrfToken = $('meta[name="csrf-token"]').attr('content');
+                    const full = Date.now() - this.lastFullSyncAt >= 60000;
 
                     $.ajax({
                         url: this.fetchUrl,
                         method: 'GET',
+                        data: full ? {} : { after_id: this.lastMessageId },
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         },
                         success: (data) => {
                             const previousCount = this.messages.length;
-                            this.messages = data.messages || [];
+                            const received = data.messages || [];
+                            const receivedMaxId = received.reduce(
+                                (max, msg) => Math.max(max, Number(msg.message_id)),
+                                0
+                            );
+
+                            if (full) {
+                                // The server queried its snapshot before this
+                                // response arrived, so a message appendSentMessage()
+                                // added in the meantime can be newer than anything
+                                // in it. Carry those over instead of dropping the
+                                // sender's own message for a tick.
+                                const newerLocal = this.messages.filter(
+                                    (msg) => Number(msg.message_id) > receivedMaxId
+                                );
+                                this.messages = received;
+                                this.mergeMessages(newerLocal);
+                                this.lastFullSyncAt = Date.now();
+                            } else {
+                                this.mergeMessages(received);
+                            }
+
+                            // From the server's response only — see lastMessageId.
+                            this.lastMessageId = Math.max(this.lastMessageId, receivedMaxId);
+
+                            // Old messages are not re-delivered incrementally, so
+                            // the peer reading them arrives as one id instead.
+                            const lastReadOwnId = Number(data.last_read_own_message_id || 0);
+                            const readAt = new Date().toISOString();
+                            this.messages.forEach((msg) => {
+                                if (this.isMine(msg) && !msg.read_at && Number(msg.message_id) <= lastReadOwnId) {
+                                    msg.read_at = readAt;
+                                }
+                            });
+
                             this.consultationStatus = data.consultation_status || this.consultationStatus;
 
                             if (scroll || this.messages.length !== previousCount) {
@@ -1752,19 +1816,28 @@
                     });
                 },
                 // Adds a just-sent message to the conversation without refetching
-                // it. The message_id check keeps a poll that landed first from
-                // producing a duplicate; the next poll replaces this list with the
-                // server's own copy either way, so nothing here can drift.
+                // it. mergeMessages()'s message_id check keeps a poll that landed
+                // first from producing a duplicate. It deliberately does not move
+                // lastMessageId: a peer message with a lower id may not have been
+                // fetched yet, and the next poll must still ask for it.
                 appendSentMessage(message) {
-                    const alreadyListed = this.messages.some(
-                        (existing) => Number(existing.message_id) === Number(message.message_id)
-                    );
+                    this.mergeMessages([message]);
+                    this.$nextTick(() => this.scrollToBottom());
+                },
+                // Adds messages not already listed (by message_id) and keeps the
+                // list in id order, which is insertion order. Sorting matters
+                // because an appended message can be listed before a lower-id
+                // peer message that a later poll delivers.
+                mergeMessages(list) {
+                    const known = new Set(this.messages.map((msg) => Number(msg.message_id)));
+                    const added = list.filter((msg) => !known.has(Number(msg.message_id)));
 
-                    if (!alreadyListed) {
-                        this.messages.push(message);
+                    if (added.length === 0) {
+                        return;
                     }
 
-                    this.$nextTick(() => this.scrollToBottom());
+                    this.messages.push(...added);
+                    this.messages.sort((a, b) => Number(a.message_id) - Number(b.message_id));
                 },
                 // Presentation-only helpers for the conversation view. They derive
                 // everything from the message payload the API already returns —
