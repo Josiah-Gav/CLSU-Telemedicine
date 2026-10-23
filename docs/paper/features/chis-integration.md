@@ -113,8 +113,9 @@ only an admin can change it (admin edit form).
 **B. Privacy notice.** On the profile page a patient sees "How your records are
 shared with CHIS": that a summary of every completed consultation (earlier ones
 included) goes to CHIS under RA 10173 Sec. 13 (medical treatment), what is and is
-not sent, that the assigned physician may view their CHIS record and every view is
-logged, and whom to ask (the clinic or CLSU's Data Protection Officer). There are
+not sent, that the assigned physician may view their CHIS record, that they can
+view the same record themselves (read-only, from a consultation), and that every
+view is logged, and whom to ask (the clinic or CLSU's Data Protection Officer). There are
 no buttons. The request form carries a one-line pointer to it.
 
 **C. Outbound push.**
@@ -219,7 +220,7 @@ Index on (`chis_sync_status`, `updated_at`).
 `id`; `action` (string 30: `encounter_push` | `patient_lookup`); `outcome`
 (string 30: `success` | `not_found` | `rejected` | `unavailable` |
 `identity_mismatch`); `source` (string 30: `sync_job` | `health_command` |
-`consultation_view` | `api`); `patient_user_id`, `actor_user_id`,
+`consultation_view` | `patient_self_view` | `api`); `patient_user_id`, `actor_user_id`,
 `consultation_session_id` (unsigned big int, nullable, **no foreign keys** so rows
 outlive deleted users and sessions); `clsu_id` (string 50, snapshot);
 `http_status` (unsigned small int); `reason` (string 100); `chis_reference`;
@@ -386,18 +387,18 @@ asserts 201, then 409, then that the original diagnosis is still stored.
 ## 15. UI Implementation
 
 - **Patient tab** (`resources/views/consultations/messaging.blade.php`): for the
-  assigned physician, a "CHIS medical record" card with Refresh, a panel per
+  assigned physician and, read-only, for the patient (tab labelled "My CHIS
+  Record", own wording for each state, a correction/contact line), a "CHIS medical record" card with Refresh, a panel per
   `state` (loading, `no_clsu_id`, `not_found`, `identity_mismatch`,
   `unavailable`/`error`), blood type / sex / birth date, and five lists (allergies
   with a text "Severe" badge so colour is not the only signal; conditions;
   medications; immunizations; family history; "None recorded in CHIS" when
   empty), and the footer "Viewing this record is logged." Alpine `loadChisProfile`
-  fetches lazily and everything is rendered with `x-text` (never `x-html`). The
-  patient sees one note: the record is visible to the assigned physician only, every
-  view is logged, and a link to the privacy notice.
+  fetches lazily and everything is rendered with `x-text` (never `x-html`). A
+  patient's view is audited as source `patient_self_view` with the patient as actor.
 - **Profile privacy notice** (`resources/views/profile/partials/chis-privacy-notice.blade.php`,
   patient-only): the lawful basis in plain words, what is and is not sent, the
-  physician-view and logging statement, contact route. No buttons. Also: one line
+  physician-view, patient self-view and logging statement, contact route. No buttons. Also: one line
   on the consultation request form and the *Sharing Consultation Summaries with CHIS* section of the privacy policy.
 - **Admin CHIS Sync** (`resources/views/admin/chis-sync/index.blade.php`): status
   counts as filter tabs, a reachability banner (cached 60 s via

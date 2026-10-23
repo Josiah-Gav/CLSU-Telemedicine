@@ -68,7 +68,7 @@ it('forbids everyone else, without any CHIS call or audit row', function (string
     $session = chisViewSession();
     $user = match ($who) {
         'other physician' => User::factory()->create(['role' => 'physician']),
-        'patient' => User::find($session->request->patient_id),
+        'other patient' => User::factory()->create(['role' => 'patient', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz']),
         'nurse' => User::factory()->create(['role' => 'nurse']),
         'admin' => User::factory()->create(['role' => 'admin']),
     };
@@ -78,7 +78,52 @@ it('forbids everyone else, without any CHIS call or audit row', function (string
 
     Http::assertNothingSent();
     expect(ChisAuditLog::count())->toBe(0);
-})->with(['other physician', 'patient', 'nurse', 'admin']);
+})->with(['other physician', 'other patient', 'nurse', 'admin']);
+
+it('lets the patient view their own profile, audited as a self-view', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $session = chisViewSession();
+    $patient = User::find($session->request->patient_id);
+
+    $response = viewChis($session, $patient)->assertOk()->assertJsonPath('state', 'ok')
+        ->assertJsonPath('profile.medical_profile.allergies.0.substance', 'Penicillin');
+
+    foreach (['middle_name', 'Santos', 'college', 'secret'] as $absent) {
+        expect($response->getContent())->not->toContain($absent);
+    }
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+    expect(ChisAuditLog::sole()->only(['action', 'source', 'outcome', 'actor_user_id', 'patient_user_id', 'consultation_session_id']))->toBe([
+        'action' => 'patient_lookup', 'source' => 'patient_self_view', 'outcome' => 'success', 'actor_user_id' => $patient->user_id,
+        'patient_user_id' => $patient->user_id, 'consultation_session_id' => $session->id,
+    ]);
+});
+
+it('lets the patient view their record from a completed session', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $session = chisViewSession(session: ['consultation_status' => 'completed']);
+    $session->request->forceFill(['request_status' => 'completed'])->save();
+
+    viewChis($session, User::find($session->request->patient_id))->assertOk()->assertJsonPath('state', 'ok');
+});
+
+it('fails closed for the patient too when the audit row cannot be written', function () {
+    fakeChis(Http::response(['data' => chisRecord()]));
+    $session = chisViewSession();
+    Schema::drop('chis_audit_logs');
+
+    $response = viewChis($session, User::find($session->request->patient_id))->assertOk()->assertExactJson(['state' => 'unavailable']);
+
+    expect($response->getContent())->not->toContain('Penicillin');
+});
+
+it('shows the patient no CHIS name on an identity mismatch', function () {
+    fakeChis(Http::response(['data' => chisRecord(['first_name' => 'Maria', 'last_name' => 'Santos'])]));
+    $session = chisViewSession();
+
+    viewChis($session, User::find($session->request->patient_id))->assertOk()->assertExactJson(['state' => 'identity_mismatch']);
+
+    expect(ChisAuditLog::sole()->only(['source', 'outcome']))->toBe(['source' => 'patient_self_view', 'outcome' => 'identity_mismatch']);
+});
 
 it('forbids a session that is not active or completed', function () {
     $session = chisViewSession(session: ['consultation_status' => 'scheduled']);
@@ -198,16 +243,24 @@ it('replaces the placeholder tab for the physician', function () {
         ->assertDontSee('Past Injuries');
 });
 
-it('shows the patient only a privacy note, with no profile endpoint', function () {
+it('gives the patient a read-only view of their own record', function () {
     $session = chisViewSession();
+    Http::fake();
 
     $this->actingAs(User::find($session->request->patient_id))->get(route('consultations.messaging.show', $session))
         ->assertOk()
-        ->assertSee('visible to your assigned physician only')
+        ->assertSee('My CHIS Record')
+        ->assertSee('Your CHIS medical record')
+        ->assertSee('shown read-only')
         ->assertSee('How your records are shared with CHIS')
+        ->assertSee(substr(json_encode(route('consultations.chis_profile.show', $session)), 1, -1), false)
+        ->assertDontSee('visible to your assigned physician only')
         ->assertDontSee('Manage consent')
-        ->assertDontSee('chis-profile', false)
         ->assertDontSee('Hospital Information System');
+
+    // The page itself never calls CHIS; only the lazy fetch does.
+    Http::assertNothingSent();
+    expect(ChisAuditLog::count())->toBe(0);
 });
 
 // --- identity ------------------------------------------------------------------

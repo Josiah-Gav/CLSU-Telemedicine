@@ -318,7 +318,7 @@ described in `features/chis-integration.md`.*
 | **CLSU ID** | `users.clsu_id`, validated by `App\Rules\ClsuId`, unique across all users, write-once for patients. The key used to look a patient up in CHIS. |
 | **Identity check** | `ChisIdentity::matches()` — the CHIS record's first and last name must equal the Telemed patient's (normalised for case, accents, punctuation, spacing) before any CHIS data is shown. Names only; Telemed stores no birth date. |
 | **Audit log (CHIS)** | `chis_audit_logs` / `ChisAuditLog` — append-only record that CHIS data was sent or viewed (who, whom, when, outcome, source); never the data. Not an audit of user administration. |
-| **Audit source** | `chis_audit_logs.source`: `sync_job`, `health_command`, `consultation_view`, `api`. |
+| **Audit source** | `chis_audit_logs.source`: `sync_job`, `health_command`, `consultation_view`, `patient_self_view`, `api`. |
 | **API token / ability** | A Sanctum bearer token created by `php artisan telemed:api-token` for an active admin. Abilities: `encounters:read`, `encounters:sync`; no wildcard. Tokens expire (default 30 days). |
 | **Sweeper** | The scheduled command `chis:sync-pending`, which re-queues `pending` syncs idle for 10+ minutes. |
 

@@ -27,6 +27,6 @@
         </div>
     </div>
 
-    <p class="mt-4 text-sm text-slate-600">{{ __('Your assigned physician may view your CHIS medical record during a consultation, and every view is logged.') }}</p>
+    <p class="mt-4 text-sm text-slate-600">{{ __('Your assigned physician may view your CHIS medical record during a consultation. You can view the same record yourself, read-only, from the My CHIS Record tab of an active or completed consultation, and every view is logged.') }}</p>
     <p class="mt-2 text-sm text-slate-600">{{ __('For questions or corrections, contact the clinic or CLSU\'s Data Protection Officer.') }}</p>
 </section>

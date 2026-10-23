@@ -13,15 +13,17 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * The patient's CHIS medical profile for the assigned physician, fetched
+ * The patient's CHIS medical profile, for the assigned physician and, read-only,
+ * for the patient themself (right of access, RA 10173 Sec. 16(c)). Fetched
  * lazily (never during page render) so a slow or down CHIS cannot delay the
  * consultation page.
  *
- * Gates, in order: assigned physician only → CLSU ID → CHIS
- * lookup (audited) → identity check. No patient consent gate: the lawful basis
- * is medical treatment (RA 10173 Sec. 13). Nothing from CHIS is stored or
- * cached, and if the audit row cannot be written the profile is withheld:
- * no audit, no access.
+ * Gates, in order: assigned physician or owning patient only → CLSU ID → CHIS
+ * lookup (audited, source consultation_view or patient_self_view) → identity
+ * check. No patient consent gate: the lawful basis is medical treatment
+ * (RA 10173 Sec. 13). Both viewers get the same minimised profile. Nothing from
+ * CHIS is stored or cached, and if the audit row cannot be written the profile
+ * is withheld: no audit, no access.
  */
 class ChisProfileController extends Controller
 {
@@ -38,23 +40,23 @@ class ChisProfileController extends Controller
     {
         $this->authorize('viewMessaging', $session);
 
-        $physician = Auth::user();
-        abort_unless(
-            $physician->role === 'physician' && (int) $session->physician_id === (int) $physician->user_id,
-            403,
-            'Only the assigned physician can view the CHIS record.'
-        );
-
+        $viewer = Auth::user();
         $patient = $session->request?->patient;
         abort_unless($patient, 404);
+
+        // viewMessaging already admits only these two; restated so the CHIS gate
+        // never widens if that policy does.
+        $isAssignedPhysician = $viewer->role === 'physician' && (int) $session->physician_id === (int) $viewer->user_id;
+        $isOwnPatient = $viewer->role === 'patient' && (int) $patient->user_id === (int) $viewer->user_id;
+        abort_unless($isAssignedPhysician || $isOwnPatient, 403, 'Only the assigned physician or the patient can view the CHIS record.');
 
         if (blank($patient->clsu_id)) {
             return $this->state('no_clsu_id');
         }
 
         $start = hrtime(true);
-        $audit = fn (string $outcome, array $context = []) => ChisAuditLog::record('patient_lookup', $outcome, 'consultation_view', [
-            'actor_user_id' => $physician->user_id,
+        $audit = fn (string $outcome, array $context = []) => ChisAuditLog::record('patient_lookup', $outcome, $isOwnPatient ? 'patient_self_view' : 'consultation_view', [
+            'actor_user_id' => $viewer->user_id,
             'patient_user_id' => $patient->user_id,
             'consultation_session_id' => $session->id,
             'clsu_id' => $patient->clsu_id,
@@ -95,7 +97,7 @@ class ChisProfileController extends Controller
         return $this->state('ok', ['profile' => $this->minimise($record)]);
     }
 
-    /** Only what the physician needs; middle name, college etc. are not returned. */
+    /** Only what the physician needs (the patient sees the same); middle name, college etc. are not returned. */
     private function minimise(array $record): array
     {
         $lists = [];
