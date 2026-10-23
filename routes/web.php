@@ -226,10 +226,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('consultations.messaging.read');
     Route::post('/consultation-sessions/{session}/clinical-details', [ConsultationMessageController::class, 'updateClinicalDetails'])
         ->name('consultations.messaging.clinical_details.update');
-    // Lazy-loaded CHIS medical profile for the assigned physician (never fetched during page render).
+    // Lazy-loaded CHIS medical profile for the assigned physician or the patient (never fetched during page render).
     Route::get('/consultation-sessions/{session}/chis-profile', [ChisProfileController::class, 'show'])
         ->middleware('throttle:30,1')
         ->name('consultations.chis_profile.show');
+    // The patient's own CHIS record from the profile page, read-only; loaded only on request.
+    Route::get('/profile/chis-record', [ChisProfileController::class, 'showOwn'])
+        ->middleware('throttle:30,1')
+        ->name('profile.chis_record.show');
     Route::post('/consultation-sessions/{session}/complete', [ConsultationMessageController::class, 'complete'])
         ->name('consultations.messaging.complete');
     Route::get('/consultation-sessions/unread-counts', [ConsultationMessageController::class, 'unreadCounts'])

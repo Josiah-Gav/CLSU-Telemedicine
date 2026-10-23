@@ -19,6 +19,9 @@
             : 'Back to Dashboard';
         $isAssignedPhysician = $currentUser && $currentUser->role === 'physician' && (int) $session->physician_id === (int) $currentUser->user_id;
         $isCompletedSession = $session->consultation_status === 'completed';
+        $isOwnPatient = $currentUser && $currentUser->role === 'patient' && (int) optional($consultationRequest)->patient_id === (int) $currentUser->user_id;
+        // Who may load the CHIS record: the assigned physician, or the patient read-only.
+        $canViewChis = $isAssignedPhysician || $isOwnPatient;
 
         // "Who am I talking to?" is the first question this page has to answer, so
         // the header is built around the *other* participant rather than listing
@@ -132,7 +135,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 21c-4.97-3.14-9-6.9-9-11.25A5.25 5.25 0 0112 5.5a5.25 5.25 0 019 4.25c0 4.35-4.03 8.11-9 11.25z" />
                             </svg>
-                            Patient Details
+                            {{ $isOwnPatient ? 'My CHIS Record' : 'Patient Details' }}
                         </button>
                         <button
                             type="button"
@@ -552,89 +555,26 @@
                 </div>
 
                 <div x-show="activeTab === 'patient'" x-cloak class="bg-brand-muted px-3 py-4 sm:px-6 sm:py-5">
-                    @if($isAssignedPhysician)
+                    @if($canViewChis)
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                             <div class="flex flex-wrap items-center justify-between gap-3">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">CHIS medical record</h4>
+                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ $isOwnPatient ? 'Your CHIS medical record' : 'CHIS medical record' }}</h4>
                                 <x-button-secondary size="sm" @click="loadChisProfile(true)" x-bind:disabled="chisLoading">Refresh</x-button-secondary>
                             </div>
-                            <div role="status" aria-live="polite" class="mt-3">
-                                <p x-show="chisLoading" class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-600">Loading the CHIS record&hellip;</p>
-                                <p x-show="!chisLoading && chis.state === 'no_clsu_id'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">The patient has no CLSU ID on file, so no CHIS record can be looked up.</p>
-                                <p x-show="!chisLoading && chis.state === 'not_found'" x-cloak class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700">No CHIS record for CLSU ID <span class="font-mono" x-text="chis.clsuId"></span>.</p>
-                                <p x-show="!chisLoading && chis.state === 'identity_mismatch'" x-cloak class="rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">The CHIS record for this CLSU ID does not match this patient's name &mdash; not displayed. Ask an administrator to verify the CLSU ID.</p>
-                                <p x-show="!chisLoading && (chis.state === 'unavailable' || chis.state === 'error')" x-cloak class="rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900">CHIS could not be reached &mdash; try Refresh.</p>
-                            </div>
+                            @if($isOwnPatient)
+                                <p class="mt-2 text-sm text-slate-600">
+                                    This is what CHIS holds about you, shown read-only. Your assigned physician can see the same record during your consultation.
+                                    If something is wrong, contact the clinic or CLSU's Data Protection Officer.
+                                    <a href="{{ route('profile.edit') }}#chis-privacy-notice-heading" class="font-semibold text-brand-green hover:underline">How your records are shared with CHIS</a>
+                                </p>
+                            @endif
+                            @include('chis.partials.record', ['isOwnPatient' => $isOwnPatient])
 
-                            <div x-show="!chisLoading && chis.state === 'ok'" x-cloak>
-                                <dl class="mt-4 grid gap-4 sm:grid-cols-3">
-                                    <div><dt class="text-xs font-medium text-slate-500">Blood type</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chis.profile.blood_type || 'Not recorded'"></dd></div>
-                                    <div><dt class="text-xs font-medium text-slate-500">Sex</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chis.profile.sex || 'Not recorded'"></dd></div>
-                                    <div><dt class="text-xs font-medium text-slate-500">Birth date</dt><dd class="mt-1 text-sm font-semibold text-slate-900" x-text="chisDate(chis.profile.birth_date)"></dd></div>
-                                </dl>
-                                <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Allergies</h4>
-                                <p x-show="!(chis.profile.medical_profile.allergies || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
-                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.allergies || []).length">
-                                    <template x-for="(item, i) in (chis.profile.medical_profile.allergies || [])" :key="i">
-                                        <li class="rounded-xl px-3 py-2.5 text-sm" :class="String(item.severity).toLowerCase() === 'severe' ? 'border-l-4 border-amber-600 bg-amber-50 font-semibold text-amber-900' : 'bg-slate-50 text-slate-700'">
-                                            <span x-text="item.substance"></span>
-                                            <span x-show="item.reaction" class="font-normal" x-text="' — ' + item.reaction"></span>
-                                            <span x-show="item.severity" class="ml-1 inline-flex rounded-full bg-white px-2 py-0.5 text-xs font-semibold" x-text="String(item.severity).toLowerCase() === 'severe' ? 'Severe' : item.severity"></span>
-                                        </li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Chronic conditions</h4>
-                                <p x-show="!(chis.profile.medical_profile.chronic_conditions || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
-                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.chronic_conditions || []).length">
-                                    <template x-for="(item, i) in (chis.profile.medical_profile.chronic_conditions || [])" :key="i">
-                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.name"></span><span x-show="item.diagnosed_on" x-text="' · since ' + chisDate(item.diagnosed_on)"></span><span x-show="item.status" x-text="' · ' + item.status"></span></li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current medications</h4>
-                                <p x-show="!(chis.profile.medical_profile.current_medications || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
-                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.current_medications || []).length">
-                                    <template x-for="(item, i) in (chis.profile.medical_profile.current_medications || [])" :key="i">
-                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.name"></span><span x-show="item.dose" x-text="' · ' + item.dose"></span><span x-show="item.frequency" x-text="' · ' + item.frequency"></span></li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Immunizations</h4>
-                                <p x-show="!(chis.profile.medical_profile.immunizations || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
-                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.immunizations || []).length">
-                                    <template x-for="(item, i) in (chis.profile.medical_profile.immunizations || [])" :key="i">
-                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.vaccine"></span><span x-show="item.dose" x-text="' · dose ' + item.dose"></span><span x-show="item.date_administered" x-text="' · ' + chisDate(item.date_administered)"></span></li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                                <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Family history</h4>
-                                <p x-show="!(chis.profile.medical_profile.family_history || []).length" class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-500">None recorded in CHIS</p>
-                                <ul class="mt-3 space-y-2" x-show="(chis.profile.medical_profile.family_history || []).length">
-                                    <template x-for="(item, i) in (chis.profile.medical_profile.family_history || [])" :key="i">
-                                        <li class="rounded-xl bg-slate-50 px-3 py-2.5 text-sm text-slate-700"><span class="font-semibold" x-text="item.relation"></span><span x-text="': ' + item.condition"></span></li>
-                                    </template>
-                                </ul>
-                            </div>
-                                </div>
-                                <p class="mt-4 text-xs text-slate-500">Last updated in CHIS: <span x-text="chisDate(chis.profile.record_updated_at)"></span></p>
-                            </div>
-
-                            <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">Viewing this record is logged.</p>
-                        </div>
-                    @else
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                            <h4 class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Your CHIS medical record</h4>
-                            <p class="mt-3 text-sm text-slate-700">Your CHIS medical record is visible to your assigned physician only.</p>
-                            <p class="mt-2 text-sm text-slate-600">
-                                Every view is logged, and a summary of this consultation is sent to CHIS when it is completed.
-                                <a href="{{ route('profile.edit') }}#chis-privacy-notice-heading" class="font-semibold text-brand-green hover:underline">How your records are shared with CHIS</a>
+                            <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                                Viewing this record is logged.
+                                @if($isOwnPatient)
+                                    A summary of this consultation is sent to CHIS when it is completed.
+                                @endif
                             </p>
                         </div>
                     @endif
@@ -1020,10 +960,11 @@
                 // Only affects which buttons render. The server re-checks the assigned
                 // physician on every start/end request, so this is never load-bearing.
                 isAssignedPhysician: @js($isAssignedPhysician),
-                // CHIS medical profile: fetched lazily the first time the Patient tab is
-                // opened (and on Refresh), never during page render. Rendered with
-                // x-text only: CHIS data is external input. Authorization is the server's.
-                chisProfileUrl: @js($isAssignedPhysician ? route('consultations.chis_profile.show', $session) : null),
+                // CHIS medical profile (assigned physician, or the patient read-only):
+                // fetched lazily the first time the Patient tab is opened (and on
+                // Refresh), never during page render. Rendered with x-text only: CHIS
+                // data is external input. Authorization is the server's.
+                chisProfileUrl: @js($canViewChis ? route('consultations.chis_profile.show', $session) : null),
                 chis: { state: 'idle', profile: null, clsuId: null },
                 chisLoading: false,
                 chisLoaded: false,
