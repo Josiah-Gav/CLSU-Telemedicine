@@ -5,53 +5,6 @@
         </h2>
     </x-slot>
 
-    @php
-        $patientConsultationPayload = null;
-
-        if (!empty($activeConsultation)) {
-            $status = $activeConsultation->request_status;
-            // Phase 4: was a hand-computed if/elseif chain duplicated (and
-            // drifted) between this file and consultation-details.blade.php
-            // — see StatusBadge::patientClasses()'s docblock.
-            $statusClasses = \App\Support\StatusBadge::patientClasses($status);
-
-            $patientConsultationPayload = [
-                'request_id' => $activeConsultation->request_id,
-                'details_url' => route('consultations.show', $activeConsultation),
-                'consultation_type' => $activeConsultation->type === 'follow_up' ? 'follow_up' : 'general',
-                'consultation_type_label' => $activeConsultation->type === 'follow_up' ? 'Follow-up' : 'General',
-                'concern_category' => $activeConsultation->concern_category,
-                'summary' => $activeConsultationSummary ?? 'No symptoms recorded',
-                'request_status' => $status,
-                'status_badge_class' => $statusClasses,
-                'status_label' => ucfirst($status),
-                // Phase 2 UX: a bare status word gives a first-time patient no
-                // idea what's happening or what to expect next — same sentence
-                // StatusBadge::patientMeaning() supplies on consultation-details.blade.php.
-                'status_meaning' => \App\Support\StatusBadge::patientMeaning($status),
-                'arranged_by_physician' => $activeConsultation->arrangingPhysicianName(),
-                'submitted_at' => optional($activeConsultation->submitted_at)->format('M d, Y'),
-                'show_messaging' => in_array($status, ['active', 'completed'], true) && $activeConsultation->consultationSession,
-                'session' => $activeConsultation->consultationSession ? [
-                    'id' => $activeConsultation->consultationSession->id,
-                    'consultation_status' => $activeConsultation->consultationSession->consultation_status,
-                    'scheduled_slot' => $activeConsultation->consultationSession->slot ? [
-                        'slot_date' => $activeConsultation->consultationSession->slot->slot_date?->format('M d, Y') ?? (string) $activeConsultation->consultationSession->slot->slot_date,
-                        'start_time' => $activeConsultation->consultationSession->slot->start_time,
-                        'end_time' => $activeConsultation->consultationSession->slot->end_time,
-                    ] : null,
-                    'has_clinical_documentation' => $activeConsultation->consultationSession->hasClinicalDocumentation(),
-                    'clinical_badge_class' => $activeConsultation->consultationSession->hasClinicalDocumentation() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700',
-                    'clinical_label' => $activeConsultation->consultationSession->hasClinicalDocumentation() ? __('Assessment ready') : __('Assessment pending'),
-                    'has_prescription' => $activeConsultation->consultationSession->hasPrescription(),
-                    'prescription_badge_class' => $activeConsultation->consultationSession->hasPrescription() ? 'bg-brand-green-soft text-brand-green-deep' : 'bg-slate-100 text-slate-600',
-                    'prescription_label' => $activeConsultation->consultationSession->hasPrescription() ? __('Prescription uploaded') : __('No prescription'),
-                    'unread_count' => 0,
-                ] : null,
-            ];
-        }
-    @endphp
-
     <script>
         window.patientConsultation = @json($patientConsultationPayload);
         window.tamEvaluationSessionId = @json($tamEvaluationSessionId);
